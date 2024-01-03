@@ -29,6 +29,10 @@ The following configurations are available
  - `SSO_ROLES_ENABLED`: control if the mapping is done, default is `false`
  - `SSO_ROLES_DEFAULT_TO_USER`: do not block login in case of missing or invalid roles, default is `true`.
  - `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the Id token
+ - `SSO_ORGANIZATIONS_INVITE`: control if the mapping is done, default is `false`
+ - `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read groups/organization in the Id token
+ - `SSO_ORGANIZATIONS_ID_MAPPING`: Optional, allow to map provider group to a Vaultwarden organization `uuid` (default `""`, format: `"ProviderId:VaultwardenId;"`)
+ - `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: Grant access to all collections, default is `true`
  - `SSO_CLIENT_CACHE_EXPIRATION`: Cache calls to the discovery endpoint, duration in seconds, `0` to disable (default `0`);
  - `SSO_DEBUG_TOKENS`: Log all tokens for easier debugging (default `false`, `LOG_LEVEL=debug` or `LOG_LEVEL=info,vaultwarden::sso=debug` need to be set)
 

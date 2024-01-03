@@ -2,6 +2,7 @@ use chrono::Utc;
 use regex::Regex;
 use serde::de::DeserializeOwned;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::time::Duration;
 use url::Url;
 
@@ -18,15 +19,19 @@ use openidconnect::{
 };
 
 use crate::{
+    api::core::organizations::CollectionData,
     api::ApiResult,
     auth,
-    auth::{AuthMethod, AuthMethodScope, AuthTokens, TokenWrapper, BW_EXPIRATION, DEFAULT_REFRESH_VALIDITY},
+    auth::{AuthMethod, AuthMethodScope, AuthTokens, ClientIp, TokenWrapper, BW_EXPIRATION, DEFAULT_REFRESH_VALIDITY},
+    business::organization_logic,
     db::{
-        models::{Device, EventType, SsoNonce, User},
+        models::{Device, EventType, Organization, SsoNonce, User, UserOrgType, UserOrganization},
         DbConn,
     },
     CONFIG,
 };
+
+pub static FAKE_IDENTIFIER: &str = "VaultWarden";
 
 static AC_CACHE: Lazy<Cache<String, AuthenticatedUser>> =
     Lazy::new(|| Cache::builder().max_capacity(1000).time_to_live(Duration::from_secs(10 * 60)).build());
@@ -259,6 +264,7 @@ pub async fn authorize_url(state: String, client_id: &str, raw_redirect_uri: &st
 #[derive(Debug)]
 struct AdditionnalClaims {
     role: Option<UserRole>,
+    groups: Vec<String>,
 }
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
@@ -278,6 +284,7 @@ pub struct AuthenticatedUser {
     pub email_verified: Option<bool>,
     pub user_name: Option<String>,
     pub role: Option<UserRole>,
+    pub groups: Vec<String>,
 }
 
 impl AuthenticatedUser {
@@ -296,7 +303,7 @@ pub struct UserInformation {
 }
 
 // Errors are logged but will return None
-fn roles(email: &str, token: &serde_json::Value) -> Option<UserRole> {
+fn roles_claim(email: &str, token: &serde_json::Value) -> Option<UserRole> {
     if let Some(json_roles) = token.pointer(&CONFIG.sso_roles_token_path()) {
         match serde_json::from_value::<Vec<UserRole>>(json_roles.clone()) {
             Ok(mut roles) => {
@@ -314,24 +321,47 @@ fn roles(email: &str, token: &serde_json::Value) -> Option<UserRole> {
     }
 }
 
+// Errors are logged but will return an empty Vec
+fn groups_claim(email: &str, token: &serde_json::Value) -> Vec<String> {
+    if let Some(json_groups) = token.pointer(&CONFIG.sso_organizations_token_path()) {
+        match serde_json::from_value::<Vec<String>>(json_groups.clone()) {
+            Ok(groups) => groups,
+            Err(err) => {
+                error!("Failed to parse user ({email}) groups: {err}");
+                Vec::new()
+            }
+        }
+    } else {
+        debug!("No groups in {email} id_token at {}", &CONFIG.sso_organizations_token_path());
+        Vec::new()
+    }
+}
+
 // Trying to conditionnally read additionnal configurable claims using openidconnect appear nightmarish
 // So we just decode the token again as a JsValue
 fn additional_claims(email: &str, token: &str) -> ApiResult<AdditionnalClaims> {
     let mut role = None;
+    let mut groups = Vec::new();
 
-    if CONFIG.sso_roles_enabled() {
+    if CONFIG.sso_roles_enabled() || CONFIG.sso_organizations_invite() {
         match insecure_decode::<serde_json::Value>("id_token", token) {
             Err(err) => err!(format!("Could not decode access token: {:?}", err)),
             Ok(claims) => {
-                role = roles(email, &claims);
-                if !CONFIG.sso_roles_default_to_user() && role.is_none() {
-                    info!("User {email} failed to login due to missing/invalid role");
-                    err!(
-                        "Invalid user role. Contact your administrator",
-                        ErrorEvent {
-                            event: EventType::UserFailedLogIn
-                        }
-                    )
+                if CONFIG.sso_roles_enabled() {
+                    role = roles_claim(email, &claims);
+                    if !CONFIG.sso_roles_default_to_user() && role.is_none() {
+                        info!("User {email} failed to login due to missing/invalid role");
+                        err!(
+                            "Invalid user role. Contact your administrator",
+                            ErrorEvent {
+                                event: EventType::UserFailedLogIn
+                            }
+                        )
+                    }
+                }
+
+                if CONFIG.sso_organizations_invite() {
+                    groups = groups_claim(email, &claims);
                 }
             }
         }
@@ -339,6 +369,7 @@ fn additional_claims(email: &str, token: &str) -> ApiResult<AdditionnalClaims> {
 
     Ok(AdditionnalClaims {
         role,
+        groups,
     })
 }
 
@@ -461,6 +492,7 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
                 email_verified: id_claims.email_verified(),
                 user_name: user_name.clone(),
                 role: additional_claims.role,
+                groups: additional_claims.groups,
             };
 
             AC_CACHE.insert(state.clone(), authenticated_user);
@@ -618,4 +650,57 @@ pub async fn exchange_refresh_token(
         }
         None => err!("No token present while in SSO"),
     }
+}
+
+pub async fn sync_groups(
+    user: &User,
+    device: &Device,
+    ip: &ClientIp,
+    groups: &Vec<String>,
+    conn: &mut DbConn,
+) -> ApiResult<()> {
+    if CONFIG.sso_organizations_invite() {
+        let id_mapping = CONFIG.sso_organizations_id_mapping_map();
+        let db_user_orgs = UserOrganization::find_any_state_by_user(&user.uuid, conn).await;
+        let user_orgs = db_user_orgs.iter().map(|uo| (uo.org_uuid.clone(), uo)).collect::<HashMap<_, _>>();
+
+        let org_groups: Vec<String> = vec![];
+        let org_collections: Vec<CollectionData> = vec![];
+
+        for group in groups {
+            let db_org = if id_mapping.is_empty() {
+                Organization::find_by_name(group, conn).await
+            } else {
+                match id_mapping.get(group) {
+                    Some(uuid) if user_orgs.contains_key(uuid) => continue,
+                    Some(uuid) => Organization::find_by_uuid(uuid, conn).await,
+                    None => {
+                        warn!("Missing organization mapping for {group}");
+                        None
+                    }
+                }
+            };
+
+            if let Some(org) = db_org {
+                if !user_orgs.contains_key(&org.uuid) {
+                    info!("Invitation to {} organization sent to {}", group, user.email);
+                    organization_logic::invite(
+                        user,
+                        device,
+                        ip,
+                        &org,
+                        UserOrgType::User,
+                        &org_groups,
+                        CONFIG.sso_organizations_all_collections(),
+                        &org_collections,
+                        org.billing_email.clone(),
+                        conn,
+                    )
+                    .await?;
+                }
+            }
+        }
+    }
+
+    Ok(())
 }

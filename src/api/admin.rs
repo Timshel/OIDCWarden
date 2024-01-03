@@ -188,11 +188,7 @@ pub fn create_admin_cookie<'a>() -> Cookie<'a> {
 }
 
 #[post("/", data = "<data>")]
-fn post_admin_login(
-    data: Form<LoginForm>,
-    cookies: &CookieJar<'_>,
-    ip: ClientIp,
-) -> Result<Redirect, AdminResponse> {
+fn post_admin_login(data: Form<LoginForm>, cookies: &CookieJar<'_>, ip: ClientIp) -> Result<Redirect, AdminResponse> {
     let data = data.into_inner();
     let redirect = data.redirect;
 

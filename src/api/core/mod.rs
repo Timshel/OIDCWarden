@@ -3,7 +3,7 @@ mod ciphers;
 mod emergency_access;
 mod events;
 mod folders;
-mod organizations;
+pub mod organizations;
 mod public;
 mod sends;
 pub mod two_factor;
