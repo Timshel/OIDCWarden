@@ -25,7 +25,10 @@ The following configurations are available
  - `SSO_CLIENT_ID` : Client Id
  - `SSO_CLIENT_SECRET` : Client Secret
  - `SSO_MASTER_PASSWORD_POLICY`: Optional Master password policy
- - `SSO_AUTH_ONLY_NOT_SESSION`: Enable to use SSO only for authentication not session lifecycle
+ - `SSO_AUTH_ONLY_NOT_SESSION`: Enable to use SSO only for authentication not session lifecycle.
+ - `SSO_ROLES_ENABLED`: control if the mapping is done, default is `false`
+ - `SSO_ROLES_DEFAULT_TO_USER`: do not block login in case of missing or invalid roles, default is `true`.
+ - `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the Id token
  - `SSO_CLIENT_CACHE_EXPIRATION`: Cache calls to the discovery endpoint, duration in seconds, `0` to disable (default `0`);
  - `SSO_DEBUG_TOKENS`: Log all tokens for easier debugging (default `false`, `LOG_LEVEL=debug` or `LOG_LEVEL=info,vaultwarden::sso=debug` need to be set)
 
@@ -212,6 +215,13 @@ Your configuration should look like this:
 * `SSO_SCOPES="email profile offline_access"`
 * `SSO_CLIENT_ID=${Application (client) ID}`
 * `SSO_CLIENT_SECRET=${Secret Value}`
+
+If you want to leverage role mapping you have to create app roles first as described here: https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps.
+Afterwards you can use these settings to derive the `admin` role from the ID token:
+
+* `SSO_ROLES_ENABLED=true`
+* `SSO_ROLES_DEFAULT_TO_USER=true`
+* `SSO_ROLES_TOKEN_PATH=/roles
 
 ## Zitadel
 

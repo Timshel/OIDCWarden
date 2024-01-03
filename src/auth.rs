@@ -926,35 +926,6 @@ impl<'r> FromRequest<'r> for ClientIp {
     }
 }
 
-pub struct Secure {
-    pub https: bool,
-}
-
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for Secure {
-    type Error = ();
-
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        let headers = request.headers();
-
-        // Try to guess from the headers
-        let protocol = match headers.get_one("X-Forwarded-Proto") {
-            Some(proto) => proto,
-            None => {
-                if env::var("ROCKET_TLS").is_ok() {
-                    "https"
-                } else {
-                    "http"
-                }
-            }
-        };
-
-        Outcome::Success(Secure {
-            https: protocol == "https",
-        })
-    }
-}
-
 pub struct WsAccessTokenHeader {
     pub access_token: Option<String>,
 }
