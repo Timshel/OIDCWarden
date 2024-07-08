@@ -14,7 +14,7 @@ jobs:
   # We will skip this check if we are creating a tag, because that has the same hash as a previous run already.
   skip_check:
     runs-on: ubuntu-24.04
-    if: ${{ github.repository == 'dani-garcia/vaultwarden' }}
+    if: ${{ github.repository == 'timshel/vaultwarden' }}
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -28,9 +28,10 @@ jobs:
 
   docker-build:
     runs-on: ubuntu-24.04
+    environment: main
     timeout-minutes: 120
     needs: skip_check
-    if: ${{ needs.skip_check.outputs.should_skip != 'true' && github.repository == 'dani-garcia/vaultwarden' }}
+    if: ${{ needs.skip_check.outputs.should_skip != 'true' && github.repository == 'timshel/vaultwarden' }}
     # Start a local docker registry to extract the final Alpine static build binaries
     services:
       registry:
@@ -162,7 +163,7 @@ jobs:
         if: ${{ matrix.base_image == 'alpine' }}
         shell: bash
         run: |
-          echo "CONTAINER_REGISTRIES=${CONTAINER_REGISTRIES:+${CONTAINER_REGISTRIES},}localhost:5000/vaultwarden/server" | tee -a "${GITHUB_ENV}"
+          echo "CONTAINER_REGISTRIES=${CONTAINER_REGISTRIES:+${CONTAINER_REGISTRIES},}localhost:5000/timshel/vaultwarden" | tee -a "${GITHUB_ENV}"
 
       - name: Bake ${{ matrix.base_image }} containers
         uses: docker/bake-action@76cc8060bdff6d632a465001e4cf300684c5472c # v5.7.0
@@ -198,28 +199,28 @@ jobs:
           # This is needed because using different platforms doesn't trigger a new pull/download
 
           # Extract amd64 binary
-          docker create --name amd64 --platform=linux/amd64 "localhost:5000/vaultwarden/server:${EXTRACT_TAG}-alpine"
+          docker create --name amd64 --platform=linux/amd64 "localhost:5000/timshel/vaultwarden:${EXTRACT_TAG}-alpine"
           docker cp amd64:/vaultwarden vaultwarden-amd64
           docker rm --force amd64
-          docker rmi --force "localhost:5000/vaultwarden/server:${EXTRACT_TAG}-alpine"
+          docker rmi --force "localhost:5000/timshel/vaultwarden:${EXTRACT_TAG}-alpine"
 
           # Extract arm64 binary
-          docker create --name arm64 --platform=linux/arm64 "localhost:5000/vaultwarden/server:${EXTRACT_TAG}-alpine"
+          docker create --name arm64 --platform=linux/arm64 "localhost:5000/timshel/vaultwarden:${EXTRACT_TAG}-alpine"
           docker cp arm64:/vaultwarden vaultwarden-arm64
           docker rm --force arm64
-          docker rmi --force "localhost:5000/vaultwarden/server:${EXTRACT_TAG}-alpine"
+          docker rmi --force "localhost:5000/timshel/vaultwarden:${EXTRACT_TAG}-alpine"
 
           # Extract armv7 binary
-          docker create --name armv7 --platform=linux/arm/v7 "localhost:5000/vaultwarden/server:${EXTRACT_TAG}-alpine"
+          docker create --name armv7 --platform=linux/arm/v7 "localhost:5000/timshel/vaultwarden:${EXTRACT_TAG}-alpine"
           docker cp armv7:/vaultwarden vaultwarden-armv7
           docker rm --force armv7
-          docker rmi --force "localhost:5000/vaultwarden/server:${EXTRACT_TAG}-alpine"
+          docker rmi --force "localhost:5000/timshel/vaultwarden:${EXTRACT_TAG}-alpine"
 
           # Extract armv6 binary
-          docker create --name armv6 --platform=linux/arm/v6 "localhost:5000/vaultwarden/server:${EXTRACT_TAG}-alpine"
+          docker create --name armv6 --platform=linux/arm/v6 "localhost:5000/timshel/vaultwarden:${EXTRACT_TAG}-alpine"
           docker cp armv6:/vaultwarden vaultwarden-armv6
           docker rm --force armv6
-          docker rmi --force "localhost:5000/vaultwarden/server:${EXTRACT_TAG}-alpine"
+          docker rmi --force "localhost:5000/timshel/vaultwarden:${EXTRACT_TAG}-alpine"
 
       # Upload artifacts to Github Actions
       - name: "Upload amd64 artifact"

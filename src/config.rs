@@ -667,6 +667,8 @@ make_config! {
         sso_client_cache_expiration:    u64,    true,   def,    0;
         /// Log all tokens |> `LOG_LEVEL=debug` or `LOG_LEVEL=info,vaultwarden::sso=debug` is required
         sso_debug_tokens:               bool,   true,   def,    false;
+        /// Force fail auth code exchange |> Allow to log and return the code used in `authorization_code` flow without consuming it (SSO login will become impossilbe).
+        sso_debug_force_fail_auth_code: bool,   true,   def,    false;
     },
 
     /// Yubikey settings

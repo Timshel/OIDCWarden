@@ -332,6 +332,10 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
         }
     }
 
+    if CONFIG.sso_debug_force_fail_auth_code() {
+        err!(format!("Exhange code {}", code.clone()));
+    }
+
     match exchange.request_async(async_http_client).await {
         Ok(token_response) => {
             let user_info = client.user_info_async(token_response.access_token().to_owned()).await?;
@@ -397,7 +401,7 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
                 user_name,
             })
         }
-        Err(err) => err!(format!("Failed to contact token endpoint: {err}")),
+        Err(err) => err!(format!("Failed to contact token endpoint: {:?}", err)),
     }
 }
 

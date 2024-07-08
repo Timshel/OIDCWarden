@@ -1,0 +1,56 @@
+---
+version: "3.4"
+services:
+  VaultWarden:
+    image: vaultwarden
+    profiles: ["VaultWarden"]
+    network_mode: "host"
+    build:
+      context: ../../..
+      dockerfile: Dockerfile
+    depends_on:
+      - authentik-server
+    env_file: .env
+  postgresql:
+    image: docker.io/library/postgres:12-alpine
+#   network_mode: "host"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      start_period: 20s
+      interval: 30s
+    env_file:
+      - .env
+    volumes:
+      - ./pg_init.sql:/docker-entrypoint-initdb.d/init.sql
+  redis:
+    image: docker.io/library/redis:alpine
+    command: --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      start_period: 20s
+      interval: 30s
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2024.2.2
+    command: server
+    env_file:
+      - .env
+    ports:
+      - "${COMPOSE_PORT_HTTP:-9000}:9000"
+    volumes:
+      - ./authentik/media:/media
+      - ./authentik/custom-templates:/templates
+    depends_on:
+      - postgresql
+      - redis
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2024.2.2
+    command: worker
+    env_file:
+      - .env
+    volumes:
+      - ./authentik/media/public:/media/public
+      - ./authentik/certs:/certs
+      - ./authentik/custom-templates:/templates
+    depends_on:
+      - postgresql
+      - redis

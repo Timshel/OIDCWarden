@@ -12,21 +12,16 @@ variable "DB" {
   default = null
 }
 
-// The repository this build was triggered from
-variable "SOURCE_REPOSITORY_URL" {
-  default = null
-}
-
 // The commit hash of of the current commit this build was triggered on
 variable "SOURCE_COMMIT" {
-  default = null
+  default = "local"
 }
 
 // The version of this build
 // Typically the current exact tag of this commit,
 // else the last tag and the first 8 characters of the source commit
 variable "SOURCE_VERSION" {
-  default = null
+  default = "local"
 }
 
 // This can be used to overwrite SOURCE_VERSION
@@ -60,12 +55,12 @@ group "default" {
 function "labels" {
   params = []
   result = {
-    "org.opencontainers.image.description" = "Unofficial Bitwarden compatible server written in Rust - ${SOURCE_VERSION}"
+    "org.opencontainers.image.description" = "OIDC implentation over VaultWarden"
     "org.opencontainers.image.licenses" = "AGPL-3.0-only"
-    "org.opencontainers.image.documentation" = "https://github.com/dani-garcia/vaultwarden/wiki"
-    "org.opencontainers.image.url" = "https://github.com/dani-garcia/vaultwarden"
+    "org.opencontainers.image.documentation" = "https://github.com/timshel/vaultwarden"
+    "org.opencontainers.image.url" = "https://github.com/timshel/vaultwarden"
     "org.opencontainers.image.created" =  "${formatdate("YYYY-MM-DD'T'hh:mm:ssZZZZZ", timestamp())}"
-    "org.opencontainers.image.source" = "${SOURCE_REPOSITORY_URL}"
+    "org.opencontainers.image.source" = "git://github.com/timshel/vaultwarden.git"
     "org.opencontainers.image.revision" = "${SOURCE_COMMIT}"
     "org.opencontainers.image.version" = "${SOURCE_VERSION}"
   }
