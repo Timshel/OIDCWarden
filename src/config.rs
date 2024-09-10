@@ -503,6 +503,9 @@ make_config! {
         /// provides unauthenticated access to potentially sensitive data.
         show_password_hint:     bool,   true,   def,    false;
 
+        /// Organization invitation auto accept |> Activated if email is disabled
+        organization_invite_auto_accept: bool, true, def, false;
+
         /// Admin token/Argon2 PHC |> The plain text token or Argon2 PHC string used to authenticate in this very same page. Changing it here will not deauthorize the current session!
         admin_token:            Pass,   true,   option;
 
@@ -1496,6 +1499,7 @@ where
     reg!("email/pw_hint_some", ".html");
     reg!("email/send_2fa_removed_from_org", ".html");
     reg!("email/send_emergency_access_invite", ".html");
+    reg!("email/send_org_enrolled", ".html");
     reg!("email/send_org_invite", ".html");
     reg!("email/send_single_org_removed_from_org", ".html");
     reg!("email/set_password", ".html");

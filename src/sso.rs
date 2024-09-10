@@ -694,6 +694,7 @@ pub async fn sync_groups(
                         CONFIG.sso_organizations_all_collections(),
                         &org_collections,
                         org.billing_email.clone(),
+                        true,
                         conn,
                     )
                     .await?;

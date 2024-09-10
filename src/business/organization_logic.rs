@@ -17,12 +17,13 @@ pub async fn invite(
     access_all: bool,
     collections: &Vec<CollectionData>,
     invited_by_email: String,
+    auto: bool,
     conn: &mut DbConn,
 ) -> ApiResult<()> {
     let mut user_org_status = UserOrgStatus::Invited;
 
-    // automatically accept existing users if mail is disabled
-    if !user.password_hash.is_empty() && !CONFIG.mail_enabled() {
+    // automatically accept existing users if mail is disabled or config if set
+    if !CONFIG.mail_enabled() || CONFIG.organization_invite_auto_accept() {
         user_org_status = UserOrgStatus::Accepted;
     }
 
@@ -73,7 +74,12 @@ pub async fn invite(
                 )
                 .await?
             }
-            UserOrgStatus::Accepted => mail::send_invite_accepted(&user.email, &invited_by_email, &org.name).await?,
+            UserOrgStatus::Accepted => {
+                mail::send_enrolled(&user.email, &org.name).await?;
+                if auto {
+                    mail::send_invite_accepted(&user.email, &invited_by_email, &org.name).await?;
+                }
+            }
             UserOrgStatus::Revoked | UserOrgStatus::Confirmed => (),
         }
     }

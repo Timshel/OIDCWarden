@@ -24,6 +24,7 @@ services:
     environment:
       - DATABASE_URL
       - I_REALLY_WANT_VOLATILE_STORAGE
+      - ORGANIZATION_INVITE_AUTO_ACCEPT
       - SMTP_HOST
       - SMTP_FROM
       - SMTP_DEBUG

@@ -285,6 +285,18 @@ pub async fn send_invite(
     send_email(&user.email, &subject, body_html, body_text).await
 }
 
+pub async fn send_enrolled(user_email: &str, org_name: &str) -> EmptyResult {
+    let (subject, body_html, body_text) = get_text(
+        "email/send_org_enrolled",
+        json!({
+            "img_src": CONFIG._smtp_img_src(),
+            "org_name": org_name,
+        }),
+    )?;
+
+    send_email(user_email, &subject, body_html, body_text).await
+}
+
 pub async fn send_emergency_access_invite(
     address: &str,
     uuid: &str,
