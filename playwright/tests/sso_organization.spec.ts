@@ -51,7 +51,9 @@ test('Invite users', async ({ page }) => {
         await page.getByRole('button', { name: 'Invite member' }).click();
         await page.getByLabel('Email (required)').fill(users.user2.email);
         await page.getByRole('tab', { name: 'Collections' }).click();
-        await page.locator('label').filter({ hasText: 'Grant access to all current' }).click();
+        await page.getByLabel('Permission').selectOption('edit');
+        await page.getByLabel('Select collections').click();
+        await page.getByLabel('Options list').getByText('Default collection').click();
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.getByTestId("toast-message")).toHaveText('User(s) invited');
     });
@@ -60,7 +62,9 @@ test('Invite users', async ({ page }) => {
         await page.getByRole('button', { name: 'Invite member' }).click();
         await page.getByLabel('Email (required)').fill(users.user3.email);
         await page.getByRole('tab', { name: 'Collections' }).click();
-        await page.locator('label').filter({ hasText: 'Grant access to all current' }).click();
+        await page.getByLabel('Permission').selectOption('edit');
+        await page.getByLabel('Select collections').click();
+        await page.getByLabel('Options list').getByText('Default collection').click();
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.getByTestId("toast-message")).toHaveText('User(s) invited');
     });
@@ -163,7 +167,9 @@ test('Org invite auto accept', async ({ page }, testInfo: TestInfo) => {
         await page.getByRole('button', { name: 'Invite member' }).click();
         await page.getByLabel('Email (required)').fill(users.user2.email);
         await page.getByRole('tab', { name: 'Collections' }).click();
-        await page.locator('label').filter({ hasText: 'Grant access to all current' }).click();
+        await page.getByLabel('Permission').selectOption('edit');
+        await page.getByLabel('Select collections').click();
+        await page.getByLabel('Options list').getByText('Default collection').click();
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.getByTestId("toast-message")).toHaveText('User(s) invited');
     });

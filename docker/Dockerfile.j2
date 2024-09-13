@@ -84,10 +84,6 @@ RUN apt-get update && \
     echo "export CARGO_TARGET=$(xx-cargo --print-target-triple)" >> /env-cargo
 {% endif %}
 
-# Get all version of the front-end
-RUN curl -L "${OIDC_WEB_RELEASE}/oidc_button_web_vault.tar.gz" | tar -xz ; mv web-vault /web-vault_button
-RUN curl -L "${OIDC_WEB_RELEASE}/oidc_override_web_vault.tar.gz" | tar -xz ; mv web-vault /web-vault_override
-
 # Create CARGO_HOME folder and don't download rust docs
 RUN mkdir -pv "${CARGO_HOME}" && \
     rustup set profile minimal
@@ -169,6 +165,9 @@ RUN source /env-cargo && \
         ln -vfsr "/app/target/${CARGO_TARGET}/${CARGO_PROFILE}" /app/target/final ; \
     fi
 
+# Get all version of the front-end
+RUN curl -L "${OIDC_WEB_RELEASE}/oidc_button_web_vault.tar.gz" | tar -xz ; mv web-vault /web-vault_button
+RUN curl -L "${OIDC_WEB_RELEASE}/oidc_override_web_vault.tar.gz" | tar -xz ; mv web-vault /web-vault_override
 
 ######################## RUNTIME IMAGE  ########################
 # Create a new stage with a minimal image

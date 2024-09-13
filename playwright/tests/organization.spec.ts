@@ -47,7 +47,9 @@ test('Invite users', async ({ page }) => {
         await page.getByRole('button', { name: 'Invite member' }).click();
         await page.getByLabel('Email (required)').fill(users.user2.email);
         await page.getByRole('tab', { name: 'Collections' }).click();
-        await page.locator('label').filter({ hasText: 'Grant access to all current' }).click();
+        await page.getByLabel('Permission').selectOption('edit');
+        await page.getByLabel('Select collections').click();
+        await page.getByLabel('Options list').getByText('Default collection').click();
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.getByTestId("toast-message")).toHaveText('User(s) invited');
     });
@@ -56,7 +58,9 @@ test('Invite users', async ({ page }) => {
         await page.getByRole('button', { name: 'Invite member' }).click();
         await page.getByLabel('Email (required)').fill(users.user3.email);
         await page.getByRole('tab', { name: 'Collections' }).click();
-        await page.locator('label').filter({ hasText: 'Grant access to all current' }).click();
+        await page.getByLabel('Permission').selectOption('edit');
+        await page.getByLabel('Select collections').click();
+        await page.getByLabel('Options list').getByText('Default collection').click();
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.getByTestId("toast-message")).toHaveText('User(s) invited');
     });
@@ -135,9 +139,8 @@ test('invited with existing account', async ({ page }) => {
 
 test('Confirm invited user', async ({ page }) => {
     await logUser(test, page, users.user1, user1Mails);
-    await page.getByLabel('Switch products').click();
-    await page.getByRole('link', { name: ' Admin Console' }).click();
-    await page.getByLabel('Members').click();
+    await page.getByRole('link', { name: 'Admin Console' }).click();
+    await page.getByRole('link', { name: 'Members' }).click();
 
     await test.step('Accept user2', async () => {
         await page.getByRole('row', { name: users.user2.name }).getByLabel('Options').click();
@@ -153,4 +156,5 @@ test('Confirm invited user', async ({ page }) => {
 test('Organization is visible', async ({ page }) => {
     await logUser(test, page, users.user2, user2Mails);
     await page.getByLabel('vault: Test').click();
+    await expect(page.getByLabel('Filter: Default collection')).toBeVisible();
 });

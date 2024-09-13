@@ -43,16 +43,16 @@ test('Authenticator 2fa', async ({ context, page }) => {
     await test.step('Activate', async () => {
         await page.getByRole('button', { name: users.user1.name }).click();
         await page.getByRole('menuitem', { name: 'Account settings' }).click();
-        await page.getByLabel('Security').click();
+        await page.getByRole('link', { name: 'Security' }).click();
         await page.getByRole('link', { name: 'Two-step login' }).click();
-        await page.locator('li').filter({ hasText: 'Authenticator app Use an' }).getByRole('button').click();
+        await page.locator('li').filter({ hasText: /Authenticator app/ }).getByRole('button').click();
         await page.getByLabel('Master password (required)').fill(users.user1.password);
         await page.getByRole('button', { name: 'Continue' }).click();
 
         const secret = await page.getByLabel('Key').innerText();
         totp = new OTPAuth.TOTP({ secret, period: 30 });
 
-        await page.getByLabel('3. Enter the resulting 6').fill(totp.generate());
+        await page.getByLabel(/Verification code/).fill(totp.generate());
         await page.getByRole('button', { name: 'Turn on' }).click();
         await page.getByRole('heading', { name: 'Turned on', exact: true });
         await page.getByLabel('Close').click();
@@ -75,7 +75,7 @@ test('Authenticator 2fa', async ({ context, page }) => {
         await page.getByLabel('Master password').fill(users.user1.password);
         await page.getByRole('button', { name: 'Log in with master password' }).click();
 
-        await page.getByLabel('Verification code').fill(totp.generate({timestamp}));
+        await page.getByLabel(/Verification code/).fill(totp.generate({timestamp}));
         await page.getByRole('button', { name: 'Continue' }).click();
 
         await expect(page).toHaveTitle(/Vaults/);
@@ -84,7 +84,7 @@ test('Authenticator 2fa', async ({ context, page }) => {
     await test.step('disable', async () => {
         await page.getByRole('button', { name: 'Test' }).click();
         await page.getByRole('menuitem', { name: 'Account settings' }).click();
-        await page.getByLabel('Security').click();
+        await page.getByRole('link', { name: 'Security' }).click();
         await page.getByRole('link', { name: 'Two-step login' }).click();
         await page.locator('li').filter({ hasText: /Authenticator app/ }).getByRole('button').click();
         await page.getByLabel('Master password (required)').click();

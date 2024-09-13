@@ -22,7 +22,7 @@ ARG TARGETARCH
 ARG TARGETVARIANT
 ARG TARGETPLATFORM
 
-ARG OIDC_WEB_RELEASE="https://github.com/Timshel/oidc_web_builds/releases/download/v2024.6.2-4"
+ARG OIDC_WEB_RELEASE="https://github.com/Timshel/oidc_web_vault/releases/download/v2024.8.3-3"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -64,10 +64,6 @@ RUN apt-get update && \
     dpkg --force-all -i ./libmariadb-dev*.deb && \
     # Run xx-cargo early, since it sometimes seems to break when run at a later stage
     echo "export CARGO_TARGET=$(xx-cargo --print-target-triple)" >> /env-cargo
-
-# Get all version of the front-end
-RUN curl -L "${OIDC_WEB_RELEASE}/oidc_button_web_vault.tar.gz" | tar -xz ; mv web-vault /web-vault_button
-RUN curl -L "${OIDC_WEB_RELEASE}/oidc_override_web_vault.tar.gz" | tar -xz ; mv web-vault /web-vault_override
 
 # Create CARGO_HOME folder and don't download rust docs
 RUN mkdir -pv "${CARGO_HOME}" && \
@@ -137,6 +133,9 @@ RUN source /env-cargo && \
         ln -vfsr "/app/target/${CARGO_TARGET}/${CARGO_PROFILE}" /app/target/final ; \
     fi
 
+# Get all version of the front-end
+RUN curl -L "${OIDC_WEB_RELEASE}/oidc_button_web_vault.tar.gz" | tar -xz ; mv web-vault /web-vault_button
+RUN curl -L "${OIDC_WEB_RELEASE}/oidc_override_web_vault.tar.gz" | tar -xz ; mv web-vault /web-vault_override
 
 ######################## RUNTIME IMAGE  ########################
 # Create a new stage with a minimal image
