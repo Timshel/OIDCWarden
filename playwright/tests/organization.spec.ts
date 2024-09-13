@@ -13,21 +13,18 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
         port: process.env.MAILDEV_SMTP_PORT,
         web: { port: process.env.MAILDEV_HTTP_PORT },
     })
-
     await mailserver.listen();
-
-    await utils.startVaultwarden(browser, testInfo, {
+    await utils.startVault(browser, testInfo, {
         SMTP_HOST: process.env.MAILDEV_HOST,
-        SMTP_FROM: process.env.VAULTWARDEN_SMTP_FROM,
+        SMTP_FROM: process.env.PW_SMTP_FROM,
     });
-
     user1Mails = mailserver.iterator(users.user1.email);
     user2Mails = mailserver.iterator(users.user2.email);
     user3Mails = mailserver.iterator(users.user3.email);
 });
 
 test.afterAll('Teardown', async ({}) => {
-    utils.stopVaultwarden();
+    utils.stopVault();
     utils.closeMails(mailserver, [user1Mails, user2Mails, user3Mails]);
 });
 
@@ -73,7 +70,7 @@ test('invited with new account', async ({ page }) => {
         await page.setContent(invited.html);
         const link = await page.getByTestId("invite").getAttribute("href");
         await page.goto(link);
-        await expect(page).toHaveTitle(/Create account | Vaultwarden Web/);
+        await expect(page).toHaveTitle(/Create account | OIDCWarden Web/);
 
         await page.getByLabel('Name').fill(users.user2.name);
         await page.getByLabel('Master password\n   (required)', { exact: true }).fill(users.user2.password);
@@ -81,7 +78,7 @@ test('invited with new account', async ({ page }) => {
         await page.getByRole('button', { name: 'Create account' }).click();
 
         // Back to the login page
-        await expect(page).toHaveTitle('Vaultwarden Web');
+        await expect(page).toHaveTitle('OIDCWarden Web');
         await expect(page.getByTestId("toast-message")).toHaveText(/Your new account has been created/);
 
         const { value: welcome } = await user2Mails.next();
@@ -118,7 +115,7 @@ test('invited with existing account', async ({ page }) => {
     await page.goto(link);
 
     // We should be on login page with email prefilled
-    await expect(page).toHaveTitle(/Vaultwarden Web/);
+    await expect(page).toHaveTitle(/OIDCWarden Web/);
     await page.getByRole('button', { name: 'Continue' }).click();
 
     // Unlock page

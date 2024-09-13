@@ -1,6 +1,6 @@
-# Vaultwarden Container Building
+# OIDCWarden Container Building
 
-To build and release new testing and stable releases of Vaultwarden we use `docker buildx bake`.<br>
+To build and release new testing and stable releases of OIDCWarden we use `docker buildx bake`.<br>
 This can be used locally by running the command yourself, but it is also used by GitHub Actions.
 
 This makes it easier for us to test and maintain the different architectures we provide.<br>
@@ -76,7 +76,7 @@ Start the initialization, this only needs to be done once.
 
 ```bash
 # Create and use a new buildx builder instance which connects to the host network
-docker buildx create --name vaultwarden --use --driver-opt network=host
+docker buildx create --name oidcwarden --use --driver-opt network=host
 
 # Validate it runs
 docker buildx inspect --bootstrap
@@ -93,7 +93,7 @@ Replace `alpine` with `debian` if you want to build the debian multi arch images
 # Start a buildx bake using a debug build
 CARGO_PROFILE=dev \
 SOURCE_COMMIT="$(git rev-parse HEAD)" \
-CONTAINER_REGISTRIES="localhost:5000/vaultwarden/server" \
+CONTAINER_REGISTRIES="localhost:5000/oidcwarden/server" \
 docker buildx bake --file docker/docker-bake.hcl alpine-multi
 ```
 
@@ -106,7 +106,7 @@ This script can be called from both the repo root or within the docker directory
 
 So, if you want to build a Multi Arch Alpine container pushing to your localhost registry you can run this from within the docker directory. (Just make sure you executed the initialization steps above first)
 ```bash
-CONTAINER_REGISTRIES="localhost:5000/vaultwarden/server" \
+CONTAINER_REGISTRIES="localhost:5000/oidcwarden/server" \
 ./bake.sh alpine-multi
 ```
 
@@ -132,7 +132,7 @@ docker run --rm -it \
   -e DISABLE_ADMIN_TOKEN=true \
   -e I_REALLY_WANT_VOLATILE_STORAGE=true \
   -p8080:80 --platform=linux/arm64 \
-  vaultwarden/server:testing-arm64
+  oidcwarden/server:testing-arm64
 ```
 
 
@@ -171,7 +171,7 @@ podman run --rm -it \
   -e DISABLE_ADMIN_TOKEN=true \
   -e I_REALLY_WANT_VOLATILE_STORAGE=true \
   -p8080:80 --platform=linux/arm64 \
-  localhost/vaultwarden/server:testing-arm64
+  localhost/oidcwarden/server:testing-arm64
 ```
 
 
@@ -184,5 +184,5 @@ podman run --rm -it \
 | SOURCE_COMMIT         | null               | The commit hash of the current commit for this build                                                               |
 | SOURCE_VERSION        | null               | The current exact tag of this commit, else the last tag and the first 8 chars of the source commit                 |
 | BASE_TAGS             | testing            | Tags to be used. Can be a comma separated value like "latest,1.29.2"                                               |
-| CONTAINER_REGISTRIES  | vaultwarden/server | Comma separated value of container registries. Like `ghcr.io/dani-garcia/vaultwarden,docker.io/vaultwarden/server` |
+| CONTAINER_REGISTRIES  | oidcwarden/server  | Comma separated value of container registries. Like `ghcr.io/timshel/oidcwarden,docker.io/oidcwarden/server` |
 | VW_VERSION            | null               | To override the `SOURCE_VERSION` value. This is also used by the `build.rs` code for example                       |

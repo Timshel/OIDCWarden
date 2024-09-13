@@ -77,9 +77,9 @@ export function stopComposeService(serviceName: String){
 }
 
 function wipeSqlite(){
-    console.log(`Delete Vaultwarden container to wipe sqlite`);
-    execSync(`docker compose --env-file test.env stop Vaultwarden`);
-    execSync(`docker compose --env-file test.env rm -f Vaultwarden`);
+    console.log(`Delete OIDCWarden container to wipe sqlite`);
+    execSync(`docker compose --env-file test.env stop OIDCWarden`);
+    execSync(`docker compose --env-file test.env rm -f OIDCWarden`);
 }
 
 async function wipeMariaDB(){
@@ -183,7 +183,7 @@ function dbConfig(testInfo: TestInfo){
 /**
  *  All parameters passed in `env` need to be added to the docker-compose.yml
  **/
-export async function startVaultwarden(browser: Browser, testInfo: TestInfo, env = {}, resetDB: Boolean = true) {
+export async function startVault(browser: Browser, testInfo: TestInfo, env = {}, resetDB: Boolean = true) {
     if( resetDB ){
         switch(testInfo.project.name) {
             case "postgres":
@@ -200,24 +200,24 @@ export async function startVaultwarden(browser: Browser, testInfo: TestInfo, env
         }
     }
 
-    console.log(`Starting Vaultwarden`);
-    execSync(`docker compose --profile playwright --env-file test.env up -d Vaultwarden`, {
+    console.log(`Starting OIDCWarden`);
+    execSync(`docker compose --profile playwright --env-file test.env up -d OIDCWarden`, {
         env: { ...env, ...dbConfig(testInfo) },
     });
     await waitFor("/", browser);
-    console.log(`Vaultwarden running on: ${process.env.DOMAIN}`);
+    console.log(`OIDCWarden running on: ${process.env.DOMAIN}`);
 }
 
-export async function stopVaultwarden(force: boolean = false) {
+export async function stopVault(force: boolean = false) {
     if( force === false && process.env.PW_KEEP_SERVICE_RUNNNING === "true" ) {
-        console.log(`Keep vaultwarden running on: ${process.env.DOMAIN}`);
+        console.log(`Keep OIDCWarden running on: ${process.env.DOMAIN}`);
     } else {
-        console.log(`Vaultwarden stopping`);
-        execSync(`docker compose --profile playwright --env-file test.env stop Vaultwarden`);
+        console.log(`OIDCWarden stopping`);
+        execSync(`docker compose --profile playwright --env-file test.env stop OIDCWarden`);
     }
 }
 
-export async function restartVaultwarden(page: Page, testInfo: TestInfo, env, resetDB: Boolean = true) {
-    stopVaultwarden(true);
-    return startVaultwarden(page.context().browser(), testInfo, env, resetDB);
+export async function restartVault(page: Page, testInfo: TestInfo, env, resetDB: Boolean = true) {
+    stopVault(true);
+    return startVault(page.context().browser(), testInfo, env, resetDB);
 }

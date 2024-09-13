@@ -1,12 +1,12 @@
 [package]
-name = "vaultwarden"
+name = "oidcwarden"
 version = "1.0.0"
-authors = ["Daniel García <dani-garcia@users.noreply.github.com>"]
+authors = ["Timshel <timshel@users.noreply.github.com>"]
 edition = "2021"
 rust-version = "1.79.0"
 resolver = "2"
 
-repository = "https://github.com/dani-garcia/vaultwarden"
+repository = "https://github.com/timshel/oidcwarden"
 readme = "README.md"
 license = "AGPL-3.0-only"
 publish = false

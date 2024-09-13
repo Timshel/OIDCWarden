@@ -184,7 +184,7 @@ COPY docker/healthcheck.sh docker/start.sh /
 
 COPY --from=build /web-vault_button ./web-vault_button
 COPY --from=build /web-vault_override ./web-vault_override
-COPY --from=build /app/target/final/vaultwarden .
+COPY --from=build /app/target/final/oidcwarden .
 
 HEALTHCHECK --interval=60s --timeout=10s CMD ["/healthcheck.sh"]
 

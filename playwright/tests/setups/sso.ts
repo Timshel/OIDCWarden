@@ -93,7 +93,7 @@ export async function logUser(
             });
 
             await test.step('Unlock vault', async () => {
-                await expect(page).toHaveTitle('Vaultwarden Web');
+                await expect(page).toHaveTitle('OIDCWarden Web');
                 await page.getByLabel('Master password').fill(user.password);
                 await page.getByRole('button', { name: 'Unlock' }).click();
             });

@@ -1,21 +1,21 @@
 services:
-  VaultwardenPrebuild:
-    profiles: ["playwright", "vaultwarden"]
-    container_name: playwright_oidc_vaultwarden_prebuilt
-    image: playwright_oidc_vaultwarden_prebuilt
+  OIDCWardenPrebuild:
+    profiles: ["playwright", "oidcwarden"]
+    container_name: playwright_oidc_warden_prebuilt
+    image: playwright_oidc_warden_prebuilt
     build:
       context: ..
       dockerfile: Dockerfile
     entrypoint: /bin/bash
     restart: "no"
 
-  Vaultwarden:
-    profiles: ["playwright", "vaultwarden"]
-    container_name: playwright_oidc_vaultwarden_main-${ENV:-dev}
-    image: playwright_oidc_vaultwarden_main-${ENV:-dev}
+  OIDCWarden:
+    profiles: ["playwright", "oidcwarden"]
+    container_name: playwright_oidc_warden_main-${ENV:-dev}
+    image: playwright_oidc_warden_main-${ENV:-dev}
     network_mode: "host"
     build:
-      context: compose/vaultwarden
+      context: compose/warden
       dockerfile: Dockerfile
       args:
         REPO_URL: ${PW_WV_REPO_URL:-}
@@ -37,7 +37,7 @@ services:
       - SSO_SCOPES
     restart: "no"
     depends_on:
-      - VaultwardenPrebuild
+      - OIDCWardenPrebuild
 
   Playwright:
     profiles: ["playwright"]
@@ -92,7 +92,7 @@ services:
       - ${POSTGRES_PORT}:5432
 
   Maildev:
-    profiles: ["vaultwarden", "maildev"]
+    profiles: ["oidcwarden", "maildev"]
     container_name: maildev
     image: timshel/maildev
     ports:
@@ -100,7 +100,7 @@ services:
       - 1080:1080
 
   Keycloak:
-    profiles: ["keycloak", "vaultwarden"]
+    profiles: ["keycloak", "oidcwarden"]
     container_name: keycloak-main-${ENV:-dev}
     image: quay.io/keycloak/keycloak:25.0.4
     network_mode: "host"
@@ -109,7 +109,7 @@ services:
     env_file: ${DC_ENV_FILE:-.env}
 
   KeycloakSetup:
-    profiles: ["keycloak", "vaultwarden"]
+    profiles: ["keycloak", "oidcwarden"]
     container_name: keycloakSetup-main-${ENV:-dev}
     image: keycloak_setup-main-${ENV:-dev}
     build:

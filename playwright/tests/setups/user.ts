@@ -7,7 +7,7 @@ export async function createAccount(test, page: Page, user: { email: string, nam
         await page.getByRole('link', { name: 'Create account' }).click();
 
         // Back to Vault create account
-        await expect(page).toHaveTitle(/Create account | Vaultwarden Web/);
+        await expect(page).toHaveTitle(/Create account | OIDCWarden Web/);
         await page.getByLabel(/Email address/).fill(user.email);
         await page.getByLabel('Name').fill(user.name);
         await page.getByLabel('Master password\n   (required)', { exact: true }).fill(user.password);
@@ -15,7 +15,7 @@ export async function createAccount(test, page: Page, user: { email: string, nam
         await page.getByRole('button', { name: 'Create account' }).click();
 
         // Back to the login page
-        await expect(page).toHaveTitle('Vaultwarden Web');
+        await expect(page).toHaveTitle('OIDCWarden Web');
         await expect(page.getByTestId("toast-message")).toHaveText(/Your new account has been created/);
 
         if( emails ){

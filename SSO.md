@@ -31,18 +31,18 @@ The following configurations are available
  - `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the Id token
  - `SSO_ORGANIZATIONS_INVITE`: control if the mapping is done, default is `false`
  - `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read groups/organization in the Id token
- - `SSO_ORGANIZATIONS_ID_MAPPING`: Optional, allow to map provider group to a Vaultwarden organization `uuid` (default `""`, format: `"ProviderId:VaultwardenId;"`)
+ - `SSO_ORGANIZATIONS_ID_MAPPING`: Optional, allow to map provider group to an organization `uuid` (default `""`, format: `"ProviderId:VaultOrganizationId;"`)
  - `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: Grant access to all collections, default is `true`
  - `ORGANIZATION_INVITE_AUTO_ACCEPT`: Bypass the invitation logic and as users as `Accepted` (Apply to non SSO logic too)
  - `SSO_CLIENT_CACHE_EXPIRATION`: Cache calls to the discovery endpoint, duration in seconds, `0` to disable (default `0`);
- - `SSO_DEBUG_TOKENS`: Log all tokens for easier debugging (default `false`, `LOG_LEVEL=debug` or `LOG_LEVEL=info,vaultwarden::sso=debug` need to be set)
+ - `SSO_DEBUG_TOKENS`: Log all tokens for easier debugging (default `false`, `LOG_LEVEL=debug` or `LOG_LEVEL=info,oidcwarden::sso=debug` need to be set)
 
 The callback url is : `https://your.domain/identity/connect/oidc-signin`
 
 ## Account and Email handling
 
 When logging in with SSO an identifier (`{iss}/{sub}` claims from the IdToken) is saved in a separate table (`sso_users`).
-This is used to link to the SSO provider identifier without changing the default Vaultwarden user `uuid`. This is needed because:
+This is used to link to the SSO provider identifier without changing the default user `uuid`. This is needed because:
 
  - Storing the SSO identifier is important to prevent account takeover due to email change.
  - We can't use the identifier as the User uuid since it's way longer (Max 255 chars for the `sub` part, cf [spec](https://openid.net/specs/openid-connect-core-1_0.html#CodeIDToken)).
@@ -51,9 +51,9 @@ This is used to link to the SSO provider identifier without changing the default
 
 Additionally:
 
- - Signup to Vaultwarden will be blocked if the Provider reports the email as `unverified`.
+ - Signup to will be blocked if the Provider reports the email as `unverified`.
  - Changing the email needs to be done by the user since it requires updating the `key`.
- 	 On login if the email returned by the provider is not the one saved in Vaultwarden an email will be sent to the user to ask him to update it.
+ 	 On login if the email returned by the provider is not the one saved an email will be sent to the user to ask him to update it.
  - If set `SIGNUPS_DOMAINS_WHITELIST` is applied on SSO signup and when attempting to change the email.
 
 This means that if you ever need to change the provider url or the provider itself; you'll have to first delete the association
@@ -91,7 +91,7 @@ As mentioned in the Google example setting too high of a value has diminishing r
 
 ## Keycloak
 
-Default access token lifetime might be only `5min`, set a longer value otherwise it will collide with `VaultWarden` front-end expiration detection which is also set at `5min`.
+Default access token lifetime might be only `5min`, set a longer value otherwise it will collide with `Bitwarden` front-end expiration detection which is also set at `5min`.
 \
 At the realm level
 
@@ -110,7 +110,7 @@ Server configuration, nothing specific just set:
 ## Auth0
 
 Not working due to the following issue https://github.com/ramosbugs/openidconnect-rs/issues/23 (they appear not to follow the spec).
-A feature flag is available to bypass the issue but since it's a compile time feature you will have to patch `Vaultwarden` with something like:
+A feature flag is available to bypass the issue but since it's a compile time feature you will have to patch with something like:
 
 ```patch
 diff --git a/Cargo.toml b/Cargo.toml
@@ -139,7 +139,7 @@ Config will look like:
 
 ## Authentik
 
-Default access token lifetime might be only `5min`, set a longer value otherwise it will collide with `VaultWarden` front-end expiration detection which is also set at `5min`.
+Default access token lifetime might be only `5min`, set a longer value otherwise it will collide with `Bitwarden` front-end expiration detection which is also set at `5min`.
 \
 To change the tokens expiration go to `Applications / Providers / Edit / Advanced protocol settings`.
 
@@ -209,7 +209,7 @@ Otherwise you can disable the PKCE requirement with: `kanidm system oauth2 warni
 1. Create an "App registration" in [Entra ID](https://entra.microsoft.com/) following [Identity | Applications | App registrations](https://entra.microsoft.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade/quickStartType//sourceType/Microsoft_AAD_IAM).
 2. From the "Overview" of your "App registration", you'll need the "Directory (tenant) ID" for the `SSO_AUTHORITY` variable and the "Application (client) ID" as the `SSO_CLIENT_ID` value.
 3. In "Certificates & Secrets" create an "App secret" , you'll need the "Secret Value" for the `SSO_CLIENT_SECRET` variable.
-4. In "Authentication" add <https://vaultwarden.example.org/identity/connect/oidc-signin> as "Web Redirect URI".
+4. In "Authentication" add <https://warden.example.org/identity/connect/oidc-signin> as "Web Redirect URI".
 5. In "API Permissions" make sure you have `profile`, `email` and `offline_access` listed under "API / Permission name" (`offline_access` is required, otherwise no refresh_token is returned, see <https://github.com/MicrosoftDocs/azure-docs/issues/17134>).
 
 Only the v2 endpoint is compliant with the OpenID spec, see <https://github.com/MicrosoftDocs/azure-docs/issues/38427> and <https://github.com/ramosbugs/openidconnect-rs/issues/122>.
@@ -252,8 +252,8 @@ Config will look like:
 Session lifetime is dependant on refresh token and access token returned after calling your SSO token endpoint (grant type `authorization_code`).
 If no refresh token is returned then the session will be limited to the access token lifetime.
 
-Tokens are not persisted in VaultWarden but wrapped in JWT tokens and returned to the application (The `refresh_token` and `access_token` values returned by VW `identity/connect/token` endpoint).
-Note that VaultWarden will always return a `refresh_token` for compatibility reasons with the web front and it presence does not indicate that a refresh token was returned by your SSO (But you can decode its value with <https://jwt.io> and then check if the `token` field contain anything).
+Tokens are not persisted in the server but wrapped in JWT tokens and returned to the application (The `refresh_token` and `access_token` values returned by VW `identity/connect/token` endpoint).
+Note that the server will always return a `refresh_token` for compatibility reasons with the web front and it presence does not indicate that a refresh token was returned by your SSO (But you can decode its value with <https://jwt.io> and then check if the `token` field contain anything).
 
 With a refresh token present, activity in the application will trigger a refresh of the access token when it's close to expiration ([5min](https://github.com/bitwarden/clients/blob/0bcb45ed5caa990abaff735553a5046e85250f24/libs/common/src/auth/services/token.service.ts#L126) in web client).
 

@@ -8,11 +8,11 @@ let users = utils.loadEnv();
 let totp;
 
 test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
-    await utils.startVaultwarden(browser, testInfo, {});
+    await utils.startVault(browser, testInfo, {});
 });
 
 test.afterAll('Teardown', async ({}) => {
-    utils.stopVaultwarden();
+    utils.stopVault();
 });
 
 test('Account creation', async ({ page }) => {

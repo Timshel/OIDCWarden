@@ -16,9 +16,9 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
 
     await mailServer.listen();
 
-    await utils.startVaultwarden(browser, testInfo, {
+    await utils.startVault(browser, testInfo, {
         SMTP_HOST: process.env.MAILDEV_HOST,
-        SMTP_FROM: process.env.VAULTWARDEN_SMTP_FROM,
+        SMTP_FROM: process.env.PW_SMTP_FROM,
         SSO_ENABLED: true,
         SSO_ONLY: true,
     });
@@ -29,7 +29,7 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
 });
 
 test.afterAll('Teardown', async ({}) => {
-    utils.stopVaultwarden();
+    utils.stopVault();
     [mailServer, mail1Buffer, mail2Buffer, mail3Buffer].map((m) => m.close());
 });
 
@@ -75,8 +75,7 @@ test('invited with existing account', async ({ page }) => {
 
     await test.step('Redirect to Keycloak', async () => {
         await page.goto(link);
-        await expect(page).toHaveTitle("Enterprise single sign-on | Vaultwarden Web");
-        await page.getByRole('button', { name: 'Log in' }).click();
+        await expect(page).toHaveTitle("Enterprise single sign-on | OIDCWarden Web");
     });
 
     await test.step('Keycloak login', async () => {
@@ -87,7 +86,7 @@ test('invited with existing account', async ({ page }) => {
     });
 
     await test.step('Unlock vault', async () => {
-        await expect(page).toHaveTitle('Vaultwarden Web');
+        await expect(page).toHaveTitle('OIDCWarden Web');
         await page.getByLabel('Master password').fill(users.user2.password);
         await page.getByRole('button', { name: 'Unlock' }).click();
     });
@@ -112,8 +111,7 @@ test('invited with new account', async ({ page }) => {
 
     await test.step('Redirect to Keycloak', async () => {
         await page.goto(link);
-        await expect(page).toHaveTitle("Enterprise single sign-on | Vaultwarden Web");
-        await page.getByRole('button', { name: 'Log in' }).click();
+        await expect(page).toHaveTitle("Enterprise single sign-on | OIDCWarden Web");
     });
 
     await test.step('Keycloak login', async () => {
@@ -144,10 +142,10 @@ test('invited with new account', async ({ page }) => {
 test('Org invite auto accept', async ({ page }, testInfo: TestInfo) => {
     test.setTimeout(40000);
 
-    await utils.restartVaultwarden(page, testInfo, {
+    await utils.restartVault(page, testInfo, {
         ORGANIZATION_INVITE_AUTO_ACCEPT: true,
         SMTP_HOST: process.env.MAILDEV_HOST,
-        SMTP_FROM: process.env.VAULTWARDEN_SMTP_FROM,
+        SMTP_FROM: process.env.PW_SMTP_FROM,
         SSO_ENABLED: true,
         SSO_FRONTEND: "override",
     }, true);

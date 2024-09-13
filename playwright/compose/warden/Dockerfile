@@ -1,4 +1,4 @@
-FROM playwright_oidc_vaultwarden_prebuilt AS vaultwarden
+FROM playwright_oidc_warden_prebuilt AS prebuilt
 
 FROM node:18-bookworm AS build
 
@@ -8,8 +8,8 @@ arg COMMIT_HASH
 ENV REPO_URL=${REPO_URL:-https://github.com/Timshel/oidc_web_builds}
 ENV COMMIT_HASH=$COMMIT_HASH
 
-COPY --from=vaultwarden /web-vault_button /web-vault_button
-COPY --from=vaultwarden /web-vault_override /web-vault_override
+COPY --from=prebuilt /web-vault_button /web-vault_button
+COPY --from=prebuilt /web-vault_override /web-vault_override
 COPY build.sh /build.sh
 RUN /build.sh
 
@@ -33,8 +33,8 @@ RUN mkdir /data && \
 # and the binary from the "build" stage to the current stage
 WORKDIR /
 
-COPY --from=vaultwarden /start.sh .
-COPY --from=vaultwarden /vaultwarden .
+COPY --from=prebuilt /start.sh .
+COPY --from=prebuilt /oidcwarden .
 COPY --from=build /web-vault_button ./web-vault_button
 COPY --from=build /web-vault_override ./web-vault_override
 

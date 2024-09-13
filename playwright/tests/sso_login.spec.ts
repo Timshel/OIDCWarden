@@ -5,14 +5,14 @@ import * as utils from "../global-utils";
 let users = utils.loadEnv();
 
 test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
-    await utils.startVaultwarden(browser, testInfo, {
+    await utils.startVault(browser, testInfo, {
         SSO_ENABLED: true,
         SSO_ONLY: false
     });
 });
 
 test.afterAll('Teardown', async ({}) => {
-    utils.stopVaultwarden();
+    utils.stopVault();
 });
 
 test('Account creation using SSO', async ({ page }) => {
@@ -40,7 +40,7 @@ test('Non SSO login', async ({ page }) => {
 
 
 test('Non SSO login Failure', async ({ page, browser }, testInfo: TestInfo) => {
-    await utils.restartVaultwarden(page, testInfo, {
+    await utils.restartVault(page, testInfo, {
         SSO_ENABLED: true,
         SSO_ONLY: true
     }, false);
@@ -59,7 +59,7 @@ test('Non SSO login Failure', async ({ page, browser }, testInfo: TestInfo) => {
 });
 
 test('SSO login Failure', async ({ page }, testInfo: TestInfo) => {
-    await utils.restartVaultwarden(page, testInfo, {
+    await utils.restartVault(page, testInfo, {
         SSO_ENABLED: false
     }, false);
 

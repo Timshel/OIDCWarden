@@ -6,7 +6,7 @@ import { logNewUser, logUser } from './setups/sso';
 let users = utils.loadEnv();
 
 test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
-    await utils.startVaultwarden(browser, testInfo, {
+    await utils.startVault(browser, testInfo, {
         SSO_ENABLED: true,
         SSO_ONLY: true,
         SSO_ROLES_ENABLED: true,
@@ -17,7 +17,7 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
 });
 
 test.afterAll('Teardown', async ({}) => {
-    utils.stopVaultwarden();
+    utils.stopVault();
 });
 
 test('admin have access to vault/admin page', async ({ page }) => {
@@ -51,7 +51,7 @@ test('No role cannot log', async ({ page }) => {
     });
 
     await test.step('Auth failed', async () => {
-        await expect(page).toHaveTitle('Vaultwarden Web');
+        await expect(page).toHaveTitle('OIDCWarden Web vault');
         await expect(page.getByTestId("toast-message")).toHaveText(/Invalid user role/);
     });
 });

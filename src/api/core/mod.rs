@@ -201,8 +201,8 @@ fn config() -> Json<Value> {
         "version": "2024.2.0",
         "gitHash": option_env!("GIT_REV"),
         "server": {
-          "name": "Vaultwarden",
-          "url": "https://github.com/dani-garcia/vaultwarden"
+          "name": "OIDCWarden",
+          "url": "https://github.com/timshel/OIDCWarden"
         },
         "environment": {
           "vault": domain,

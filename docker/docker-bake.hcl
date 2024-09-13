@@ -38,9 +38,9 @@ variable "BASE_TAGS" {
 
 // Which container registries should be used for the tagging
 // This can be a comma separated value
-// Use a full URI like `ghcr.io/dani-garcia/vaultwarden,docker.io/vaultwarden/server`
+// Use a full URI like `ghcr.io/timshel/oidcwarden,docker.io/oidcwarden/server`
 variable "CONTAINER_REGISTRIES" {
-  default = "vaultwarden/server"
+  default = "oidcwarden/server"
 }
 
 
@@ -57,10 +57,10 @@ function "labels" {
   result = {
     "org.opencontainers.image.description" = "OIDC implentation over VaultWarden"
     "org.opencontainers.image.licenses" = "AGPL-3.0-only"
-    "org.opencontainers.image.documentation" = "https://github.com/timshel/vaultwarden"
-    "org.opencontainers.image.url" = "https://github.com/timshel/vaultwarden"
+    "org.opencontainers.image.documentation" = "https://github.com/timshel/oidcwarden"
+    "org.opencontainers.image.url" = "https://github.com/timshel/oidcwarden"
     "org.opencontainers.image.created" =  "${formatdate("YYYY-MM-DD'T'hh:mm:ssZZZZZ", timestamp())}"
-    "org.opencontainers.image.source" = "git://github.com/timshel/vaultwarden.git"
+    "org.opencontainers.image.source" = "git://github.com/timshel/oidcwarden.git"
     "org.opencontainers.image.revision" = "${SOURCE_COMMIT}"
     "org.opencontainers.image.version" = "${SOURCE_VERSION}"
   }

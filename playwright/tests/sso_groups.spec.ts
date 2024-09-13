@@ -16,18 +16,18 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
 
     await mailServer.listen();
 
-    await utils.startVaultwarden(browser, testInfo, {
+    await utils.startVault(browser, testInfo, {
         SSO_ENABLED: true,
         SSO_ONLY: true,
         SSO_ORGANIZATIONS_INVITE: true,
         SSO_SCOPES: "email profile groups",
         SMTP_HOST: process.env.MAILDEV_HOST,
-        SMTP_FROM: process.env.VAULTWARDEN_SMTP_FROM,
+        SMTP_FROM: process.env.PW_SMTP_FROM,
     });
 });
 
 test.afterAll('Teardown', async ({}) => {
-    utils.stopVaultwarden();
+    utils.stopVault();
     mailServer?.close();
 });
 
@@ -58,9 +58,9 @@ test('Org invite auto accept', async ({ context, page }, testInfo: TestInfo) => 
     let mail1Buffer = mailServer.buffer(users.user1.email);
     let mail2Buffer = mailServer.buffer(users.user2.email);
     try {
-        await utils.restartVaultwarden(page, testInfo, {
+        await utils.restartVault(page, testInfo, {
             ORGANIZATION_INVITE_AUTO_ACCEPT: true,
-            SMTP_FROM: process.env.VAULTWARDEN_SMTP_FROM,
+            SMTP_FROM: process.env.PW_SMTP_FROM,
             SMTP_HOST: process.env.MAILDEV_HOST,
             SSO_ENABLED: true,
             SSO_FRONTEND: "override",

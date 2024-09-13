@@ -16,14 +16,14 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
 
     await mailserver.listen();
 
-    await utils.startVaultwarden(browser, testInfo, {
+    await utils.startVault(browser, testInfo, {
         SMTP_HOST: process.env.MAILDEV_HOST,
-        SMTP_FROM: process.env.VAULTWARDEN_SMTP_FROM,
+        SMTP_FROM: process.env.PW_SMTP_FROM,
     });
 });
 
 test.afterAll('Teardown', async ({}) => {
-    utils.stopVaultwarden();
+    utils.stopVault();
     if( mailserver ){
         await mailserver.close();
     }
@@ -36,10 +36,10 @@ test('Account creation', async ({ page }) => {
 
     const { value: created } = await emails.next();
     expect(created.subject).toBe("Welcome");
-    expect(created.from[0]?.address).toBe(process.env.VAULTWARDEN_SMTP_FROM);
+    expect(created.from[0]?.address).toBe(process.env.PW_SMTP_FROM);
 
     // Back to the login page
-    await expect(page).toHaveTitle('Vaultwarden Web');
+    await expect(page).toHaveTitle('OIDCWarden Web');
     await expect(page.getByTestId("toast-message")).toHaveText(/Your new account has been created/);
     await page.getByRole('button', { name: 'Continue' }).click();
 
@@ -53,7 +53,7 @@ test('Account creation', async ({ page }) => {
     const { value: logged } = await emails.next();
     expect(logged.subject).toBe("New Device Logged In From Firefox");
     expect(logged.to[0]?.address).toBe(process.env.TEST_USER_MAIL);
-    expect(logged.from[0]?.address).toBe(process.env.VAULTWARDEN_SMTP_FROM);
+    expect(logged.from[0]?.address).toBe(process.env.PW_SMTP_FROM);
 
     emails.return();
 });
@@ -66,7 +66,7 @@ test('Login', async ({ context, page }) => {
     await test.step('new device email', async () => {
         const { value: logged } = await emails.next();
         expect(logged.subject).toBe("New Device Logged In From Firefox");
-        expect(logged.from[0]?.address).toBe(process.env.VAULTWARDEN_SMTP_FROM);
+        expect(logged.from[0]?.address).toBe(process.env.PW_SMTP_FROM);
     });
 
     await test.step('verify email', async () => {
@@ -77,7 +77,7 @@ test('Login', async ({ context, page }) => {
 
         const { value: verify } = await emails.next();
         expect(verify.subject).toBe("Verify Your Email");
-        expect(verify.from[0]?.address).toBe(process.env.VAULTWARDEN_SMTP_FROM);
+        expect(verify.from[0]?.address).toBe(process.env.PW_SMTP_FROM);
 
         const page2 = await context.newPage();
         await page2.setContent(verify.html);

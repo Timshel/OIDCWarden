@@ -105,7 +105,7 @@ DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env build 
 
 # OpenID Connect test setup
 
-Additionnaly this `docker-compose` template allow to run locally `VaultWarden`, [Keycloak](https://www.keycloak.org/) and [Maildev](https://github.com/timshel/maildev) to test OIDC.
+Additionnaly this `docker-compose` template allow to run locally `OIDCWarden`, [Keycloak](https://www.keycloak.org/) and [Maildev](https://github.com/timshel/maildev) to test OIDC.
 
 ## Setup
 
@@ -114,10 +114,10 @@ First create a copy of `.env.template` as `.env` (This is done to prevent commit
 
 ## Usage
 
-Then start the stack (the `profile` is required to run `Vaultwarden`) :
+Then start the stack (the `profile` is required to run `OIDCWarden`) :
 
 ```bash
-> docker compose --profile vaultwarden --env-file .env up
+> docker compose --profile oidcwarden --env-file .env up
 ....
 keycloakSetup_1  | Logging into http://127.0.0.1:8080 as user admin of realm master
 keycloakSetup_1  | Created new realm with id 'test'
@@ -129,14 +129,14 @@ Wait until `oidc_keycloakSetup_1 exited with code 0` which indicate the correct 
 
 Then you can access :
 
-- `VaultWarden` on http://0.0.0.0:8000 with the default user `test@yopmail.com/test`.
+- `OIDCWarden` on http://0.0.0.0:8000 with the default user `test@yopmail.com/test`.
 - `Keycloak` on http://0.0.0.0:8080/admin/master/console/ with the default user `admin/admin`
 - `Maildev` on http://0.0.0.0:1080
 
 To proceed with an SSO login after you enter the email, on the screen prompting for `Master Password` the SSO button should be visible.
 To use your computer external ip (for example when testing with a phone) you will have to configure `KC_HTTP_HOST` and `DOMAIN`.
 
-## Switching VaultWarden front-end
+## Switching OIDCWarden front-end
 
 You can switch between both [version](https://github.com/Timshel/oidc_web_builds) of the front-end using the env variable `SSO_FRONTEND` with `button` or `override` (default is `button`).
 
@@ -148,7 +148,7 @@ You can run just `Keycloak` with `--profile keycloak`:
 > docker compose --profile keycloak --env-file .env up
 ```
 
-When running with a local VaultWarden, if you are using a front-end build from [dani-garcia/bw_web_builds](https://github.com/dani-garcia/bw_web_builds/releases) you'll need to make the SSO button visible using :
+When running with a local OIDCWarden, if you are using a front-end build from [dani-garcia/bw_web_builds](https://github.com/dani-garcia/bw_web_builds/releases) you'll need to make the SSO button visible using :
 
 ```bash
 sed -i 's#a\[routerlink="/sso"\],##' web-vault/app/main.*.css
@@ -162,22 +162,22 @@ Otherwise you'll need to reveal the SSO login button using the debug console (F1
  document.querySelector('a[routerlink="/sso"]').style.setProperty("display", "inline-block", "important");
  ```
 
-## Rebuilding the Vaultwarden
+## Rebuilding the OIDCWarden
 
-To force rebuilding the Vaultwarden image you can run
+To force rebuilding the OIDCWarden image you can run
 
 ```bash
-docker compose --profile vaultwarden --env-file .env build VaultwardenPrebuild Vaultwarden
+docker compose --profile oidcwarden --env-file .env build OIDCWardenPrebuild OIDCWarden
 ```
 
 ## Configuration
 
-All configuration for `keycloak` / `VaultWarden` / `keycloak_setup.sh` can be found in [.env](.env.template).
+All configuration for `keycloak` / `OIDCWarden` / `keycloak_setup.sh` can be found in [.env](.env.template).
 The content of the file will be loaded as environment variables in all containers.
 
 - `keycloak` [configuration](https://www.keycloak.org/server/all-config) include `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` and any variable prefixed `KC_` ([more information](https://www.keycloak.org/server/configuration#_example_configuring_the_db_url_host_parameter)).
-- All `VaultWarden` configuration can be set (EX: `SMTP_*`)
+- All `OIDCWarden` configuration can be set (EX: `SMTP_*`)
 
 ## Cleanup
 
-Use `docker compose --profile vaultWarden down`.
+Use `docker compose --profile oidcwarden down`.

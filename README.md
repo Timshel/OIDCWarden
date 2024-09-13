@@ -1,19 +1,18 @@
 # Fork from [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden)
 
-Goal is to help testing code for the SSO [PR](https://github.com/dani-garcia/vaultwarden/pull/3899).
-Based on [Timshel/sso-support](https://github.com/Timshel/vaultwarden/tree/sso-support)
-
-#### :warning: Branch will be rebased and forced-pushed when updated. :warning:
+Goal is to add OIDC support.
 
 ## Versions
 
-Tagged version are based on Vaultwarden releases, Ex: `1.31.0-1` is the first release based on Vaultwarden `1.31.0`.
+Tagged version are based on Bitwarden web client releases, Ex: `v2024.8.3-1` is the first release compatible with web client `v2024.8.3`.
 \
 See [changelog](CHANGELOG.md) for more details.
 
-## Additionnal features
+## Configuration
 
-This branch now contain features not added to the SSO [PR](https://github.com/dani-garcia/vaultwarden/pull/3899) since it would slow even more it's review.
+See details in [SSO.md](SSO.md).
+
+## Features
 
 ### Role mapping
 
@@ -54,14 +53,9 @@ This feature is controlled with the following conf:
 - `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read groups/organization in the Access token, default is `/groups`
 - `SSO_ORGANIZATIONS_ID_MAPPING`: Optional, allow to map provider group to a Vaultwarden organization `uuid` (default `""`, format: `"ProviderId:VaultwardenId;"`)
 
-### Experimental Version
-
-Made a version which additionnaly allow to run the server without storing the master password (it's still required just not sent to the server).
-It´s experimental, more information in [timshel/experimental](https://github.com/Timshel/vaultwarden/tree/experimental).
-
 ## Docker
 
-Change the docker files to package both front-end from [Timshel/oidc_web_builds](https://github.com/Timshel/oidc_web_builds/releases).
+Change the docker files to package both front-end from [Timshel/oidc_web_vault](https://github.com/Timshel/oidc_web_vault/releases).
 \
 By default it will use the release which only make the `sso` button visible.
 
@@ -70,8 +64,8 @@ You need to pass an env variable: `-e SSO_FRONTEND='override'` (cf [start.sh](do
 
 Docker images available at:
 
- - Docker hub [hub.docker.com/r/timshel/vaultwarden](https://hub.docker.com/r/timshel/vaultwarden/tags)
- - Github container registry [ghcr.io/timshel/vaultwarden](https://github.com/Timshel/vaultwarden/pkgs/container/vaultwarden)
+ - Docker hub [hub.docker.com/r/timshel/oidcwarden](https://hub.docker.com/r/timshel/oidcwarden/tags)
+ - Github container registry [ghcr.io/timshel/oidcwarden](https://github.com/Timshel/oidcwarden/pkgs/container/oidcwarden)
 
 ### Front-end version
 
@@ -79,7 +73,7 @@ By default front-end version is fixed to prevent regression (check [CHANGELOG.md
 \
 When building the docker image it can be overrided by passing the `OIDC_WEB_RELEASE` arg.
 \
-Ex to build with latest: `--build-arg OIDC_WEB_RELEASE="https://github.com/Timshel/oidc_web_builds/releases/latest/download"`
+Ex to build with latest: `--build-arg OIDC_WEB_RELEASE="https://github.com/Timshel/oidc_web_vault/releases/latest/download"`
 
 ## To test VaultWarden with Keycloak
 

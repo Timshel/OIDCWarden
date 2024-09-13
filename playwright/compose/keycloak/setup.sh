@@ -55,7 +55,7 @@ kcadm.sh create -r "$TEST_REALM" "client-scopes/$TEST_GROUPS_CLIENT_SCOPE_ID/pro
 
 TEST_GROUP_ID=$(kcadm.sh create -r "$TEST_REALM" groups -s name=Test -i)
 
-TEST_CLIENT_ID=$(kcadm.sh create -r "$TEST_REALM" clients -s "name=VaultWarden" -s "clientId=$SSO_CLIENT_ID" -s "secret=$SSO_CLIENT_SECRET" -s "redirectUris=[\"$DOMAIN/*\"]" -i)
+TEST_CLIENT_ID=$(kcadm.sh create -r "$TEST_REALM" clients -s "name=Warden" -s "clientId=$SSO_CLIENT_ID" -s "secret=$SSO_CLIENT_SECRET" -s "redirectUris=[\"$DOMAIN/*\"]" -i)
 
 ## ADD Role mapping scope
 kcadm.sh update -r "$TEST_REALM" "clients/$TEST_CLIENT_ID" --body "{\"optionalClientScopes\": [\"$TEST_CLIENT_ROLES_SCOPE_ID\"]}"
