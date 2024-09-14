@@ -1,6 +1,7 @@
-# Fork from [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden)
+# OIDCWarden
 
-Goal is to add OIDC support.
+Fork from [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
+Goal is to provide an OIDC compatible solution with the ultimate goal of merging features back in Vaultwarden.
 
 ## Versions
 
