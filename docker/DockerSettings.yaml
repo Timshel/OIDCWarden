@@ -6,7 +6,7 @@ xx_image_digest: "sha256:1978e7a58a1777cb0ef0dde76bad60b7914b21da57cfa88047875e4
 rust_version: 1.81.0 # Rust version to be used
 debian_version: bookworm # Debian release name to be used
 alpine_version: "3.20" # Alpine version to be used
-oidc_web_release: https://github.com/Timshel/oidc_web_vault/releases/download/v2024.8.3-3
+oidc_web_release: https://github.com/Timshel/oidc_web_vault/releases/download/v2024.8.3-4
 # For which platforms/architectures will we try to build images
 platforms: ["linux/amd64", "linux/arm64", "linux/arm/v7", "linux/arm/v6"]
 # Determine the build images per OS/Arch
