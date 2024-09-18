@@ -213,7 +213,7 @@ async fn _sso_login(
             }
 
             if !user_infos.email_verified.unwrap_or(true) {
-                err!("Email needs to be verified before you can use VaultWarden");
+                err!("Verify your email with your provider before trying to login");
             }
 
             let mut user = User::new(user_infos.email, user_infos.user_name);
