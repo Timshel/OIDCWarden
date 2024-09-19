@@ -412,7 +412,7 @@ async fn authenticated_response(
     ip: &ClientIp,
 ) -> JsonResult {
     if CONFIG.mail_enabled() && new_device {
-        if let Err(e) = mail::send_new_device_logged_in(&user.email, &ip.ip.to_string(), now, &device.name).await {
+        if let Err(e) = mail::send_new_device_logged_in(&user.email, &ip.ip.to_string(), now, device).await {
             error!("Error sending new device email: {:#?}", e);
 
             if CONFIG.require_device_email() {
@@ -562,7 +562,7 @@ async fn _user_api_key_login(
 
     if CONFIG.mail_enabled() && new_device {
         let now = Utc::now().naive_utc();
-        if let Err(e) = mail::send_new_device_logged_in(&user.email, &ip.ip.to_string(), &now, &device.name).await {
+        if let Err(e) = mail::send_new_device_logged_in(&user.email, &ip.ip.to_string(), &now, &device).await {
             error!("Error sending new device email: {:#?}", e);
 
             if CONFIG.require_device_email() {
@@ -677,7 +677,7 @@ async fn twofactor_auth(
         return Ok(None);
     }
 
-    TwoFactorIncomplete::mark_incomplete(&user.uuid, &device.uuid, &device.name, ip, conn).await?;
+    TwoFactorIncomplete::mark_incomplete(&user.uuid, &device.uuid, &device.name, device.atype, ip, conn).await?;
 
     let twofactor_ids: Vec<_> = twofactors.iter().map(|tf| tf.atype).collect();
     let selected_id = data.two_factor_provider.unwrap_or(twofactor_ids[0]); // If we aren't given a two factor provider, assume the first one
