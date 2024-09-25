@@ -541,8 +541,7 @@ pub fn create_auth_tokens(
             _ => err!("Non jwt access_token and empty expires_in"),
         };
 
-        let access_claims =
-            auth::LoginJwtClaims::new(device, user, ap_nbf, ap_exp, AuthMethod::Sso.scope_vec(), now);
+        let access_claims = auth::LoginJwtClaims::new(device, user, ap_nbf, ap_exp, AuthMethod::Sso.scope_vec(), now);
 
         _create_auth_tokens(device, refresh_token, access_claims, access_token)
     } else {
