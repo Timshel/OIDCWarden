@@ -531,7 +531,7 @@ pub fn create_auth_tokens(
     refresh_token: Option<String>,
     access_token: &str,
     expires_in: Option<Duration>,
-) -> ApiResult<auth::AuthTokens> {
+) -> ApiResult<AuthTokens> {
     if !CONFIG.sso_auth_only_not_session() {
         let now = Utc::now();
 
@@ -542,7 +542,7 @@ pub fn create_auth_tokens(
         };
 
         let access_claims =
-            auth::LoginJwtClaims::new(device, user, ap_nbf, ap_exp, auth::AuthMethod::Sso.scope_vec(), now);
+            auth::LoginJwtClaims::new(device, user, ap_nbf, ap_exp, AuthMethod::Sso.scope_vec(), now);
 
         _create_auth_tokens(device, refresh_token, access_claims, access_token)
     } else {
@@ -555,7 +555,7 @@ fn _create_auth_tokens(
     refresh_token: Option<String>,
     access_claims: auth::LoginJwtClaims,
     access_token: &str,
-) -> ApiResult<auth::AuthTokens> {
+) -> ApiResult<AuthTokens> {
     let (nbf, exp, token) = if let Some(rt) = refresh_token.as_ref() {
         match insecure_decode::<BasicTokenClaims>("refresh_token", rt) {
             Err(_) => {
@@ -578,12 +578,12 @@ fn _create_auth_tokens(
         nbf,
         exp,
         iss: auth::JWT_LOGIN_ISSUER.to_string(),
-        sub: auth::AuthMethod::Sso,
+        sub: AuthMethod::Sso,
         device_token: device.refresh_token.clone(),
         token: Some(token),
     };
 
-    Ok(auth::AuthTokens {
+    Ok(AuthTokens {
         refresh_claims,
         access_claims,
     })
@@ -596,7 +596,7 @@ pub async fn exchange_refresh_token(
     device: &Device,
     user: &User,
     refresh_claims: &auth::RefreshJwtClaims,
-) -> ApiResult<auth::AuthTokens> {
+) -> ApiResult<AuthTokens> {
     match &refresh_claims.token {
         Some(TokenWrapper::Refresh(refresh_token)) => {
             let rt = RefreshToken::new(refresh_token.to_string());
@@ -641,7 +641,7 @@ pub async fn exchange_refresh_token(
                         user,
                         now.timestamp(),
                         refresh_claims.exp,
-                        auth::AuthMethod::Sso.scope_vec(),
+                        AuthMethod::Sso.scope_vec(),
                         now,
                     );
                     _create_auth_tokens(device, None, access_claims, access_token)

@@ -584,7 +584,7 @@ async fn _user_api_key_login(
     // See: https://github.com/dani-garcia/vaultwarden/issues/4156
     // ---
     // let orgs = UserOrganization::find_confirmed_by_user(&user.uuid, conn).await;
-    let access_claims = auth::LoginJwtClaims::default(&device, &user, &auth::AuthMethod::UserApiKey);
+    let access_claims = auth::LoginJwtClaims::default(&device, &user, &AuthMethod::UserApiKey);
 
     // Save to update `device.updated_at` to track usage
     device.save(conn).await?;
@@ -605,7 +605,7 @@ async fn _user_api_key_login(
         "KdfMemory": user.client_kdf_memory,
         "KdfParallelism": user.client_kdf_parallelism,
         "ResetMasterPassword": false, // TODO: Same as above
-        "scope": auth::AuthMethod::UserApiKey.scope(),
+        "scope": AuthMethod::UserApiKey.scope(),
         "unofficialServer": true,
     });
 
@@ -637,7 +637,7 @@ async fn _organization_api_key_login(data: ConnectData, conn: &mut DbConn, ip: &
         "access_token": access_token,
         "expires_in": 3600,
         "token_type": "Bearer",
-        "scope": auth::AuthMethod::OrgApiKey.scope(),
+        "scope": AuthMethod::OrgApiKey.scope(),
         "unofficialServer": true,
     })))
 }
