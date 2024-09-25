@@ -1059,7 +1059,7 @@ pub async fn refresh_tokens(refresh_token: &str, conn: &mut DbConn) -> ApiResult
     let time_now = Utc::now();
 
     let refresh_claims = match decode_refresh(refresh_token) {
-        Err(err) => err!(format!("Impossible to read refresh_token: {err}")),
+        Err(err) => err_silent!(format!("Impossible to read refresh_token: {}", err.message())),
         Ok(claims) => claims,
     };
 
@@ -1089,7 +1089,7 @@ pub async fn refresh_tokens(refresh_token: &str, conn: &mut DbConn) -> ApiResult
         AuthMethod::Sso => err!("SSO is now disabled, Login again using email and master password"),
         AuthMethod::Password if CONFIG.sso_enabled() && CONFIG.sso_only() => err!("SSO is now required, Login again"),
         AuthMethod::Password => AuthTokens::new(&device, &user, refresh_claims.sub),
-        _ => err!("Invalid auth method cannot refresh token"),
+        _ => err!("Invalid auth method, cannot refresh token"),
     };
 
     Ok((device, user, auth_tokens))
