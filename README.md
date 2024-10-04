@@ -101,3 +101,27 @@ DROP TABLE
 ALTER TABLE
 > COMMIT / ROLLBACK;
 ```
+
+## Configuration
+
+### Zitadel
+
+To use the role mapping feature you will need to define a custom mapping to return a simple list of role.
+More details in Zitadel [documentation](https://zitadel.com/docs/guides/integrate/retrieve-user-roles#customize-roles-using-actions); the cutomization will look something like this:
+
+```javascript
+function flatRoles(ctx, api) {
+  if (ctx.v1.user.grants == undefined || ctx.v1.user.grants.count == 0) {
+    return;
+  }
+
+  let grants = [];
+  ctx.v1.user.grants.grants.forEach(claim => {
+    claim.roles.forEach(role => {
+        grants.push(role)
+    })
+  })
+
+  api.v1.claims.setClaim('my:zitadel:grants', grants)
+}
+```
