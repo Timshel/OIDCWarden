@@ -1,5 +1,6 @@
 use chrono::{NaiveDateTime, TimeDelta, Utc};
 use serde_json::Value;
+use std::cmp::Ordering;
 
 use crate::crypto;
 use crate::CONFIG;
@@ -485,7 +486,7 @@ impl SsoUser {
     }
 
     // Written as an union to make the query more lisible than using an `or_filter`.
-    // But `first()` does not appear to work with `union()` so we use `load()`.
+    // We sort results in code since UNION does not garanty order and DB handle differently NULL order.
     pub async fn find_by_identifier_or_email(
         identifier: &str,
         mail: &str,
@@ -494,7 +495,7 @@ impl SsoUser {
         let lower_mail = mail.to_lowercase();
 
         db_run! {conn: {
-            users::table
+            let mut res = users::table
                 .inner_join(sso_users::table)
                 .select(<(UserDb, Option<SsoUserDb>)>::as_select())
                 .filter(sso_users::identifier.eq(identifier))
@@ -505,10 +506,13 @@ impl SsoUser {
                         .filter(users::email.eq(lower_mail))
                 )
                 .load(conn)
-                .expect("Error searching user by SSO identifier and email")
-                .into_iter()
-                .next()
-                .map(|(user, sso_user)| { (user.from_db(), sso_user.from_db()) })
+                .expect("Error searching user by SSO identifier and email");
+
+            res.sort_by(|(_, sso_user), _| {
+                if sso_user.is_some() { Ordering::Less } else { Ordering::Greater }
+            });
+
+            res.into_iter().next().map(|(user, sso_user)| { (user.from_db(), sso_user.from_db()) })
         }}
     }
 }
