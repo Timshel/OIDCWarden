@@ -68,10 +68,10 @@ TRUNCATE TABLE sso_users;
 
 ### On `SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION`
 
-If your provider does not send the verification status of emails you will need to activate this setting.
+If your provider does not send the verification status of emails (`email_verified` [claim](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)) you will need to activate this setting.
 
-If set with `SSO_SIGNUPS_MATCH_EMAIL=true` (the default), then an user can associate with an existing non sso account even if he does not control the email.
-This allow an user to gain access to sensitive information but the Master password is still required to read the passwords.
+If set with `SSO_SIGNUPS_MATCH_EMAIL=true` (the default), then a user can associate with an existing, non-SSO account, even if they do not control the email address.
+This allow a user to gain access to sensitive information but the master password is still required to read the passwords.
 
 As such when using `SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION` it is recommended to disable `SSO_SIGNUPS_MATCH_EMAIL`.
 If you need to associate non sso users try to keep both settings activated for the shortest time possible.

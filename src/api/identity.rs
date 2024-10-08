@@ -194,7 +194,7 @@ async fn _sso_login(
                 "Login failure ({}), existing SSO user ({}) with same email ({})",
                 user_infos.identifier, user.uuid, user.email
             );
-            err_silent!("Existing non SSO user with same email")
+            err_silent!("Existing SSO user with same email")
         }
         Some((user, sso_user)) => {
             let (mut device, new_device) = get_device(&data, conn, &user).await?;
