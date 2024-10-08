@@ -486,7 +486,8 @@ impl SsoUser {
     }
 
     // Written as an union to make the query more lisible than using an `or_filter`.
-    // We sort results in code since UNION does not garanty order and DB handle differently NULL order.
+    // If there is a match on identifier and email we want the identifier match.
+    // We sort results in code since UNION does not garanty order and DBs order NULL differently.
     pub async fn find_by_identifier_or_email(
         identifier: &str,
         mail: &str,
@@ -506,13 +507,19 @@ impl SsoUser {
                         .filter(users::email.eq(lower_mail))
                 )
                 .load(conn)
-                .expect("Error searching user by SSO identifier and email");
+                .expect("Error searching user by SSO identifier and email")
+                .into_iter()
+                .map(|(user, sso_user)| { (user.from_db(), sso_user.from_db()) })
+                .collect::<Vec<(User, Option<SsoUser>)>>();
 
             res.sort_by(|(_, sso_user), _| {
-                if sso_user.is_some() { Ordering::Less } else { Ordering::Greater }
+                match sso_user {
+                    Some(db_sso_user) if db_sso_user.identifier == identifier => Ordering::Less,
+                    _ => Ordering::Greater,
+                }
             });
 
-            res.into_iter().next().map(|(user, sso_user)| { (user.from_db(), sso_user.from_db()) })
+            res.into_iter().next()
         }}
     }
 }
