@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 use std::env::consts::EXE_SUFFIX;
 use std::process::exit;
-use std::sync::RwLock;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    RwLock,
+};
 
 use job_scheduler_ng::Schedule;
 use once_cell::sync::Lazy;
@@ -17,6 +20,8 @@ static CONFIG_FILE: Lazy<String> = Lazy::new(|| {
     let data_folder = get_env("DATA_FOLDER").unwrap_or_else(|| String::from("data"));
     get_env("CONFIG_FILE").unwrap_or_else(|| format!("{data_folder}/config.json"))
 });
+
+pub static SKIP_CONFIG_VALIDATION: AtomicBool = AtomicBool::new(false);
 
 pub static CONFIG: Lazy<Config> = Lazy::new(|| {
     Config::load().unwrap_or_else(|e| {
@@ -1246,7 +1251,9 @@ impl Config {
 
         // Fill any missing with defaults
         let config = builder.build();
-        validate_config(&config)?;
+        if !SKIP_CONFIG_VALIDATION.load(Ordering::Relaxed) {
+            validate_config(&config)?;
+        }
 
         Ok(Config {
             inner: RwLock::new(Inner {

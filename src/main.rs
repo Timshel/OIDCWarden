@@ -38,8 +38,10 @@ use std::{
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, BufReader},
-    signal::unix::SignalKind,
 };
+
+#[cfg(unix)]
+use tokio::signal::unix::SignalKind;
 
 #[macro_use]
 mod error;
@@ -62,7 +64,7 @@ use crate::api::{WS_ANONYMOUS_SUBSCRIPTIONS, WS_USERS};
 pub use config::CONFIG;
 pub use error::{Error, MapResult};
 use rocket::data::{Limits, ToByteUnit};
-use std::sync::Arc;
+use std::sync::{atomic::Ordering, Arc};
 pub use util::is_running_in_container;
 
 #[rocket::main]
@@ -124,6 +126,7 @@ fn parse_args() {
         print!("{HELP}");
         exit(0);
     } else if pargs.contains(["-v", "--version"]) {
+        config::SKIP_CONFIG_VALIDATION.store(true, Ordering::Relaxed);
         let web_vault_version = util::get_web_vault_version();
         println!("Vaultwarden {version}");
         println!("Web-Vault {web_vault_version}");
@@ -385,7 +388,7 @@ fn init_logging() -> Result<log::LevelFilter, Error> {
         {
             logger = logger.chain(fern::log_file(log_file)?);
         }
-        #[cfg(not(windows))]
+        #[cfg(unix)]
         {
             const SIGHUP: i32 = SignalKind::hangup().as_raw_value();
             let path = Path::new(&log_file);
@@ -393,7 +396,7 @@ fn init_logging() -> Result<log::LevelFilter, Error> {
         }
     }
 
-    #[cfg(not(windows))]
+    #[cfg(unix)]
     {
         if cfg!(feature = "enable_syslog") || CONFIG.use_syslog() {
             logger = chain_syslog(logger);
@@ -443,7 +446,7 @@ fn init_logging() -> Result<log::LevelFilter, Error> {
     Ok(level)
 }
 
-#[cfg(not(windows))]
+#[cfg(unix)]
 fn chain_syslog(logger: fern::Dispatch) -> fern::Dispatch {
     let syslog_fmt = syslog::Formatter3164 {
         facility: syslog::Facility::LOG_USER,
