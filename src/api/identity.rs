@@ -133,7 +133,7 @@ async fn _refresh_login(data: ConnectData, conn: &mut DbConn) -> JsonResult {
         Err(err) => {
             err_code!(format!("Unable to refresh login credentials: {}", err.message()), Status::Unauthorized.code)
         }
-        Ok((mut device, user, auth_tokens)) => {
+        Ok((mut device, auth_tokens)) => {
             // Save to update `device.updated_at` to track usage
             device.save(conn).await?;
 
@@ -142,16 +142,7 @@ async fn _refresh_login(data: ConnectData, conn: &mut DbConn) -> JsonResult {
                 "access_token": auth_tokens.access_token(),
                 "expires_in": auth_tokens.expires_in(),
                 "token_type": "Bearer",
-                "Key": user.akey,
-                "PrivateKey": user.private_key,
-
-                "Kdf": user.client_kdf_type,
-                "KdfIterations": user.client_kdf_iter,
-                "KdfMemory": user.client_kdf_memory,
-                "KdfParallelism": user.client_kdf_parallelism,
-                "ResetMasterPassword": false, // TODO: according to official server seems something like: user.password_hash.is_empty(), but would need testing
                 "scope": auth_tokens.scope(),
-                "unofficialServer": true,
             });
 
             Ok(Json(result))
@@ -484,9 +475,7 @@ async fn authenticated_response(
         "ResetMasterPassword": false, // TODO: Same as above
         "ForcePasswordReset": false,
         "MasterPasswordPolicy": master_password_policy,
-
         "scope": auth_tokens.scope(),
-        "unofficialServer": true,
         "UserDecryptionOptions": {
             "HasMasterPassword": !user.password_hash.is_empty(),
             "Object": "userDecryptionOptions"
@@ -609,9 +598,8 @@ async fn _user_api_key_login(
         "KdfIterations": user.client_kdf_iter,
         "KdfMemory": user.client_kdf_memory,
         "KdfParallelism": user.client_kdf_parallelism,
-        "ResetMasterPassword": false, // TODO: Same as above
+        "ResetMasterPassword": false, // TODO: according to official server seems something like: user.password_hash.is_empty(), but would need testing
         "scope": AuthMethod::UserApiKey.scope(),
-        "unofficialServer": true,
     });
 
     Ok(Json(result))
@@ -643,7 +631,6 @@ async fn _organization_api_key_login(data: ConnectData, conn: &mut DbConn, ip: &
         "expires_in": 3600,
         "token_type": "Bearer",
         "scope": AuthMethod::OrgApiKey.scope(),
-        "unofficialServer": true,
     })))
 }
 
