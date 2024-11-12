@@ -1,5 +1,8 @@
 # Changelog
 
+# v2024.10.2-2
+- Integrate change from `Vaultwarden` [1.32.4](https://github.com/dani-garcia/vaultwarden/tree/1.32.4)
+
 # v2024.10.2-1
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2024.10.2-1`
 - :warning: Breaking change :warning:
@@ -10,7 +13,7 @@
 
 # v2024.8.3-3
 
-- Integrate latest change from `Vaultwarden` [1.32.1](https://github.com/dani-garcia/vaultwarden/discussions/5036#discussioncomment-10838594)
+- Integrate latest change from `Vaultwarden` [1.32.1](https://github.com/dani-garcia/vaultwarden/tree/1.32.1)
 
 # v2024.8.3-2
 
