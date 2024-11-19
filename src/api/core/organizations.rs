@@ -9,10 +9,9 @@ use crate::{
         core::{log_event, two_factor, CipherSyncData, CipherSyncType},
         EmptyResult, JsonResult, Notify, PasswordOrOtpData, UpdateType,
     },
-    auth::{decode_invite, AdminHeaders, Headers, ManagerHeaders, ManagerHeadersLoose, OwnerHeaders},
+    auth::{decode_invite, AdminHeaders, ClientVersion, Headers, ManagerHeaders, ManagerHeadersLoose, OwnerHeaders},
     business::organization_logic,
     db::{models::*, DbConn},
-    error::Error,
     mail,
     util::{convert_json_key_lcase_first, NumberOrString},
     CONFIG,
@@ -132,6 +131,7 @@ struct NewCollectionData {
     name: String,
     groups: Vec<NewCollectionObjectData>,
     users: Vec<NewCollectionObjectData>,
+    id: Option<String>,
     external_id: Option<String>,
 }
 
@@ -1602,40 +1602,43 @@ async fn post_org_import(
     // TODO: See if we can optimize the whole cipher adding/importing and prevent duplicate code and checks.
     Cipher::validate_cipher_data(&data.ciphers)?;
 
-    let mut collections = Vec::new();
+    let existing_collections: HashSet<Option<String>> =
+        Collection::find_by_organization(&org_id, &mut conn).await.into_iter().map(|c| (Some(c.uuid))).collect();
+    let mut collections: Vec<String> = Vec::with_capacity(data.collections.len());
     for coll in data.collections {
-        let collection = Collection::new(org_id.clone(), coll.name, coll.external_id);
-        if collection.save(&mut conn).await.is_err() {
-            collections.push(Err(Error::new("Failed to create Collection", "Failed to create Collection")));
+        let collection_uuid = if existing_collections.contains(&coll.id) {
+            coll.id.unwrap()
         } else {
-            collections.push(Ok(collection));
-        }
+            let new_collection = Collection::new(org_id.clone(), coll.name, coll.external_id);
+            new_collection.save(&mut conn).await?;
+            new_collection.uuid
+        };
+
+        collections.push(collection_uuid);
     }
 
     // Read the relations between collections and ciphers
-    let mut relations = Vec::new();
+    // Ciphers can be in multiple collections at the same time
+    let mut relations = Vec::with_capacity(data.collection_relationships.len());
     for relation in data.collection_relationships {
         relations.push((relation.key, relation.value));
     }
 
     let headers: Headers = headers.into();
 
-    let mut ciphers = Vec::new();
-    for cipher_data in data.ciphers {
+    let mut ciphers: Vec<String> = Vec::with_capacity(data.ciphers.len());
+    for mut cipher_data in data.ciphers {
+        // Always clear folder_id's via an organization import
+        cipher_data.folder_id = None;
         let mut cipher = Cipher::new(cipher_data.r#type, cipher_data.name.clone());
         update_cipher_from_data(&mut cipher, cipher_data, &headers, None, &mut conn, &nt, UpdateType::None).await.ok();
-        ciphers.push(cipher);
+        ciphers.push(cipher.uuid);
     }
 
     // Assign the collections
     for (cipher_index, coll_index) in relations {
-        let cipher_id = &ciphers[cipher_index].uuid;
-        let coll = &collections[coll_index];
-        let coll_id = match coll {
-            Ok(coll) => coll.uuid.as_str(),
-            Err(_) => err!("Failed to assign to collection"),
-        };
-
+        let cipher_id = &ciphers[cipher_index];
+        let coll_id = &collections[coll_index];
         CollectionCipher::save(cipher_id, coll_id, &mut conn).await?;
     }
 
@@ -2357,14 +2360,14 @@ async fn _restore_organization_user(
 }
 
 #[get("/organizations/<org_id>/groups")]
-async fn get_groups(org_id: &str, headers: ManagerHeadersLoose, mut conn: DbConn) -> JsonResult {
+async fn get_groups(org_id: &str, _headers: ManagerHeadersLoose, mut conn: DbConn) -> JsonResult {
     let groups: Vec<Value> = if CONFIG.org_groups_enabled() {
         // Group::find_by_organization(&org_id, &mut conn).await.iter().map(Group::to_json).collect::<Value>()
         let groups = Group::find_by_organization(org_id, &mut conn).await;
         let mut groups_json = Vec::with_capacity(groups.len());
 
         for g in groups {
-            groups_json.push(g.to_json_details(&headers.org_user.atype, &mut conn).await)
+            groups_json.push(g.to_json_details(&mut conn).await)
         }
         groups_json
     } else {
@@ -2552,7 +2555,7 @@ async fn add_update_group(
 }
 
 #[get("/organizations/<_org_id>/groups/<group_id>/details")]
-async fn get_group_details(_org_id: &str, group_id: &str, headers: AdminHeaders, mut conn: DbConn) -> JsonResult {
+async fn get_group_details(_org_id: &str, group_id: &str, _headers: AdminHeaders, mut conn: DbConn) -> JsonResult {
     if !CONFIG.org_groups_enabled() {
         err!("Group support is disabled");
     }
@@ -2562,7 +2565,7 @@ async fn get_group_details(_org_id: &str, group_id: &str, headers: AdminHeaders,
         _ => err!("Group could not be found!"),
     };
 
-    Ok(Json(group.to_json_details(&(headers.org_user_type as i32), &mut conn).await))
+    Ok(Json(group.to_json_details(&mut conn).await))
 }
 
 #[post("/organizations/<org_id>/groups/<group_id>/delete")]
@@ -3051,18 +3054,20 @@ async fn put_reset_password_enrollment(
 //       We need to convert all keys so they have the first character to be a lowercase.
 //       Else the export will be just an empty JSON file.
 #[get("/organizations/<org_id>/export")]
-async fn get_org_export(org_id: &str, headers: AdminHeaders, mut conn: DbConn) -> Json<Value> {
-    use semver::{Version, VersionReq};
-
+async fn get_org_export(
+    org_id: &str,
+    headers: AdminHeaders,
+    client_version: Option<ClientVersion>,
+    mut conn: DbConn,
+) -> Json<Value> {
     // Since version v2023.1.0 the format of the export is different.
     // Also, this endpoint was created since v2022.9.0.
     // Therefore, we will check for any version smaller then v2023.1.0 and return a different response.
     // If we can't determine the version, we will use the latest default v2023.1.0 and higher.
     // https://github.com/bitwarden/server/blob/9ca93381ce416454734418c3a9f99ab49747f1b6/src/Api/Controllers/OrganizationExportController.cs#L44
-    let use_list_response_model = if let Some(client_version) = headers.client_version {
-        let ver_match = VersionReq::parse("<2023.1.0").unwrap();
-        let client_version = Version::parse(&client_version).unwrap();
-        ver_match.matches(&client_version)
+    let use_list_response_model = if let Some(client_version) = client_version {
+        let ver_match = semver::VersionReq::parse("<2023.1.0").unwrap();
+        ver_match.matches(&client_version.0)
     } else {
         false
     };

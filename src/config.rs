@@ -501,11 +501,11 @@ make_config! {
         /// Password iterations |> Number of server-side passwords hashing iterations for the password hash.
         /// The default for new users. If changed, it will be updated during login for existing users.
         password_iterations:    i32,    true,   def,    600_000;
-        /// Allow password hints |> Controls whether users can set password hints. This setting applies globally to all users.
+        /// Allow password hints |> Controls whether users can set or show password hints. This setting applies globally to all users.
         password_hints_allowed: bool,   true,   def,    true;
-        /// Show password hint |> Controls whether a password hint should be shown directly in the web page
-        /// if SMTP service is not configured. Not recommended for publicly-accessible instances as this
-        /// provides unauthenticated access to potentially sensitive data.
+        /// Show password hint (Know the risks!) |> Controls whether a password hint should be shown directly in the web page
+        /// if SMTP service is not configured and password hints are allowed. Not recommended for publicly-accessible instances
+        /// because this provides unauthenticated access to potentially sensitive data.
         show_password_hint:     bool,   true,   def,    false;
 
         /// Organization invitation auto accept |> Activated if email is disabled
@@ -870,8 +870,15 @@ fn validate_config(cfg: &ConfigItems) -> Result<(), Error> {
     }
 
     // TODO: deal with deprecated flags so they can be removed from this list, cf. #4263
-    const KNOWN_FLAGS: &[&str] =
-        &["autofill-overlay", "autofill-v2", "browser-fileless-import", "extension-refresh", "fido2-vault-credentials"];
+    const KNOWN_FLAGS: &[&str] = &[
+        "autofill-overlay",
+        "autofill-v2",
+        "browser-fileless-import",
+        "extension-refresh",
+        "fido2-vault-credentials",
+        "ssh-key-vault-item",
+        "ssh-agent",
+    ];
     let configured_flags = parse_experimental_client_feature_flags(&cfg.experimental_client_feature_flags);
     let invalid_flags: Vec<_> = configured_flags.keys().filter(|flag| !KNOWN_FLAGS.contains(&flag.as_str())).collect();
     if !invalid_flags.is_empty() {
@@ -1415,9 +1422,14 @@ impl Config {
             let hb = load_templates(CONFIG.templates_folder());
             hb.render(name, data).map_err(Into::into)
         } else {
-            let hb = &CONFIG.inner.read().unwrap().templates;
+            let hb = &self.inner.read().unwrap().templates;
             hb.render(name, data).map_err(Into::into)
         }
+    }
+
+    pub fn render_fallback_template<T: serde::ser::Serialize>(&self, name: &str, data: &T) -> Result<String, Error> {
+        let hb = &self.inner.read().unwrap().templates;
+        hb.render(&format!("fallback_{name}"), data).map_err(Into::into)
     }
 
     pub fn set_rocket_shutdown_handle(&self, handle: rocket::Shutdown) {
@@ -1478,6 +1490,11 @@ where
             reg!($name);
             reg!(concat!($name, $ext));
         }};
+        (@withfallback $name:expr) => {{
+            let template = include_str!(concat!("static/templates/", $name, ".hbs"));
+            hb.register_template_string($name, template).unwrap();
+            hb.register_template_string(concat!("fallback_", $name), template).unwrap();
+        }};
     }
 
     // First register default templates here
@@ -1523,6 +1540,9 @@ where
     reg!("admin/diagnostics");
 
     reg!("404");
+
+    reg!(@withfallback "scss/vaultwarden.scss");
+    reg!("scss/user.vaultwarden.scss");
 
     // And then load user templates to overwrite the defaults
     // Use .hbs extension for the files

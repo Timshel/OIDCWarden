@@ -10,6 +10,7 @@ use rocket::{
 };
 use serde_json::Value;
 
+use crate::auth::ClientVersion;
 use crate::util::NumberOrString;
 use crate::{
     api::{self, core::log_event, EmptyResult, JsonResult, Notify, PasswordOrOtpData, UpdateType},
@@ -104,11 +105,27 @@ struct SyncData {
 }
 
 #[get("/sync?<data..>")]
-async fn sync(data: SyncData, headers: Headers, mut conn: DbConn) -> Json<Value> {
+async fn sync(
+    data: SyncData,
+    headers: Headers,
+    client_version: Option<ClientVersion>,
+    mut conn: DbConn,
+) -> Json<Value> {
     let user_json = headers.user.to_json(&mut conn).await;
 
     // Get all ciphers which are visible by the user
-    let ciphers = Cipher::find_by_user_visible(&headers.user.uuid, &mut conn).await;
+    let mut ciphers = Cipher::find_by_user_visible(&headers.user.uuid, &mut conn).await;
+
+    // Filter out SSH keys if the client version is less than 2024.12.0
+    let show_ssh_keys = if let Some(client_version) = client_version {
+        let ver_match = semver::VersionReq::parse(">=2024.12.0").unwrap();
+        ver_match.matches(&client_version.0)
+    } else {
+        false
+    };
+    if !show_ssh_keys {
+        ciphers.retain(|c| c.atype != 5);
+    }
 
     let cipher_sync_data = CipherSyncData::new(&headers.user.uuid, CipherSyncType::User, &mut conn).await;
 
@@ -205,7 +222,7 @@ pub struct CipherData {
     // Id is optional as it is included only in bulk share
     pub id: Option<String>,
     // Folder id is not included in import
-    folder_id: Option<String>,
+    pub folder_id: Option<String>,
     // TODO: Some of these might appear all the time, no need for Option
     #[serde(alias = "organizationID")]
     pub organization_id: Option<String>,
@@ -216,7 +233,8 @@ pub struct CipherData {
     Login = 1,
     SecureNote = 2,
     Card = 3,
-    Identity = 4
+    Identity = 4,
+    SshKey = 5
     */
     pub r#type: i32,
     pub name: String,
@@ -228,6 +246,7 @@ pub struct CipherData {
     secure_note: Option<Value>,
     card: Option<Value>,
     identity: Option<Value>,
+    ssh_key: Option<Value>,
 
     favorite: Option<bool>,
     reprompt: Option<i32>,
@@ -469,6 +488,7 @@ pub async fn update_cipher_from_data(
         2 => data.secure_note,
         3 => data.card,
         4 => data.identity,
+        5 => data.ssh_key,
         _ => err!("Invalid type"),
     };
 
@@ -565,11 +585,11 @@ async fn post_ciphers_import(
     Cipher::validate_cipher_data(&data.ciphers)?;
 
     // Read and create the folders
-    let existing_folders: Vec<String> =
-        Folder::find_by_user(&headers.user.uuid, &mut conn).await.into_iter().map(|f| f.uuid).collect();
+    let existing_folders: HashSet<Option<String>> =
+        Folder::find_by_user(&headers.user.uuid, &mut conn).await.into_iter().map(|f| Some(f.uuid)).collect();
     let mut folders: Vec<String> = Vec::with_capacity(data.folders.len());
     for folder in data.folders.into_iter() {
-        let folder_uuid = if folder.id.is_some() && existing_folders.contains(folder.id.as_ref().unwrap()) {
+        let folder_uuid = if existing_folders.contains(&folder.id) {
             folder.id.unwrap()
         } else {
             let mut new_folder = Folder::new(headers.user.uuid.clone(), folder.name);
@@ -581,8 +601,8 @@ async fn post_ciphers_import(
     }
 
     // Read the relations between folders and ciphers
+    // Ciphers can only be in one folder at the same time
     let mut relations_map = HashMap::with_capacity(data.folder_relationships.len());
-
     for relation in data.folder_relationships {
         relations_map.insert(relation.key, relation.value);
     }
