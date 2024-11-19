@@ -1,5 +1,8 @@
 # Changelog
 
+# v2024.10.2-3
+- Integrate change from `Vaultwarden` [1.32.5](https://github.com/dani-garcia/vaultwarden/tree/1.32.5)
+
 # v2024.10.2-2
 - Integrate change from `Vaultwarden` [1.32.4](https://github.com/dani-garcia/vaultwarden/tree/1.32.4)
 
