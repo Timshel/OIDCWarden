@@ -1,5 +1,8 @@
 # Changelog
 
+# v2024.10.2-4
+- Fix docker images to use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2024.10.2-1`
+
 # v2024.10.2-3
 - Integrate change from `Vaultwarden` [1.32.5](https://github.com/dani-garcia/vaultwarden/tree/1.32.5)
 
