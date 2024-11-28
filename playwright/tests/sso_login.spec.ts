@@ -72,7 +72,7 @@ test('SSO login Failure', async ({ page }, testInfo: TestInfo) => {
     await page.getByRole('link', { name: /Enterprise single sign-on/ }).click();
 
     // SSO identifier page
-    await page.getByLabel('SSO identifier').fill('Random');
+    await expect(page.getByRole('heading', { name: 'Enterprise single sign-on' })).toBeVisible();
     await page.getByRole('button', { name: 'Log in' }).click();
 
     // An error should appear

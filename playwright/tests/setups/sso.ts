@@ -24,6 +24,8 @@ export async function logNewUser(
             if( !options.override ) {
                 await test.step('SSo start page', async () => {
                     await page.getByRole('link', { name: /Enterprise single sign-on/ }).click();
+                    await expect(page.getByRole('heading', { name: 'Enterprise single sign-on' })).toBeVisible();
+                    await page.getByRole('button', { name: 'Log in' }).click();
                 });
             }
 
@@ -82,6 +84,8 @@ export async function logUser(
             if( !options.override ) {
                 await test.step('SSo start page', async () => {
                     await page.getByRole('link', { name: /Enterprise single sign-on/ }).click();
+                    await expect(page.getByRole('heading', { name: 'Enterprise single sign-on' })).toBeVisible();
+                    await page.getByRole('button', { name: 'Log in' }).click();
                 });
             }
 
