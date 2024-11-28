@@ -164,7 +164,12 @@ async fn _sso_login(
     crate::ratelimit::check_limit_login(&ip.ip)?;
 
     let code = match data.code.as_ref() {
-        None => err!("Got no code in OIDC data"),
+        None => err!(
+            "Got no code in OIDC data",
+            ErrorEvent {
+                event: EventType::UserFailedLogIn
+            }
+        ),
         Some(code) => code,
     };
 
@@ -178,14 +183,33 @@ async fn _sso_login(
                 "Login failure ({}), existing non SSO user ({}) with same email ({}) and association is disabled",
                 user_infos.identifier, user.uuid, user.email
             );
-            err_silent!("Existing non SSO user with same email")
+            err_silent!(
+                "Existing non SSO user with same email",
+                ErrorEvent {
+                    event: EventType::UserFailedLogIn
+                }
+            )
         }
         Some((user, Some(sso_user))) if sso_user.identifier != user_infos.identifier => {
             error!(
                 "Login failure ({}), existing SSO user ({}) with same email ({})",
                 user_infos.identifier, user.uuid, user.email
             );
-            err_silent!("Existing SSO user with same email")
+            err_silent!(
+                "Existing SSO user with same email",
+                ErrorEvent {
+                    event: EventType::UserFailedLogIn
+                }
+            )
+        }
+        Some((user, _)) if !user.enabled => {
+            err!(
+                "This user has been disabled",
+                format!("IP: {}. Username: {}.", ip.ip, user.name),
+                ErrorEvent {
+                    event: EventType::UserFailedLogIn
+                }
+            )
         }
         Some((user, sso_user)) => {
             let (mut device, new_device) = get_device(&data, conn, &user).await?;
@@ -202,15 +226,28 @@ async fn _sso_login(
     let (user, mut device, new_device, twofactor_token, sso_user) = match user_data {
         None => {
             if !CONFIG.is_email_domain_allowed(&user_infos.email) {
-                err!("Email domain not allowed");
+                err!(
+                    "Email domain not allowed",
+                    ErrorEvent {
+                        event: EventType::UserFailedLogIn
+                    }
+                );
             }
 
             match user_infos.email_verified {
                 None if !CONFIG.sso_allow_unknown_email_verification() => err!(
                     "Your provider does not send email verification status.\n\
-                    You will need to change the server configuration (check `SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION`) to log in."
+                    You will need to change the server configuration (check `SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION`) to log in.",
+                    ErrorEvent {
+                        event: EventType::UserFailedLogIn
+                    }
                 ),
-                Some(false) => err!("You need to verify your email with your provider before you can log in"),
+                Some(false) => err!(
+                    "You need to verify your email with your provider before you can log in",
+                    ErrorEvent {
+                        event: EventType::UserFailedLogIn
+                    }
+                ),
                 _ => (),
             }
 
