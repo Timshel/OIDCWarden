@@ -1,5 +1,8 @@
 # Changelog
 
+# v2024.10.2-5
+- Base64 encode state before sending it to providers to prevent issues
+
 # v2024.10.2-4
 - Fix docker images to use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2024.10.2-1`
 
