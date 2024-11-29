@@ -60,7 +60,7 @@ test('Non SSO login Failure', async ({ page, browser }, testInfo: TestInfo) => {
 
 test('SSO login Failure', async ({ page }, testInfo: TestInfo) => {
     await utils.restartVault(page, testInfo, {
-        SSO_ENABLED: false
+        SSO_ENABLED: false,
     }, false);
 
     // Landing page
@@ -72,7 +72,6 @@ test('SSO login Failure', async ({ page }, testInfo: TestInfo) => {
     await page.getByRole('link', { name: /Enterprise single sign-on/ }).click();
 
     // SSO identifier page
-    await expect(page.getByRole('heading', { name: 'Enterprise single sign-on' })).toBeVisible();
     await page.getByRole('button', { name: 'Log in' }).click();
 
     // An error should appear

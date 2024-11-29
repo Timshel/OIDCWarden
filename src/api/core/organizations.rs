@@ -811,6 +811,7 @@ struct OrgDomainDetails {
 
 // Returning a Domain/Organization here allow to prefill it and prevent prompting the user
 // So we either return an Org name associated to the user or a dummy value.
+// The `verifiedDate` is required but the value ATM is ignored.
 #[post("/organizations/domain/sso/details", data = "<data>")]
 async fn get_org_domain_sso_details(data: Json<OrgDomainDetails>, mut conn: DbConn) -> JsonResult {
     let data: OrgDomainDetails = data.into_inner();
@@ -822,7 +823,8 @@ async fn get_org_domain_sso_details(data: Json<OrgDomainDetails>, mut conn: DbCo
 
     Ok(Json(json!({
         "organizationIdentifier": identifier,
-        "ssoAvailable": CONFIG.sso_enabled()
+        "ssoAvailable": CONFIG.sso_enabled(),
+        "verifiedDate": crate::util::format_date(&chrono::Utc::now().naive_utc()),
     })))
 }
 
