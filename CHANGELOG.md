@@ -1,5 +1,9 @@
 # Changelog
 
+# v2024.10.2-6
+- Prevent disabled User from logging with SSO
+- Fix SSO organization Identifier prefill
+
 # v2024.10.2-5
 - Base64 encode state before sending it to providers to prevent issues
 
