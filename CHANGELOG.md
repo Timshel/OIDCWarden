@@ -1,5 +1,8 @@
 # Changelog
 
+# v2024.10.2-7
+- Integrate change from `Vaultwarden` [1.32.6](https://github.com/dani-garcia/vaultwarden/tree/1.32.5)
+
 # v2024.10.2-6
 - Prevent disabled User from logging with SSO
 - Fix SSO organization Identifier prefill
