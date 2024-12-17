@@ -12,7 +12,12 @@ variable "DB" {
   default = null
 }
 
-// The commit hash of of the current commit this build was triggered on
+// The repository this build was triggered from
+variable "SOURCE_REPOSITORY_URL" {
+  default = null
+}
+
+// The commit hash of the current commit this build was triggered on
 variable "SOURCE_COMMIT" {
   default = "local"
 }
