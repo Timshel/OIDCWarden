@@ -39,7 +39,7 @@ test('Non SSO login', async ({ page }) => {
 });
 
 test('Non SSO login impossible', async ({ page, browser }, testInfo: TestInfo) => {
-    await utils.restartVaultwarden(page, testInfo, {
+    await utils.restartVault(page, testInfo, {
         SSO_ENABLED: true,
         SSO_ONLY: true
     }, false);
@@ -54,7 +54,7 @@ test('Non SSO login impossible', async ({ page, browser }, testInfo: TestInfo) =
 });
 
 test('No SSO login', async ({ page }, testInfo: TestInfo) => {
-    await utils.restartVaultwarden(page, testInfo, {
+    await utils.restartVault(page, testInfo, {
         SSO_ENABLED: false
     }, false);
 

@@ -70,7 +70,7 @@ test('Login', async ({ context, page }) => {
     });
 
     await test.step('verify email', async () => {
-        await page.getByText('Verify your account\'s email').click();
+        await page.getByRole('button', { name: "Send email" }).click();
         await expect(page.getByTestId("toast-message")).toHaveText(/Check your email inbox for a verification link/);
         await page.locator('#toast-container').getByRole('button').click();
         await expect(page.getByTestId("toast-message")).toHaveCount(0);

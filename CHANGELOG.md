@@ -1,25 +1,37 @@
 # Changelog
 
+# v2024.12.1-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2024.12.1-2`
+- Add dynamic CSS support
+
 # v2024.10.2-7
+
 - Integrate change from `Vaultwarden` [1.32.6](https://github.com/dani-garcia/vaultwarden/tree/1.32.5)
 
 # v2024.10.2-6
+
 - Prevent disabled User from logging with SSO
 - Fix SSO organization Identifier prefill
 
 # v2024.10.2-5
+
 - Base64 encode state before sending it to providers to prevent issues
 
 # v2024.10.2-4
+
 - Fix docker images to use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2024.10.2-1`
 
 # v2024.10.2-3
+
 - Integrate change from `Vaultwarden` [1.32.5](https://github.com/dani-garcia/vaultwarden/tree/1.32.5)
 
 # v2024.10.2-2
+
 - Integrate change from `Vaultwarden` [1.32.4](https://github.com/dani-garcia/vaultwarden/tree/1.32.4)
 
 # v2024.10.2-1
+
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2024.10.2-1`
 - :warning: Breaking change :warning:
   - `SSO_PKCE` is now on by default, if you are running Zitadel you'll probably need to set it to `false` since it's incompatible with `CLIENT_SECRET`

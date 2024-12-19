@@ -61,9 +61,7 @@ test('Authenticator 2fa', async ({ context, page }) => {
     await test.step('logout', async () => {
         await page.getByRole('button', { name: users.user1.name }).click();
         await page.getByRole('menuitem', { name: 'Log out' }).click();
-        await expect(page.getByTestId("toast-title")).toHaveText("Logged out");
-        await page.locator('#toast-container').getByRole('button').click();
-        await expect(page.getByTestId("toast-title")).toHaveCount(0);
+        await expect(page.getByRole('heading', { name: 'Log in' })).toBeVisible();
     });
 
     await test.step('login', async () => {

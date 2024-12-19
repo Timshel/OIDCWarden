@@ -68,7 +68,7 @@ app-frontend-layout > app-login > form > div > div > div > p {
 
 {{#if sso_only}}
 /* Hide Master password login */
-app-login form > div > div > div > div > div:has(button) {
+.master-password-login {
   @extend %vw-hide;
 }
 {{/if}}
