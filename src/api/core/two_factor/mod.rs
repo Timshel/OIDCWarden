@@ -130,25 +130,22 @@ async fn _generate_recover_code(user: &mut User, conn: &mut DbConn) {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct DisableTwoFactorData {
-    master_password_hash: Option<String>,
-    otp: Option<String>,
+    master_password_hash: String,
     r#type: NumberOrString,
 }
 
 #[post("/two-factor/disable", data = "<data>")]
 async fn disable_twofactor(data: Json<DisableTwoFactorData>, headers: Headers, mut conn: DbConn) -> JsonResult {
-    let data: DisableTwoFactorData = data.into_inner();
     let user = headers.user;
-
-    // Delete directly after a valid token has been provided
-    PasswordOrOtpData {
-        master_password_hash: data.master_password_hash,
-        otp: data.otp,
-    }
-    .validate(&user, true, &mut conn)
-    .await?;
-
     let type_ = data.r#type.into_i32()?;
+
+    if !user.check_valid_password(&data.master_password_hash) {
+        err!("Invalid password");
+    }
+
+    if type_ != TwoFactorType::Email as i32 {
+        err!("Invalid 2FA type");
+    }
 
     if let Some(twofactor) = TwoFactor::find_by_user_and_type(&user.uuid, type_, &mut conn).await {
         twofactor.delete(&mut conn).await?;
