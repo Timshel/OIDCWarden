@@ -239,6 +239,7 @@ macro_rules! make_config {
                 // Besides Pass, only String types will be masked via _privacy_mask.
                 const PRIVACY_CONFIG: &[&str] = &[
                     "allowed_iframe_ancestors",
+                    "allowed_connect_src",
                     "database_url",
                     "domain_origin",
                     "domain_path",
@@ -249,6 +250,7 @@ macro_rules! make_config {
                     "smtp_from",
                     "smtp_host",
                     "smtp_username",
+                    "_smtp_img_src",
                 ];
 
                 let cfg = {
@@ -616,6 +618,9 @@ make_config! {
         /// Allowed iframe ancestors (Know the risks!) |> Allows other domains to embed the web vault into an iframe, useful for embedding into secure intranets
         allowed_iframe_ancestors: String, true, def,    String::new();
 
+        /// Allowed connect-src (Know the risks!) |> Allows other domains to URLs which can be loaded using script interfaces like the Forwarded email alias feature
+        allowed_connect_src:      String, true, def,    String::new();
+
         /// Seconds between login requests |> Number of seconds, on average, between login and 2FA requests from the same IP address before rate limiting kicks in
         login_ratelimit_seconds:       u64, false, def, 60;
         /// Max burst size for login requests |> Allow a burst of requests of up to this size, while maintaining the average indicated by `login_ratelimit_seconds`. Note that this applies to both the login and the 2FA, so it's recommended to allow a burst size of at least 2
@@ -688,7 +693,7 @@ make_config! {
         sso_organizations_id_mapping:   String, true,   def,    String::new();
         /// Grant acceess to all collections
         sso_organizations_all_collections: bool, true,  def,   true;
-        /// Client cache for discovery endpoint. |> Duration in seconds (0 or less to disable). More details: https://github.com/dani-garcia/vaultwarden/blob/sso-support/SSO.md#client-cache
+        /// Client cache for discovery endpoint. |> Duration in seconds (0 or less to disable). More details: https://github.com/timshel/OIDCWarden/blob/main/SSO.md#client-cache
         sso_client_cache_expiration:    u64,    true,   def,    0;
         /// Log all tokens |> `LOG_LEVEL=debug` or `LOG_LEVEL=info,vaultwarden::sso=debug` is required
         sso_debug_tokens:               bool,   true,   def,    false;
@@ -817,6 +822,13 @@ fn validate_config(cfg: &ConfigItems) -> Result<(), Error> {
         err!(
             "DOMAIN variable needs to contain the protocol (http, https). Use 'http[s]://bw.example.com' instead of 'bw.example.com'"
         );
+    }
+
+    let connect_src = cfg.allowed_connect_src.to_lowercase();
+    for url in connect_src.split_whitespace() {
+        if !url.starts_with("https://") || Url::parse(url).is_err() {
+            err!("ALLOWED_CONNECT_SRC variable contains one or more invalid URLs. Only FQDN's starting with https are allowed");
+        }
     }
 
     let whitelist = &cfg.signups_domains_whitelist;

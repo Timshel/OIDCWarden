@@ -499,11 +499,11 @@ struct UserOrgTypeData {
 async fn update_user_org_type(data: Json<UserOrgTypeData>, token: AdminToken, mut conn: DbConn) -> EmptyResult {
     let data: UserOrgTypeData = data.into_inner();
 
-    let mut user_to_edit =
-        match UserOrganization::find_by_user_and_org(&data.user_uuid, &data.org_uuid, &mut conn).await {
-            Some(user) => user,
-            None => err!("The specified user isn't member of the organization"),
-        };
+    let Some(mut user_to_edit) =
+        UserOrganization::find_by_user_and_org(&data.user_uuid, &data.org_uuid, &mut conn).await
+    else {
+        err!("The specified user isn't member of the organization")
+    };
 
     let new_type = match UserOrgType::from_str(&data.user_type.into_string()) {
         Some(new_type) => new_type as i32,
@@ -606,9 +606,8 @@ async fn get_json_api<T: DeserializeOwned>(url: &str) -> Result<T, Error> {
 }
 
 async fn has_http_access() -> bool {
-    let req = match make_http_request(Method::HEAD, "https://github.com/dani-garcia/vaultwarden") {
-        Ok(r) => r,
-        Err(_) => return false,
+    let Ok(req) = make_http_request(Method::HEAD, "https://github.com/timshel/OIDCWarden") else {
+        return false;
     };
     match req.send().await {
         Ok(r) => r.status().is_success(),
@@ -624,13 +623,13 @@ async fn get_release_info(has_http_access: bool, running_within_container: bool)
     // If the HTTP Check failed, do not even attempt to check for new versions since we were not able to connect with github.com anyway.
     if has_http_access {
         (
-            match get_json_api::<GitRelease>("https://api.github.com/repos/dani-garcia/vaultwarden/releases/latest")
+            match get_json_api::<GitRelease>("https://api.github.com/repos/timshel/OIDCWarden/releases/latest")
                 .await
             {
                 Ok(r) => r.tag_name,
                 _ => "-".to_string(),
             },
-            match get_json_api::<GitCommit>("https://api.github.com/repos/dani-garcia/vaultwarden/commits/main").await {
+            match get_json_api::<GitCommit>("https://api.github.com/repos/timshel/OIDCWarden/commits/main").await {
                 Ok(mut c) => {
                     c.sha.truncate(8);
                     c.sha
@@ -643,7 +642,7 @@ async fn get_release_info(has_http_access: bool, running_within_container: bool)
                 "-".to_string()
             } else {
                 match get_json_api::<GitRelease>(
-                    "https://api.github.com/repos/dani-garcia/bw_web_builds/releases/latest",
+                    "https://api.github.com/repos/timshel/oidc_web_vault/releases/latest",
                 )
                 .await
                 {
