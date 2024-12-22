@@ -4,10 +4,11 @@
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2024.12.1-2`
 - Add dynamic CSS support
+- Integrate change from `Vaultwarden` [1.32.7](https://github.com/dani-garcia/vaultwarden/tree/1.32.7)
 
 # v2024.10.2-7
 
-- Integrate change from `Vaultwarden` [1.32.6](https://github.com/dani-garcia/vaultwarden/tree/1.32.5)
+- Integrate change from `Vaultwarden` [1.32.6](https://github.com/dani-garcia/vaultwarden/tree/1.32.6)
 
 # v2024.10.2-6
 
