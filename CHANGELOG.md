@@ -1,5 +1,10 @@
 # Changelog
 
+# v2024.12.1-2
+
+- Check stored key before disabling TOTP
+- Restore old TOTP disable logic for old clients
+
 # v2024.12.1-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2024.12.1-2`
