@@ -179,10 +179,9 @@ pub async fn validate_totp_code(
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct DisableAuthenticatorData {
+    key: String,
     master_password_hash: String,
     r#type: NumberOrString,
-    #[allow(dead_code)]
-    key: String,
 }
 
 #[delete("/two-factor/authenticator", data = "<data>")]
@@ -195,9 +194,19 @@ async fn disable_authenticator(data: Json<DisableAuthenticatorData>, headers: He
     }
 
     if let Some(twofactor) = TwoFactor::find_by_user_and_type(&user.uuid, type_, &mut conn).await {
-        twofactor.delete(&mut conn).await?;
-        log_user_event(EventType::UserDisabled2fa as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &mut conn)
+        if twofactor.data == data.key {
+            twofactor.delete(&mut conn).await?;
+            log_user_event(
+                EventType::UserDisabled2fa as i32,
+                &user.uuid,
+                headers.device.atype,
+                &headers.ip.ip,
+                &mut conn,
+            )
             .await;
+        } else {
+            err!(format!("TOTP key for user {} does not match recorded value, cannot deactivate", &user.email));
+        }
     }
 
     if TwoFactor::find_by_user(&user.uuid, &mut conn).await.is_empty() {
