@@ -13,7 +13,9 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
         port: process.env.MAILDEV_SMTP_PORT,
         web: { port: process.env.MAILDEV_HTTP_PORT },
     })
+
     await mailserver.listen();
+
     await utils.startVault(browser, testInfo, {
         SMTP_HOST: process.env.MAILDEV_HOST,
         SMTP_FROM: process.env.PW_SMTP_FROM,

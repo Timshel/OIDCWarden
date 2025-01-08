@@ -43,6 +43,7 @@ export async function logNewUser(
 
             await test.step('Default vault page', async () => {
                 await expect(page).toHaveTitle(/Vaults/);
+                await expect(page.getByTitle('All vaults', { exact: true })).toBeVisible();
             });
 
             if( mailBuffer ){
@@ -94,12 +95,14 @@ export async function logUser(
 
             await test.step('Unlock vault', async () => {
                 await expect(page).toHaveTitle('OIDCWarden Web');
-                await page.getByLabel('Master password').fill(user.password);
+                await expect(page.getByRole('heading', { name: 'Your vault is locked' })).toBeVisible();
+                await page.getByLabel('Master password', { exact: true }).fill(user.password);
                 await page.getByRole('button', { name: 'Unlock' }).click();
             });
 
             await test.step('Default vault page', async () => {
                 await expect(page).toHaveTitle(/Vaults/);
+                await expect(page.getByTitle('All vaults', { exact: true })).toBeVisible();
             });
 
             if( options.emails ){
