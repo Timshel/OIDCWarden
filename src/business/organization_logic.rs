@@ -65,14 +65,18 @@ pub async fn invite(
     if CONFIG.mail_enabled() {
         match user_org_status {
             UserOrgStatus::Invited => {
-                mail::send_invite(
+                if let Err(e) = mail::send_invite(
                     user,
                     Some(org.uuid.clone()),
-                    Some(new_uo.uuid),
+                    Some(new_uo.uuid.clone()),
                     &org.name,
                     new_uo.invited_by_email.clone(),
                 )
-                .await?
+                .await
+                {
+                    new_uo.delete(conn).await?;
+                    err!(format!("Error sending invite: {e:?} "));
+                }
             }
             UserOrgStatus::Accepted => {
                 mail::send_enrolled(&user.email, &org.name).await?;

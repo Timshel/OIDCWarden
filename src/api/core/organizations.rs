@@ -50,6 +50,7 @@ pub fn routes() -> Vec<Route> {
         confirm_invite,
         bulk_confirm_invite,
         accept_invite,
+        get_org_user_mini_details,
         get_user,
         edit_user,
         put_organization_user,
@@ -80,6 +81,7 @@ pub fn routes() -> Vec<Route> {
         restore_organization_user,
         bulk_restore_organization_user,
         get_groups,
+        get_groups_details,
         post_groups,
         get_group,
         put_group,
@@ -102,6 +104,7 @@ pub fn routes() -> Vec<Route> {
         api_key,
         rotate_api_key,
         get_auto_enroll_status,
+        get_billing_metadata,
     ]
 }
 
@@ -344,7 +347,14 @@ async fn get_org_collections_details(org_id: &str, headers: ManagerHeadersLoose,
     };
 
     // get all collection memberships for the current organization
-    let coll_users = CollectionUser::find_by_organization(org_id, &mut conn).await;
+    let coll_users = CollectionUser::find_by_organization_swap_user_uuid_with_org_user_uuid(org_id, &mut conn).await;
+    // Generate a HashMap to get the correct UserOrgType per user to determine the manage permission
+    // We use the uuid instead of the user_uuid here, since that is what is used in CollectionUser
+    let users_org_type: HashMap<String, i32> = UserOrganization::find_confirmed_by_org(org_id, &mut conn)
+        .await
+        .into_iter()
+        .map(|uo| (uo.uuid, uo.atype))
+        .collect();
 
     // check if current user has full access to the organization (either directly or via any group)
     let has_full_access_to_org = user_org.access_all
@@ -358,11 +368,22 @@ async fn get_org_collections_details(org_id: &str, headers: ManagerHeadersLoose,
             || (CONFIG.org_groups_enabled()
                 && GroupUser::has_access_to_collection_by_member(&col.uuid, &user_org.uuid, &mut conn).await);
 
+        // Not assigned collections should not be returned
+        if !assigned {
+            continue;
+        }
+
         // get the users assigned directly to the given collection
         let users: Vec<Value> = coll_users
             .iter()
             .filter(|collection_user| collection_user.collection_uuid == col.uuid)
-            .map(|collection_user| SelectionReadOnly::to_collection_user_details_read_only(collection_user).to_json())
+            .map(|collection_user| {
+                SelectionReadOnly::to_collection_user_details_read_only(
+                    collection_user,
+                    *users_org_type.get(&collection_user.user_uuid).unwrap_or(&(UserOrgType::User as i32)),
+                )
+                .to_json()
+            })
             .collect();
 
         // get the group details for the given collection
@@ -667,12 +688,24 @@ async fn get_org_collection_detail(
                 Vec::with_capacity(0)
             };
 
+            // Generate a HashMap to get the correct UserOrgType per user to determine the manage permission
+            // We use the uuid instead of the user_uuid here, since that is what is used in CollectionUser
+            let users_org_type: HashMap<String, i32> = UserOrganization::find_confirmed_by_org(org_id, &mut conn)
+                .await
+                .into_iter()
+                .map(|uo| (uo.uuid, uo.atype))
+                .collect();
+
             let users: Vec<Value> =
                 CollectionUser::find_by_collection_swap_user_uuid_with_org_user_uuid(&collection.uuid, &mut conn)
                     .await
                     .iter()
                     .map(|collection_user| {
-                        SelectionReadOnly::to_collection_user_details_read_only(collection_user).to_json()
+                        SelectionReadOnly::to_collection_user_details_read_only(
+                            collection_user,
+                            *users_org_type.get(&collection_user.user_uuid).unwrap_or(&(UserOrgType::User as i32)),
+                        )
+                        .to_json()
                     })
                     .collect();
 
@@ -877,13 +910,19 @@ struct InviteData {
     collections: Option<Vec<CollectionData>>,
     #[serde(default)]
     access_all: bool,
+    #[serde(default)]
+    permissions: HashMap<String, Value>,
 }
 
 #[post("/organizations/<org_id>/users/invite", data = "<data>")]
 async fn send_invite(org_id: &str, data: Json<InviteData>, headers: AdminHeaders, mut conn: DbConn) -> EmptyResult {
-    let data: InviteData = data.into_inner();
+    let mut data: InviteData = data.into_inner();
 
-    let new_type = match UserOrgType::from_str(&data.r#type.into_string()) {
+    // HACK: We need the raw user-type to be sure custom role is selected to determine the access_all permission
+    // The from_str() will convert the custom role type into a manager role type
+    let raw_type = &data.r#type.into_string();
+    // UserOrgType::from_str will convert custom (4) to manager (3)
+    let new_type = match UserOrgType::from_str(raw_type) {
         Some(new_type) => new_type,
         None => err!("Invalid type"),
     };
@@ -892,33 +931,44 @@ async fn send_invite(org_id: &str, data: Json<InviteData>, headers: AdminHeaders
         err!("Only Owners can invite Managers, Admins or Owners")
     }
 
+    // HACK: This converts the Custom role which has the `Manage all collections` box checked into an access_all flag
+    // Since the parent checkbox is not sent to the server we need to check and verify the child checkboxes
+    // If the box is not checked, the user will still be a manager, but not with the access_all permission
+    if raw_type.eq("4")
+        && data.permissions.get("editAnyCollection") == Some(&json!(true))
+        && data.permissions.get("deleteAnyCollection") == Some(&json!(true))
+        && data.permissions.get("createNewCollections") == Some(&json!(true))
+    {
+        data.access_all = true;
+    }
+
+    let mut user_created: bool = false;
+    let collections = data.collections.into_iter().flatten().collect();
+
     let org = match Organization::find_by_uuid(org_id, &mut conn).await {
         Some(org) => org,
         None => err!("Error looking up organization"),
     };
 
-    let collections = data.collections.into_iter().flatten().collect();
-
     for email in data.emails.iter() {
-        let email = email.to_lowercase();
-        let user = match User::find_by_mail(&email, &mut conn).await {
+        let user = match User::find_by_mail(email, &mut conn).await {
             None => {
                 if !CONFIG.invitations_allowed() {
                     err!(format!("User does not exist: {email}"))
                 }
 
-                if !CONFIG.is_email_domain_allowed(&email) {
+                if !CONFIG.is_email_domain_allowed(email) {
                     err!("Email domain not eligible for invitations")
                 }
 
                 if !CONFIG.mail_enabled() {
-                    let invitation = Invitation::new(&email);
-                    invitation.save(&mut conn).await?;
+                    Invitation::new(email).save(&mut conn).await?;
                 }
 
-                let mut user = User::new(email.clone(), None);
-                user.save(&mut conn).await?;
-                user
+                let mut new_user = User::new(email.clone(), None);
+                new_user.save(&mut conn).await?;
+                user_created = true;
+                new_user
             }
             Some(user) => {
                 if UserOrganization::find_by_user_and_org(&user.uuid, org_id, &mut conn).await.is_some() {
@@ -928,7 +978,7 @@ async fn send_invite(org_id: &str, data: Json<InviteData>, headers: AdminHeaders
             }
         };
 
-        organization_logic::invite(
+        if let Err(e) = organization_logic::invite(
             &user,
             &headers.device,
             &headers.ip,
@@ -941,7 +991,15 @@ async fn send_invite(org_id: &str, data: Json<InviteData>, headers: AdminHeaders
             false,
             &mut conn,
         )
-        .await?;
+        .await
+        {
+            // Upon error delete the user, invite and org member records when needed
+            if user_created {
+                user.delete(&mut conn).await?;
+            }
+
+            return Err(e);
+        };
     }
 
     Ok(())
@@ -1019,7 +1077,7 @@ async fn _reinvite_user(org_id: &str, user_org: &str, invited_by_email: &str, co
         let invitation = Invitation::new(&user.email);
         invitation.save(conn).await?;
     } else {
-        let _ = Invitation::take(&user.email, conn).await;
+        Invitation::take(&user.email, conn).await;
         let mut user_org = user_org;
         user_org.status = UserOrgStatus::Accepted as i32;
         user_org.save(conn).await?;
@@ -1259,7 +1317,21 @@ async fn _confirm_invite(
     save_result
 }
 
-#[get("/organizations/<org_id>/users/<org_user_id>?<data..>")]
+#[get("/organizations/<org_id>/users/mini-details", rank = 1)]
+async fn get_org_user_mini_details(org_id: &str, _headers: ManagerHeadersLoose, mut conn: DbConn) -> Json<Value> {
+    let mut users_json = Vec::new();
+    for u in UserOrganization::find_by_org(org_id, &mut conn).await {
+        users_json.push(u.to_json_mini_details(&mut conn).await);
+    }
+
+    Json(json!({
+        "data": users_json,
+        "object": "list",
+        "continuationToken": null,
+    }))
+}
+
+#[get("/organizations/<org_id>/users/<org_user_id>?<data..>", rank = 2)]
 async fn get_user(
     org_id: &str,
     org_user_id: &str,
@@ -1287,6 +1359,8 @@ struct EditUserData {
     groups: Option<Vec<String>>,
     #[serde(default)]
     access_all: bool,
+    #[serde(default)]
+    permissions: HashMap<String, Value>,
 }
 
 #[put("/organizations/<org_id>/users/<org_user_id>", data = "<data>", rank = 1)]
@@ -1308,14 +1382,30 @@ async fn edit_user(
     headers: AdminHeaders,
     mut conn: DbConn,
 ) -> EmptyResult {
-    let data: EditUserData = data.into_inner();
+    let mut data: EditUserData = data.into_inner();
 
-    let Some(new_type) = UserOrgType::from_str(&data.r#type.into_string()) else {
+    // HACK: We need the raw user-type to be sure custom role is selected to determine the access_all permission
+    // The from_str() will convert the custom role type into a manager role type
+    let raw_type = &data.r#type.into_string();
+    // UserOrgType::from_str will convert custom (4) to manager (3)
+    let Some(new_type) = UserOrgType::from_str(raw_type) else {
         err!("Invalid type")
     };
 
-    let Some(mut user_to_edit) = UserOrganization::find_by_uuid_and_org(org_user_id, org_id, &mut conn).await else {
-        err!("The specified user isn't member of the organization")
+    // HACK: This converts the Custom role which has the `Manage all collections` box checked into an access_all flag
+    // Since the parent checkbox is not sent to the server we need to check and verify the child checkboxes
+    // If the box is not checked, the user will still be a manager, but not with the access_all permission
+    if raw_type.eq("4")
+        && data.permissions.get("editAnyCollection") == Some(&json!(true))
+        && data.permissions.get("deleteAnyCollection") == Some(&json!(true))
+        && data.permissions.get("createNewCollections") == Some(&json!(true))
+    {
+        data.access_all = true;
+    }
+
+    let mut user_to_edit = match UserOrganization::find_by_uuid_and_org(org_user_id, org_id, &mut conn).await {
+        Some(user) => user,
+        None => err!("The specified user isn't member of the organization"),
     };
 
     if new_type != user_to_edit.atype
@@ -1929,6 +2019,12 @@ fn get_plans_tax_rates(_headers: Headers) -> Json<Value> {
     Json(_empty_data_json())
 }
 
+#[get("/organizations/<_org_id>/billing/metadata")]
+fn get_billing_metadata(_org_id: &str, _headers: Headers) -> Json<Value> {
+    // Prevent a 404 error, which also causes Javascript errors.
+    Json(_empty_data_json())
+}
+
 fn _empty_data_json() -> Value {
     json!({
         "object": "list",
@@ -1966,6 +2062,9 @@ struct OrgImportData {
     users: Vec<OrgImportUserData>,
 }
 
+/// This function seems to be deprected
+/// It is only used with older directory connectors
+/// TODO: Cleanup Tech debt
 #[post("/organizations/<org_id>/import", data = "<data>")]
 async fn import(org_id: &str, data: Json<OrgImportData>, headers: Headers, mut conn: DbConn) -> EmptyResult {
     let data = data.into_inner();
@@ -2328,6 +2427,11 @@ async fn get_groups(org_id: &str, _headers: ManagerHeadersLoose, mut conn: DbCon
     })))
 }
 
+#[get("/organizations/<org_id>/groups/details", rank = 1)]
+async fn get_groups_details(org_id: &str, headers: ManagerHeadersLoose, conn: DbConn) -> JsonResult {
+    get_groups(org_id, headers, conn).await
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GroupRequest {
@@ -2360,6 +2464,7 @@ struct SelectionReadOnly {
     id: String,
     read_only: bool,
     hide_passwords: bool,
+    manage: bool,
 }
 
 impl SelectionReadOnly {
@@ -2368,18 +2473,31 @@ impl SelectionReadOnly {
     }
 
     pub fn to_collection_group_details_read_only(collection_group: &CollectionGroup) -> SelectionReadOnly {
+        // If both read_only and hide_passwords are false, then manage should be true
+        // You can't have an entry with read_only and manage, or hide_passwords and manage
+        // Or an entry with everything to false
         SelectionReadOnly {
             id: collection_group.groups_uuid.clone(),
             read_only: collection_group.read_only,
             hide_passwords: collection_group.hide_passwords,
+            manage: !collection_group.read_only && !collection_group.hide_passwords,
         }
     }
 
-    pub fn to_collection_user_details_read_only(collection_user: &CollectionUser) -> SelectionReadOnly {
+    pub fn to_collection_user_details_read_only(
+        collection_user: &CollectionUser,
+        user_org_type: i32,
+    ) -> SelectionReadOnly {
+        // Vaultwarden allows manage access for Admins and Owners by default
+        // For managers (Or custom role) it depends if they have read_ony or hide_passwords set to true or not
         SelectionReadOnly {
             id: collection_user.user_uuid.clone(),
             read_only: collection_user.read_only,
             hide_passwords: collection_user.hide_passwords,
+            manage: user_org_type >= UserOrgType::Admin
+                || (user_org_type == UserOrgType::Manager
+                    && !collection_user.read_only
+                    && !collection_user.hide_passwords),
         }
     }
 
@@ -2563,7 +2681,7 @@ async fn bulk_delete_groups(
     Ok(())
 }
 
-#[get("/organizations/<org_id>/groups/<group_id>")]
+#[get("/organizations/<org_id>/groups/<group_id>", rank = 2)]
 async fn get_group(org_id: &str, group_id: &str, _headers: AdminHeaders, mut conn: DbConn) -> JsonResult {
     if !CONFIG.org_groups_enabled() {
         err!("Group support is disabled");
@@ -2933,7 +3051,7 @@ async fn put_reset_password_enrollment(
     if reset_request.reset_password_key.is_none()
         && OrgPolicy::org_is_reset_password_auto_enroll(org_id, &mut conn).await
     {
-        err!("Reset password can't be withdrawed due to an enterprise policy");
+        err!("Reset password can't be withdrawn due to an enterprise policy");
     }
 
     if reset_request.reset_password_key.is_some() {
