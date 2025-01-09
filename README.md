@@ -3,11 +3,40 @@
 Fork from [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
 Goal is to provide an OIDC compatible solution with the ultimate goal of merging features back in Vaultwarden.
 
+A master password is still required and not controlled by the SSO (depending on your point of view this might be a feature ;).
+
+Bitwarden [key connector](https://bitwarden.com/help/about-key-connector) is not supported and due to the [license](https://github.com/bitwarden/key-connector/blob/main/LICENSE.txt) it's highly unlikely that it will ever be:
+
+> 2.1 Commercial Module License. Subject to Your compliance with this Agreement, Bitwarden hereby grants to You a limited, non-exclusive, non-transferable, royalty-free license to use the Commercial Modules for the sole purposes of internal development and internal testing, and only in a non-production environment.
+
 ## Versions
 
 Tagged version are based on Bitwarden web client releases, Ex: `v2024.8.3-1` is the first release compatible with web client `v2024.8.3`.
 \
 See [changelog](CHANGELOG.md) for more details.
+
+## Differences with [timshel/vaultwarden](https://github.com/timshel/vaultwarden)
+
+This project was created in an effort to gain more support to maintain the [PR](https://github.com/dani-garcia/vaultwarden/pull/3899) adding OpenID Connect to Vaultwarden.
+
+Main differences now:
+
+- Renamed project / changed icons
+- Abitility to release `web-vault` independantly of the [bw_web_builds](https://github.com/dani-garcia/bw_web_builds), the [timshel/vaultwarden](https://github.com/timshel/vaultwarden) will stay in sync.
+
+In the long term distribution will focus on a better OpenID flow (`web-vault` `override` distribution).
+
+## Testing
+
+New release are tested using Playwright integration tests. Currenttly tested flow include:
+
+- Login flow using Master password and/or SSO
+- 2FA using email and TOTP
+- Organization invitation using Master password and SSO
+- Organization auto-invitation
+- Role mapping
+
+Goal will be to continue to increase the test coverage but I would recommand to always deploy a specific version and always backup/test before deploying a new release.
 
 ## Configuration
 

@@ -1,5 +1,10 @@
 # Changelog
 
+# testing
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.1.0-1`
+- Integrate latest change from `Vaultwarden` up to [10d12676](https://github.com/dani-garcia/vaultwarden/commit/10d12676)
+
 # v2024.12.1-2
 
 - Check stored key before disabling TOTP
