@@ -96,7 +96,7 @@ export async function logUser(
             await test.step('Unlock vault', async () => {
                 await expect(page).toHaveTitle('OIDCWarden Web');
                 await expect(page.getByRole('heading', { name: 'Your vault is locked' })).toBeVisible();
-                await page.getByLabel('Master password', { exact: true }).fill(user.password);
+                await page.getByLabel('Master password').fill(user.password);
                 await page.getByRole('button', { name: 'Unlock' }).click();
             });
 

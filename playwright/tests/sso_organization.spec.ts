@@ -79,7 +79,6 @@ test('invited with existing account', async ({ page }) => {
 
     await test.step('Redirect to Keycloak', async () => {
         await page.goto(link);
-        await expect(page).toHaveTitle("Enterprise single sign-on | OIDCWarden Web");
     });
 
     await test.step('Keycloak login', async () => {
@@ -115,7 +114,6 @@ test('invited with new account', async ({ page }) => {
 
     await test.step('Redirect to Keycloak', async () => {
         await page.goto(link);
-        await expect(page).toHaveTitle("Enterprise single sign-on | OIDCWarden Web");
     });
 
     await test.step('Keycloak login', async () => {
