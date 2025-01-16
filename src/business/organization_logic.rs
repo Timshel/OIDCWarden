@@ -23,7 +23,9 @@ pub async fn invite(
     let mut membership_status = MembershipStatus::Invited;
 
     // automatically accept existing users if mail is disabled or config if set
-    if !CONFIG.mail_enabled() || CONFIG.organization_invite_auto_accept() {
+    if (!user.password_hash.is_empty() && !CONFIG.mail_enabled())
+        || (CONFIG.sso_enabled() && CONFIG.organization_invite_auto_accept())
+    {
         membership_status = MembershipStatus::Accepted;
     }
 

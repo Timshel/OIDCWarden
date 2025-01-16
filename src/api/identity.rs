@@ -266,10 +266,6 @@ async fn _sso_login(
                     user.name = user_name;
                 }
 
-                if !CONFIG.mail_enabled() {
-                    Membership::confirm_user_invitations(&user.uuid, conn).await?;
-                }
-
                 user.save(conn).await?;
             }
 
