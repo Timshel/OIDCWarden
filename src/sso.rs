@@ -25,7 +25,7 @@ use crate::{
     auth::{AuthMethod, AuthMethodScope, AuthTokens, ClientIp, TokenWrapper, BW_EXPIRATION, DEFAULT_REFRESH_VALIDITY},
     business::organization_logic,
     db::{
-        models::{Device, EventType, Organization, SsoNonce, User, UserOrgType, UserOrganization},
+        models::{Device, EventType, GroupId, Membership, MembershipType, Organization, SsoNonce, User},
         DbConn,
     },
     CONFIG,
@@ -662,10 +662,10 @@ pub async fn sync_groups(
 ) -> ApiResult<()> {
     if CONFIG.sso_organizations_invite() {
         let id_mapping = CONFIG.sso_organizations_id_mapping_map();
-        let db_user_orgs = UserOrganization::find_any_state_by_user(&user.uuid, conn).await;
+        let db_user_orgs = Membership::find_any_state_by_user(&user.uuid, conn).await;
         let user_orgs = db_user_orgs.iter().map(|uo| (uo.org_uuid.clone(), uo)).collect::<HashMap<_, _>>();
 
-        let org_groups: Vec<String> = vec![];
+        let org_groups: Vec<GroupId> = vec![];
         let org_collections: Vec<CollectionData> = vec![];
 
         for group in groups {
@@ -690,7 +690,7 @@ pub async fn sync_groups(
                         device,
                         ip,
                         &org,
-                        UserOrgType::User,
+                        MembershipType::User,
                         &org_groups,
                         CONFIG.sso_organizations_all_collections(),
                         &org_collections,

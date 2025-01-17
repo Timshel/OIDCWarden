@@ -11,6 +11,7 @@ use once_cell::sync::Lazy;
 use reqwest::Url;
 
 use crate::{
+    db::models::OrganizationId,
     db::DbConnType,
     error::Error,
     util::{get_env, get_env_bool, get_web_vault_version, parse_experimental_client_feature_flags},
@@ -1241,7 +1242,7 @@ fn parse_param_list(config: String, separator: char, kv_separator: char) -> Resu
         .collect()
 }
 
-fn parse_as_hashmap(config: String) -> HashMap<String, String> {
+fn parse_as_hashmap<V, F: Fn(String) -> V>(config: String, f: F) -> HashMap<String, V> {
     config
         .split(';')
         .map(|l| l.trim())
@@ -1249,7 +1250,7 @@ fn parse_as_hashmap(config: String) -> HashMap<String, String> {
         .filter_map(|l| {
             let split = l.split(':').collect::<Vec<&str>>();
             match &split[..] {
-                [key, value] => Some(((*key).to_string(), (*value).to_string())),
+                [key, value] => Some(((*key).to_string(), f((*value).to_string()))),
                 _ => {
                     println!("[WARNING] Failed to parse ({l}). Expected key:value;");
                     None
@@ -1476,8 +1477,8 @@ impl Config {
         internal_sso_authorize_extra_params_vec(&self.sso_authorize_extra_params())
     }
 
-    pub fn sso_organizations_id_mapping_map(&self) -> HashMap<String, String> {
-        parse_as_hashmap(self.sso_organizations_id_mapping())
+    pub fn sso_organizations_id_mapping_map(&self) -> HashMap<String, OrganizationId> {
+        parse_as_hashmap(self.sso_organizations_id_mapping(), |str| str.into())
     }
 }
 
