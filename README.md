@@ -32,6 +32,7 @@ New release are tested using Playwright integration tests. Currenttly tested flo
 
 - Login flow using Master password and/or SSO
 - 2FA using email and TOTP
+- Organization and collection creation
 - Organization invitation using Master password and SSO
 - Organization auto-invitation
 - Role mapping
