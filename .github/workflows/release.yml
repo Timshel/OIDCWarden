@@ -240,28 +240,28 @@ jobs:
           # This is needed because using different platforms doesn't trigger a new pull/download
 
           # Extract amd64 binary
-          docker create --name amd64 --platform=linux/amd64 "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}-alpine"
+          docker create --name amd64 --platform=linux/amd64 "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}"
           docker cp amd64:/oidcwarden oidcwarden-amd64-${{ matrix.base_image }}
           docker rm --force amd64
-          docker rmi --force "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}-alpine"
+          docker rmi --force "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}"
 
           # Extract arm64 binary
-          docker create --name arm64 --platform=linux/arm64 "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}-alpine"
+          docker create --name arm64 --platform=linux/arm64 "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}"
           docker cp arm64:/oidcwarden oidcwarden-arm64-${{ matrix.base_image }}
           docker rm --force arm64
-          docker rmi --force "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}-alpine"
+          docker rmi --force "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}"
 
           # Extract armv7 binary
-          docker create --name armv7 --platform=linux/arm/v7 "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}-alpine"
+          docker create --name armv7 --platform=linux/arm/v7 "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}"
           docker cp armv7:/oidcwarden oidcwarden-armv7-${{ matrix.base_image }}
           docker rm --force armv7
-          docker rmi --force "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}-alpine"
+          docker rmi --force "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}"
 
           # Extract armv6 binary
-          docker create --name armv6 --platform=linux/arm/v6 "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}-alpine"
+          docker create --name armv6 --platform=linux/arm/v6 "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}"
           docker cp armv6:/oidcwarden oidcwarden-armv6-${{ matrix.base_image }}
           docker rm --force armv6
-          docker rmi --force "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}-alpine"
+          docker rmi --force "localhost:5000/timshel/oidcwarden:${EXTRACT_TAG}"
 
       # Upload artifacts to Github Actions and Attest the binaries
       - name: "Upload amd64 artifact ${{ matrix.base_image }}"
