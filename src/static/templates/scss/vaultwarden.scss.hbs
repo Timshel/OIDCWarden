@@ -111,14 +111,14 @@ a[routerlink="/sso"] {
 
 {{#unless mail_enabled}}
 /* Hide `Email` 2FA if mail is not enabled */
-app-two-factor-setup ul.list-group.list-group-2fa li.list-group-item:nth-child(1) {
+li.providers-2fa-1 {
   @extend %vw-hide;
 }
 {{/unless}}
 
 {{#unless yubico_enabled}}
 /* Hide `YubiKey OTP security key` 2FA if it is not enabled */
-app-two-factor-setup ul.list-group.list-group-2fa li.list-group-item:nth-child(4) {
+li.providers-2fa-3 {
   @extend %vw-hide;
 }
 {{/unless}}
