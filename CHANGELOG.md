@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.1.0-2
+
+- Use css classes to toggle 2FA providers
+
 # v2025.1.0-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.1.0-1`
