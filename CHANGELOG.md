@@ -1,9 +1,12 @@
 # Changelog
 
-# testing
+# v2025.1.0-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.1.0-1`
-- Integrate latest change from `Vaultwarden` up to [10d12676](https://github.com/dani-garcia/vaultwarden/commit/10d12676)
+  Add dynamic CSS support
+- Integrate latest change from `Vaultwarden` up to [ef2695d](https://github.com/dani-garcia/vaultwarden/commit/ef2695de0cb81feaa5cab8045f0bff71ab3e8c71)
+- Allow set-password only if account is unitialized
+- Disable signups if SSO_ONLY is activated
 
 # v2024.12.1-2
 
