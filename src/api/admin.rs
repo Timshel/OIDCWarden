@@ -103,6 +103,7 @@ const DT_FMT: &str = "%Y-%m-%d %H:%M:%S %Z";
 const BASE_TEMPLATE: &str = "admin/base";
 
 const ACTING_ADMIN_USER: &str = "vaultwarden-admin-00000-000000000000";
+pub const FAKE_ADMIN_UUID: &str = "00000000-0000-0000-0000-000000000000";
 
 pub fn admin_path() -> String {
     format!("{}{}", CONFIG.domain_path(), ADMIN_PATH)
@@ -303,7 +304,9 @@ async fn invite_user(data: Json<InviteData>, _token: AdminToken, mut conn: DbCon
 
     async fn _generate_invite(user: &User, conn: &mut DbConn) -> EmptyResult {
         if CONFIG.mail_enabled() {
-            mail::send_invite(user, None, None, &CONFIG.invitation_org_name(), None).await
+            let org_id: OrganizationId = FAKE_ADMIN_UUID.to_string().into();
+            let member_id: MembershipId = FAKE_ADMIN_UUID.to_string().into();
+            mail::send_invite(user, org_id, member_id, &CONFIG.invitation_org_name(), None).await
         } else {
             let invitation = Invitation::new(&user.email);
             invitation.save(conn).await
@@ -479,7 +482,9 @@ async fn resend_user_invite(user_id: UserId, _token: AdminToken, mut conn: DbCon
         }
 
         if CONFIG.mail_enabled() {
-            mail::send_invite(&user, None, None, &CONFIG.invitation_org_name(), None).await
+            let org_id: OrganizationId = FAKE_ADMIN_UUID.to_string().into();
+            let member_id: MembershipId = FAKE_ADMIN_UUID.to_string().into();
+            mail::send_invite(&user, org_id, member_id, &CONFIG.invitation_org_name(), None).await
         } else {
             Ok(())
         }

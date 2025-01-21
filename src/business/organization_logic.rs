@@ -69,8 +69,8 @@ pub async fn invite(
             MembershipStatus::Invited => {
                 if let Err(e) = mail::send_invite(
                     user,
-                    Some(org.uuid.clone()),
-                    Some(new_member.uuid.clone()),
+                    org.uuid.clone(),
+                    new_member.uuid.clone(),
                     &org.name,
                     new_member.invited_by_email.clone(),
                 )
