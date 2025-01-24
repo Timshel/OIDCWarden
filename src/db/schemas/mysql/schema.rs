@@ -226,6 +226,7 @@ table! {
         collection_uuid -> Text,
         read_only -> Bool,
         hide_passwords -> Bool,
+        manage -> Bool,
     }
 }
 
@@ -313,6 +314,7 @@ table! {
         groups_uuid -> Text,
         read_only -> Bool,
         hide_passwords -> Bool,
+        manage -> Bool,
     }
 }
 

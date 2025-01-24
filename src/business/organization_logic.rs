@@ -40,7 +40,15 @@ pub async fn invite(
             match Collection::find_by_uuid_and_org(&col.id, &org.uuid, conn).await {
                 None => err!("Collection not found in Organization"),
                 Some(collection) => {
-                    CollectionUser::save(&user.uuid, &collection.uuid, col.read_only, col.hide_passwords, conn).await?;
+                    CollectionUser::save(
+                        &user.uuid,
+                        &collection.uuid,
+                        col.read_only,
+                        col.hide_passwords,
+                        col.manage,
+                        conn,
+                    )
+                    .await?;
                 }
             }
         }
