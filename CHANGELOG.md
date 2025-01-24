@@ -1,5 +1,12 @@
 # Changelog
 
+# v2025.1.1-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.1.1-1`
+- Integrate latest change from `Vaultwarden` up to [c0be36a1](https://github.com/dani-garcia/vaultwarden/commit/c0be36a1)
+  \
+  :warning: This includes a DB migration; but the added column comes with a default value so a rollback is still possible.:warning:
+
 # v2025.1.0-3
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.1.0-2`
