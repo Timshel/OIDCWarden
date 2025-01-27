@@ -1,5 +1,5 @@
 use crate::{
-    api::{core::log_event, core::organizations::CollectionData, ApiResult},
+    api::{core::log_event, core::organizations::CollectionData, core::two_factor, ApiResult, EmptyResult},
     auth::ClientIp,
     db::models::*,
     db::DbConn,
@@ -8,10 +8,11 @@ use crate::{
 
 #[allow(clippy::too_many_arguments)]
 pub async fn invite(
-    user: &User,
+    act_user_id: &UserId,
     device: &Device,
     ip: &ClientIp,
     org: &Organization,
+    user: &User,
     membership_type: MembershipType,
     groups: &Vec<GroupId>,
     access_all: bool,
@@ -65,7 +66,7 @@ pub async fn invite(
         EventType::OrganizationUserInvited as i32,
         &new_member.uuid,
         &org.uuid,
-        &user.uuid,
+        act_user_id,
         device.atype,
         &ip.ip,
         conn,
@@ -97,6 +98,81 @@ pub async fn invite(
             MembershipStatus::Revoked | MembershipStatus::Confirmed => (),
         }
     }
+
+    Ok(())
+}
+
+pub async fn revoke_member(
+    act_user_id: &UserId,
+    device: &Device,
+    ip: &ClientIp,
+    mut member: Membership,
+    conn: &mut DbConn,
+) -> EmptyResult {
+    if member.atype == MembershipType::Owner
+        && Membership::count_confirmed_by_org_and_type(&member.org_uuid, MembershipType::Owner, conn).await <= 1
+    {
+        err!(format!("Organization must have at least one confirmed owner, cannot revoke membership ({})", member.uuid))
+    }
+
+    member.revoke();
+    member.save(conn).await?;
+
+    log_event(
+        EventType::OrganizationUserRevoked as i32,
+        &member.uuid,
+        &member.org_uuid,
+        act_user_id,
+        device.atype,
+        &ip.ip,
+        conn,
+    )
+    .await;
+
+    Ok(())
+}
+
+pub async fn restore_member(
+    act_user_id: &UserId,
+    device: &Device,
+    ip: &ClientIp,
+    mut member: Membership,
+    conn: &mut DbConn,
+) -> EmptyResult {
+    // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
+    // It returns different error messages per function.
+    if member.atype < MembershipType::Admin {
+        match OrgPolicy::is_user_allowed(&member.user_uuid, &member.org_uuid, false, conn).await {
+            Ok(_) => {}
+            Err(OrgPolicyErr::TwoFactorMissing) => {
+                if CONFIG.email_2fa_auto_fallback() {
+                    two_factor::email::find_and_activate_email_2fa(&member.user_uuid, conn).await?;
+                } else {
+                    err!(format!(
+                        "Cannot restore this user because they have not setup 2FA (membership {})",
+                        member.uuid
+                    ));
+                }
+            }
+            Err(OrgPolicyErr::SingleOrgEnforced) => {
+                err!(format!("Cannot restore this user because they are a member of an organization which forbids it (membership {})", member.uuid));
+            }
+        }
+    }
+
+    member.restore();
+    member.save(conn).await?;
+
+    log_event(
+        EventType::OrganizationUserRestored as i32,
+        &member.uuid,
+        &member.org_uuid,
+        act_user_id,
+        device.atype,
+        &ip.ip,
+        conn,
+    )
+    .await;
 
     Ok(())
 }

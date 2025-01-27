@@ -486,7 +486,7 @@ impl Invitation {
 )]
 #[deref(forward)]
 #[from(forward)]
-pub struct UserId(String);
+pub struct UserId(pub String);
 
 impl SsoUser {
     pub async fn save(&self, conn: &mut DbConn) -> EmptyResult {

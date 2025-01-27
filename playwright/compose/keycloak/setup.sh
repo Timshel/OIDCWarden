@@ -54,6 +54,7 @@ kcadm.sh create -r "$TEST_REALM" "client-scopes/$TEST_GROUPS_CLIENT_SCOPE_ID/pro
     -s 'config."userinfo.token.claim"=true'
 
 TEST_GROUP_ID=$(kcadm.sh create -r "$TEST_REALM" groups -s name=Test -i)
+All_GROUP_ID=$(kcadm.sh create -r "$TEST_REALM" groups -s name=All -i)
 
 TEST_CLIENT_ID=$(kcadm.sh create -r "$TEST_REALM" clients -s "name=Warden" -s "clientId=$SSO_CLIENT_ID" -s "secret=$SSO_CLIENT_SECRET" -s "redirectUris=[\"$DOMAIN/*\", \"http://127.0.0.1:$ROCKET_PORT/*\"]" -i)
 
@@ -74,15 +75,18 @@ kcadm.sh create -r "$TEST_REALM" "clients/$TEST_CLIENT_ID/roles" -s name=user -s
 TEST_USER_ID=$(kcadm.sh create users -r "$TEST_REALM" -s "username=$TEST_USER" -s "firstName=$TEST_USER" -s "lastName=$TEST_USER" -s "email=$TEST_USER_MAIL"  -s emailVerified=true -s enabled=true -i)
 kcadm.sh update -r "$TEST_REALM" "users/$TEST_USER_ID/reset-password" -s type=password -s "value=$TEST_USER_PASSWORD" -n
 kcadm.sh update -r "$TEST_REALM" "users/$TEST_USER_ID/groups/$TEST_GROUP_ID"
+kcadm.sh update -r "$TEST_REALM" "users/$TEST_USER_ID/groups/$All_GROUP_ID"
 kcadm.sh add-roles -r "$TEST_REALM" --uusername "$TEST_USER" --cid "$TEST_CLIENT_ID" --rolename admin
 
 TEST_USER2_ID=$(kcadm.sh create users -r "$TEST_REALM" -s "username=$TEST_USER2" -s "firstName=$TEST_USER2" -s "lastName=$TEST_USER2" -s "email=$TEST_USER2_MAIL"  -s emailVerified=true -s enabled=true -i)
 kcadm.sh update users/$TEST_USER2_ID/reset-password -r "$TEST_REALM" -s type=password -s "value=$TEST_USER2_PASSWORD" -n
 kcadm.sh update -r "$TEST_REALM" "users/$TEST_USER2_ID/groups/$TEST_GROUP_ID"
+kcadm.sh update -r "$TEST_REALM" "users/$TEST_USER2_ID/groups/$All_GROUP_ID"
 kcadm.sh add-roles -r "$TEST_REALM" --uusername "$TEST_USER2" --cid "$TEST_CLIENT_ID" --rolename user
 
 TEST_USER3_ID=$(kcadm.sh create users -r "$TEST_REALM" -s "username=$TEST_USER3" -s "firstName=$TEST_USER3" -s "lastName=$TEST_USER3" -s "email=$TEST_USER3_MAIL"  -s emailVerified=true -s enabled=true -i)
 kcadm.sh update users/$TEST_USER3_ID/reset-password -r "$TEST_REALM" -s type=password -s "value=$TEST_USER3_PASSWORD" -n
+kcadm.sh update -r "$TEST_REALM" "users/$TEST_USER3_ID/groups/$All_GROUP_ID"
 
 # Dummy realm to mark end of setup
 kcadm.sh create realms -s realm="$DUMMY_REALM" -s enabled=true -s "accessTokenLifespan=600"

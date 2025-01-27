@@ -240,8 +240,12 @@ impl Membership {
         }
     }
 
+    pub fn is_revoked(&self) -> bool {
+        self.status < MembershipStatus::Invited as i32
+    }
+
     pub fn restore(&mut self) -> bool {
-        if self.status < MembershipStatus::Invited as i32 {
+        if self.is_revoked() {
             self.status += ACTIVATE_REVOKE_DIFF;
             return true;
         }
@@ -249,7 +253,7 @@ impl Membership {
     }
 
     pub fn revoke(&mut self) -> bool {
-        if self.status > MembershipStatus::Revoked as i32 {
+        if !self.is_revoked() {
             self.status -= ACTIVATE_REVOKE_DIFF;
             return true;
         }
@@ -258,7 +262,7 @@ impl Membership {
 
     /// Return the status of the user in an unrevoked state
     pub fn get_unrevoked_status(&self) -> i32 {
-        if self.status <= MembershipStatus::Revoked as i32 {
+        if self.is_revoked() {
             return self.status + ACTIVATE_REVOKE_DIFF;
         }
         self.status
@@ -378,12 +382,30 @@ impl Organization {
         }}
     }
 
+    pub async fn find_by_uuids(uuids: &Vec<OrganizationId>, conn: &mut DbConn) -> Vec<Self> {
+        db_run! { conn: {
+            organizations::table
+                .filter(organizations::uuid.eq_any(uuids))
+                .load::<OrganizationDb>(conn)
+                .expect("Error loading organizations").from_db()
+        }}
+    }
+
     pub async fn find_by_name(name: &str, conn: &mut DbConn) -> Option<Self> {
         db_run! { conn: {
             organizations::table
                 .filter(organizations::name.eq(name))
                 .first::<OrganizationDb>(conn)
                 .ok().from_db()
+        }}
+    }
+
+    pub async fn find_by_names(names: &Vec<String>, conn: &mut DbConn) -> Vec<Self> {
+        db_run! { conn: {
+            organizations::table
+                .filter(organizations::name.eq_any(names))
+                .load::<OrganizationDb>(conn)
+                .expect("Error loading organizations").from_db()
         }}
     }
 

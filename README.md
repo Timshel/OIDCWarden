@@ -84,6 +84,14 @@ This feature is controlled with the following conf:
 - `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read groups/organization in the Access token, default is `/groups`
 - `SSO_ORGANIZATIONS_ID_MAPPING`: Optional, allow to map provider group to a Vaultwarden organization `uuid` (default `""`, format: `"ProviderId:VaultwardenId;"`)
 
+#### Revocation
+
+If a user is removed from a group/organization, the membership will be revoked.
+The state of the membership is kept (`invited`, `confirmed`, `accepted`) and will be restored if the user is once again added to the group/organization.
+
+Revocation will be disabled if one group returned by the provider cannot be matched to an organization to prevent removing users in case of mapping failure.
+Additionnaly the last owner cannot be removed from an organization.
+
 ## Docker
 
 Change the docker files to package both front-end from [Timshel/oidc_web_vault](https://github.com/Timshel/oidc_web_vault/releases).

@@ -1060,10 +1060,11 @@ async fn send_invite(
         };
 
         if let Err(e) = organization_logic::invite(
-            &user,
+            &headers.user.uuid,
             &headers.device,
             &headers.ip,
             &org,
+            &user,
             new_type,
             &data.groups,
             data.access_all,
@@ -2375,32 +2376,15 @@ async fn _revoke_member(
     conn: &mut DbConn,
 ) -> EmptyResult {
     match Membership::find_by_uuid_and_org(member_id, org_id, conn).await {
-        Some(mut member) if member.status > MembershipStatus::Revoked as i32 => {
+        Some(member) if !member.is_revoked() => {
             if member.user_uuid == headers.user.uuid {
                 err!("You cannot revoke yourself")
             }
             if member.atype == MembershipType::Owner && headers.membership_type != MembershipType::Owner {
                 err!("Only owners can revoke other owners")
             }
-            if member.atype == MembershipType::Owner
-                && Membership::count_confirmed_by_org_and_type(org_id, MembershipType::Owner, conn).await <= 1
-            {
-                err!("Organization must have at least one confirmed owner")
-            }
 
-            member.revoke();
-            member.save(conn).await?;
-
-            log_event(
-                EventType::OrganizationUserRevoked as i32,
-                &member.uuid,
-                org_id,
-                &headers.user.uuid,
-                headers.device.atype,
-                &headers.ip.ip,
-                conn,
-            )
-            .await;
+            organization_logic::revoke_member(&headers.user.uuid, &headers.device, &headers.ip, member, conn).await?
         }
         Some(_) => err!("User is already revoked"),
         None => err!("User not found in organization"),
@@ -2482,7 +2466,7 @@ async fn _restore_member(
     conn: &mut DbConn,
 ) -> EmptyResult {
     match Membership::find_by_uuid_and_org(member_id, org_id, conn).await {
-        Some(mut member) if member.status < MembershipStatus::Accepted as i32 => {
+        Some(member) if member.status < MembershipStatus::Accepted as i32 => {
             if member.user_uuid == headers.user.uuid {
                 err!("You cannot restore yourself")
             }
@@ -2490,37 +2474,7 @@ async fn _restore_member(
                 err!("Only owners can restore other owners")
             }
 
-            // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
-            // It returns different error messages per function.
-            if member.atype < MembershipType::Admin {
-                match OrgPolicy::is_user_allowed(&member.user_uuid, org_id, false, conn).await {
-                    Ok(_) => {}
-                    Err(OrgPolicyErr::TwoFactorMissing) => {
-                        if CONFIG.email_2fa_auto_fallback() {
-                            two_factor::email::find_and_activate_email_2fa(&member.user_uuid, conn).await?;
-                        } else {
-                            err!("You cannot restore this user because they have not setup 2FA");
-                        }
-                    }
-                    Err(OrgPolicyErr::SingleOrgEnforced) => {
-                        err!("You cannot restore this user because they are a member of an organization which forbids it");
-                    }
-                }
-            }
-
-            member.restore();
-            member.save(conn).await?;
-
-            log_event(
-                EventType::OrganizationUserRestored as i32,
-                &member.uuid,
-                org_id,
-                &headers.user.uuid,
-                headers.device.atype,
-                &headers.ip.ip,
-                conn,
-            )
-            .await;
+            organization_logic::restore_member(&headers.user.uuid, &headers.device, &headers.ip, member, conn).await?;
         }
         Some(_) => err!("User is already active"),
         None => err!("User not found in organization"),

@@ -33,6 +33,7 @@ use crate::{
 };
 
 pub static FAKE_IDENTIFIER: &str = "OIDCWarden";
+pub const ACTING_AUTO_ENROLL_USER: &str = "oidcwarden-auto-00000-000000000000";
 
 static AC_CACHE: Lazy<Cache<OIDCState, AuthenticatedUser>> =
     Lazy::new(|| Cache::builder().max_capacity(1000).time_to_live(Duration::from_secs(10 * 60)).build());
@@ -745,46 +746,65 @@ pub async fn sync_groups(
     conn: &mut DbConn,
 ) -> ApiResult<()> {
     if CONFIG.sso_organizations_invite() {
+        let acting_user = ACTING_AUTO_ENROLL_USER.into();
         let id_mapping = CONFIG.sso_organizations_id_mapping_map();
-        let db_user_orgs = Membership::find_any_state_by_user(&user.uuid, conn).await;
-        let user_orgs = db_user_orgs.iter().map(|uo| (uo.org_uuid.clone(), uo)).collect::<HashMap<_, _>>();
-
-        let org_groups: Vec<GroupId> = vec![];
         let org_collections: Vec<CollectionData> = vec![];
+        let org_groups: Vec<GroupId> = vec![];
 
-        for group in groups {
-            let db_org = if id_mapping.is_empty() {
-                Organization::find_by_name(group, conn).await
-            } else {
-                match id_mapping.get(group) {
-                    Some(uuid) if user_orgs.contains_key(uuid) => continue,
-                    Some(uuid) => Organization::find_by_uuid(uuid, conn).await,
+        let db_user_orgs = Membership::find_any_state_by_user(&user.uuid, conn).await;
+        let mut memberships = db_user_orgs.into_iter().map(|m| (m.org_uuid.clone(), m)).collect::<HashMap<_, _>>();
+
+        let orgs = if id_mapping.is_empty() {
+            Organization::find_by_names(groups, conn).await
+        } else {
+            let uuids = groups
+                .iter()
+                .flat_map(|group| match id_mapping.get(group) {
+                    Some(uuid) => Some(uuid.clone()),
                     None => {
                         warn!("Missing organization mapping for {group}");
                         None
                     }
-                }
-            };
+                })
+                .collect();
+            Organization::find_by_uuids(&uuids, conn).await
+        };
 
-            if let Some(org) = db_org {
-                if !user_orgs.contains_key(&org.uuid) {
-                    info!("Invitation to {} organization sent to {}", group, user.email);
-                    organization_logic::invite(
-                        user,
-                        device,
-                        ip,
-                        &org,
-                        MembershipType::User,
-                        &org_groups,
-                        CONFIG.sso_organizations_all_collections(),
-                        &org_collections,
-                        org.billing_email.clone(),
-                        true,
-                        conn,
-                    )
-                    .await?;
+        for org in &orgs {
+            if let Some((_, m)) = memberships.remove_entry(&org.uuid) {
+                if m.is_revoked() {
+                    drop(organization_logic::restore_member(&acting_user, device, ip, m, conn).await);
                 }
+            } else {
+                info!("Invitation to {} organization sent to {}", org.name, user.email);
+                organization_logic::invite(
+                    &acting_user,
+                    device,
+                    ip,
+                    org,
+                    user,
+                    MembershipType::User,
+                    &org_groups,
+                    CONFIG.sso_organizations_all_collections(),
+                    &org_collections,
+                    org.billing_email.clone(),
+                    true,
+                    conn,
+                )
+                .await?;
+            };
+        }
+
+        if groups.len() == orgs.len() {
+            for m in memberships.into_values() {
+                drop(organization_logic::revoke_member(&acting_user, device, ip, m, conn).await);
             }
+        } else {
+            let org_names: Vec<String> = orgs.into_iter().map(|o| o.name).collect();
+            warn!(
+                "Failed to match all groups ({:?}) to organizations ({:?}) with mapping ({:?}), will not revoke",
+                groups, org_names, id_mapping
+            );
         }
     }
 
