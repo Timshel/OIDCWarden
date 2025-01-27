@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.1.1-2
+
+- Integrate change from `Vaultwarden` [1.33.0](https://github.com/dani-garcia/vaultwarden/tree/1.33.0)
+
 # v2025.1.1-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.1.1-1`
