@@ -1,5 +1,13 @@
 # Changelog
 
+# v2025.1.1-3
+
+- Add revocation support
+  \
+  :warning: if `SSO_ORGANIZATIONS_INVITE` is activated and the provider do not return a matching group for an organization then the user membership will be revoked.
+  \
+  More details in [README.md#Revocation](https://github.com/Timshel/vaultwarden/blob/main/README.md#revocation)
+
 # v2025.1.1-2
 
 - Integrate change from `Vaultwarden` [1.33.0](https://github.com/dani-garcia/vaultwarden/tree/1.33.0)
