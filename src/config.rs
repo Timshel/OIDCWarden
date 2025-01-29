@@ -8,9 +8,11 @@ use std::{
     },
 };
 
+use itertools::Either;
 use job_scheduler_ng::Schedule;
 use once_cell::sync::Lazy;
 use reqwest::Url;
+use uuid::Uuid;
 
 use crate::{
     db::models::OrganizationId,
@@ -702,7 +704,7 @@ make_config! {
         sso_organizations_revocation:   bool,   false,   def,    false;
         /// Id token path to read Organization/Groups
         sso_organizations_token_path:   String, false,   def,    "/groups".to_string();
-        /// Organization Id mapping |> "ProviderId:VaultwardenId;"
+        /// Organization Id mapping |> "ProviderId:VaultwardenId;" with `VaultwardenId` as the org `uuid` or the `name`
         sso_organizations_id_mapping:   String, true,   def,    String::new();
         /// Grant acceess to all collections
         sso_organizations_all_collections: bool, true,  def,   true;
@@ -1494,8 +1496,11 @@ impl Config {
         internal_sso_authorize_extra_params_vec(&self.sso_authorize_extra_params())
     }
 
-    pub fn sso_organizations_id_mapping_map(&self) -> HashMap<String, OrganizationId> {
-        parse_as_hashmap(self.sso_organizations_id_mapping(), |str| str.into())
+    pub fn sso_organizations_id_mapping_map(&self) -> HashMap<String, Either<String, OrganizationId>> {
+        parse_as_hashmap(self.sso_organizations_id_mapping(), |str| match Uuid::parse_str(&str) {
+            Ok(_) => Either::Right(str.into()),
+            Err(_) => Either::Left(str),
+        })
     }
 }
 

@@ -111,8 +111,8 @@ test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
         SSO_ENABLED: true,
         SSO_ONLY: true,
         SSO_ORGANIZATIONS_INVITE: true,
+        SSO_ORGANIZATIONS_ID_MAPPING: "Test:Test;All:All",
         SSO_ORGANIZATIONS_REVOCATION: true,
-        SSO_ORGANIZATIONS_ID_MAPPING: "FakeProviderId:FakeOrgId;",
         SSO_SCOPES: "email profile groups",
     }, true);
 
@@ -124,6 +124,10 @@ test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
 
     await test.step('org setup', async () => {
         await logNewUser(test, page, users.user1);
+
+        // Create default orgs
+        await orgs.create(test, page, 'Test');
+        await orgs.create(test, page, 'All');
 
         await orgs.create(test, page, 'Toto');
         await orgs.members(test, page, 'Toto');

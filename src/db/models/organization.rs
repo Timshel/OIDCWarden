@@ -382,10 +382,16 @@ impl Organization {
         }}
     }
 
-    pub async fn find_by_uuids(uuids: &Vec<OrganizationId>, conn: &mut DbConn) -> Vec<Self> {
+    pub async fn find_by_uuids_or_names(
+        uuids: &Vec<OrganizationId>,
+        names: &Vec<String>,
+        conn: &mut DbConn,
+    ) -> Vec<Self> {
         db_run! { conn: {
             organizations::table
-                .filter(organizations::uuid.eq_any(uuids))
+                .filter(
+                    organizations::uuid.eq_any(uuids).or(organizations::name.eq_any(names))
+                )
                 .load::<OrganizationDb>(conn)
                 .expect("Error loading organizations").from_db()
         }}
@@ -397,15 +403,6 @@ impl Organization {
                 .filter(organizations::name.eq(name))
                 .first::<OrganizationDb>(conn)
                 .ok().from_db()
-        }}
-    }
-
-    pub async fn find_by_names(names: &Vec<String>, conn: &mut DbConn) -> Vec<Self> {
-        db_run! { conn: {
-            organizations::table
-                .filter(organizations::name.eq_any(names))
-                .load::<OrganizationDb>(conn)
-                .expect("Error loading organizations").from_db()
         }}
     }
 

@@ -33,7 +33,7 @@ The following configurations are available
  - `SSO_ORGANIZATIONS_INVITE`: control if group/orgnization mapping is done (will send Org invitation), default is `false`
  - `SSO_ORGANIZATIONS_REVOCATION`: control if membership can be revoked, default is `false`
  - `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read groups/organization in the Id token
- - `SSO_ORGANIZATIONS_ID_MAPPING`: Optional, allow to map provider group to an organization `uuid` (default `""`, format: `"ProviderId:VaultOrganizationId;"`)
+ - `SSO_ORGANIZATIONS_ID_MAPPING`: Optional, allow to map provider group to a Vaultwarden organization `uuid` or `name`(default `""`, format: `"ProviderId:VaultwardenId;"`)
  - `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: Grant access to all collections, default is `true`
  - `ORGANIZATION_INVITE_AUTO_ACCEPT`: Bypass the invitation logic and as users as `Accepted` (Apply to non SSO logic too)
  - `SSO_CLIENT_CACHE_EXPIRATION`: Cache calls to the discovery endpoint, duration in seconds, `0` to disable (default `0`);

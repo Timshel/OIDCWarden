@@ -757,19 +757,22 @@ pub async fn sync_groups(
         let mut memberships = db_user_orgs.into_iter().map(|m| (m.org_uuid.clone(), m)).collect::<HashMap<_, _>>();
 
         let orgs = if id_mapping.is_empty() {
-            Organization::find_by_names(groups, conn).await
+            Organization::find_by_uuids_or_names(&vec![], groups, conn).await
         } else {
-            let uuids = groups
+            use itertools::Itertools;
+
+            let (names, uuids) = groups
                 .iter()
                 .flat_map(|group| match id_mapping.get(group) {
-                    Some(uuid) => Some(uuid.clone()),
+                    Some(e) => Some(e.clone()),
                     None => {
                         warn!("Missing organization mapping for {group}");
                         None
                     }
                 })
-                .collect();
-            Organization::find_by_uuids(&uuids, conn).await
+                .partition_map(std::convert::identity);
+
+            Organization::find_by_uuids_or_names(&uuids, &names, conn).await
         };
 
         for org in &orgs {
@@ -799,7 +802,7 @@ pub async fn sync_groups(
 
         if CONFIG.sso_organizations_revocation() {
             if groups.len() == orgs.len() {
-                let org_mapped: HashSet<&OrganizationId> = id_mapping.values().collect();
+                let org_mapped: HashSet<&OrganizationId> = orgs.iter().map(|o| &o.uuid).collect();
                 for m in memberships.into_values() {
                     if id_mapping.is_empty() || org_mapped.contains(&m.org_uuid) {
                         drop(organization_logic::revoke_member(&acting_user, device, ip, m, conn).await);
