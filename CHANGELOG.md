@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.1.1-4
+
+- Added `SSO_ORGANIZATIONS_REVOCATION` to control membership revocation activation, disabled by default.
+
 # v2025.1.1-3
 
 - Add revocation support
