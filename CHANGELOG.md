@@ -1,5 +1,11 @@
 # Changelog
 
+# v2025.1.1-5
+
+- If `SSO_ORGANIZATIONS_ID_MAPPING` is defined then revocation will apply only to the listed organizations.
+  \
+  Can be used to restrict on which organizations the revocation logic apply.
+
 # v2025.1.1-4
 
 - Added `SSO_ORGANIZATIONS_REVOCATION` to control membership revocation activation, disabled by default.
