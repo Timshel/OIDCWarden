@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.1.1-6
+
+- `SSO_ORGANIZATIONS_ID_MAPPING` organization can now be mapped using `uuid` or `name`.
+
 # v2025.1.1-5
 
 - If `SSO_ORGANIZATIONS_ID_MAPPING` is defined then revocation will apply only to the listed organizations.
