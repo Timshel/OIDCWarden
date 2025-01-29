@@ -3,7 +3,7 @@ use derive_more::{AsRef, Deref, Display, From};
 use regex::Regex;
 use serde::de::DeserializeOwned;
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use url::Url;
 
@@ -26,7 +26,9 @@ use crate::{
     auth::{AuthMethod, AuthMethodScope, AuthTokens, ClientIp, TokenWrapper, BW_EXPIRATION, DEFAULT_REFRESH_VALIDITY},
     business::organization_logic,
     db::{
-        models::{Device, EventType, GroupId, Membership, MembershipType, Organization, SsoNonce, User},
+        models::{
+            Device, EventType, GroupId, Membership, MembershipType, Organization, OrganizationId, SsoNonce, User,
+        },
         DbConn,
     },
     CONFIG,
@@ -797,8 +799,11 @@ pub async fn sync_groups(
 
         if CONFIG.sso_organizations_revocation() {
             if groups.len() == orgs.len() {
+                let org_mapped: HashSet<&OrganizationId> = id_mapping.values().collect();
                 for m in memberships.into_values() {
-                    drop(organization_logic::revoke_member(&acting_user, device, ip, m, conn).await);
+                    if id_mapping.is_empty() || org_mapped.contains(&m.org_uuid) {
+                        drop(organization_logic::revoke_member(&acting_user, device, ip, m, conn).await);
+                    }
                 }
             } else {
                 let org_names: Vec<String> = orgs.into_iter().map(|o| o.name).collect();

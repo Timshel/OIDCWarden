@@ -89,14 +89,18 @@ This feature is controlled with the following conf:
 If a user is removed from a group/organization, the membership will be revoked.
 The state of the membership is kept (`invited`, `confirmed`, `accepted`) and will be restored if the user is once again added to the group/organization.
 
-Revocation will be disabled if one group returned by the provider cannot be matched to an organization to prevent removing users in case of mapping failure.
-Additionnaly the last owner cannot be removed from an organization.
+Revocation will not apply when:
+
+- One group returned by the provider cannot be matched to an organization to prevent revoking users in case of mapping failure.
+- The user is the last owner of an organization.
+- An organization mapping is defined but the membership org is not present in it.
 
 :warning: Cannot idenity manual invitation, so those will be revoked too. :warning:
 
 The feature is controlled with the following conf:
 
-- `SSO_ORGANIZATIONS_REVOCATION`: control if membership can be revoked, default is `false`
+- `SSO_ORGANIZATIONS_REVOCATION`: control if membership can be revoked, default is `false`.
+- `SSO_ORGANIZATIONS_ID_MAPPING`: revocation will only work for the included Organization.
 
 ## Docker
 

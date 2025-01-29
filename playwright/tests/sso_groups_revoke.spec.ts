@@ -102,3 +102,39 @@ test('Check members', async ({ context, page }, testInfo: TestInfo) => {
         await expect(page.getByRole('row', { name: users.user3.name })).toHaveText(/Revoked/);
     });
 });
+
+test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
+    await utils.restartVault(page, testInfo, {
+        ORGANIZATION_INVITE_AUTO_ACCEPT: true,
+        SMTP_FROM: process.env.PW_SMTP_FROM,
+        SMTP_HOST: process.env.MAILDEV_HOST,
+        SSO_ENABLED: true,
+        SSO_ONLY: true,
+        SSO_ORGANIZATIONS_INVITE: true,
+        SSO_ORGANIZATIONS_REVOCATION: true,
+        SSO_ORGANIZATIONS_ID_MAPPING: "FakeProviderId:FakeOrgId;",
+        SSO_SCOPES: "email profile groups",
+    }, true);
+
+    await test.step('create user2', async () => {
+        await logNewUser(test, page, users.user2);
+    });
+
+    await context.clearCookies();
+
+    await test.step('org setup', async () => {
+        await logNewUser(test, page, users.user1);
+
+        await orgs.create(test, page, 'Toto');
+        await orgs.members(test, page, 'Toto');
+        await orgs.invite(test, page, 'Toto', users.user2.email);
+        await orgs.confirm(test, page, 'Toto', users.user2.name);
+    });
+
+    await context.clearCookies();
+
+    await test.step('Org still present', async () => {
+        await logUser(test, page, users.user2);
+        await expect(page.getByLabel('vault: Toto', { exact: true })).toBeVisible();
+    });
+});
