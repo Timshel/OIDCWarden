@@ -30,7 +30,8 @@ The following configurations are available
  - `SSO_ROLES_ENABLED`: control if the mapping is done, default is `false`
  - `SSO_ROLES_DEFAULT_TO_USER`: do not block login in case of missing or invalid roles, default is `true`.
  - `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the Id token
- - `SSO_ORGANIZATIONS_INVITE`: control if the mapping is done, default is `false`
+ - `SSO_ORGANIZATIONS_INVITE`: control if group/orgnization mapping is done (will send Org invitation), default is `false`
+ - `SSO_ORGANIZATIONS_REVOCATION`: control if membership can be revoked, default is `false`
  - `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read groups/organization in the Id token
  - `SSO_ORGANIZATIONS_ID_MAPPING`: Optional, allow to map provider group to an organization `uuid` (default `""`, format: `"ProviderId:VaultOrganizationId;"`)
  - `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: Grant access to all collections, default is `true`

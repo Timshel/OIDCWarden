@@ -795,16 +795,18 @@ pub async fn sync_groups(
             };
         }
 
-        if groups.len() == orgs.len() {
-            for m in memberships.into_values() {
-                drop(organization_logic::revoke_member(&acting_user, device, ip, m, conn).await);
+        if CONFIG.sso_organizations_revocation() {
+            if groups.len() == orgs.len() {
+                for m in memberships.into_values() {
+                    drop(organization_logic::revoke_member(&acting_user, device, ip, m, conn).await);
+                }
+            } else {
+                let org_names: Vec<String> = orgs.into_iter().map(|o| o.name).collect();
+                warn!(
+                    "Failed to match all groups ({:?}) to organizations ({:?}) with mapping ({:?}), will not revoke",
+                    groups, org_names, id_mapping
+                );
             }
-        } else {
-            let org_names: Vec<String> = orgs.into_iter().map(|o| o.name).collect();
-            warn!(
-                "Failed to match all groups ({:?}) to organizations ({:?}) with mapping ({:?}), will not revoke",
-                groups, org_names, id_mapping
-            );
         }
     }
 

@@ -92,6 +92,12 @@ The state of the membership is kept (`invited`, `confirmed`, `accepted`) and wil
 Revocation will be disabled if one group returned by the provider cannot be matched to an organization to prevent removing users in case of mapping failure.
 Additionnaly the last owner cannot be removed from an organization.
 
+:warning: Cannot idenity manual invitation, so those will be revoked too. :warning:
+
+The feature is controlled with the following conf:
+
+- `SSO_ORGANIZATIONS_REVOCATION`: control if membership can be revoked, default is `false`
+
 ## Docker
 
 Change the docker files to package both front-end from [Timshel/oidc_web_vault](https://github.com/Timshel/oidc_web_vault/releases).

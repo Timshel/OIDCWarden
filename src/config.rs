@@ -698,6 +698,8 @@ make_config! {
         sso_roles_token_path:           String, false,  auto,   |c| format!("/resource_access/{}/roles", c.sso_client_id);
         /// Invite users to Organizations
         sso_organizations_invite:       bool,   false,   def,    false;
+        /// Process revocation
+        sso_organizations_revocation:   bool,   false,   def,    false;
         /// Id token path to read Organization/Groups
         sso_organizations_token_path:   String, false,   def,    "/groups".to_string();
         /// Organization Id mapping |> "ProviderId:VaultwardenId;"
