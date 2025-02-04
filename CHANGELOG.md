@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.1.1-7
+
+- Integrate latest change from `Vaultwarden` up to [8d1df08](https://github.com/dani-garcia/vaultwarden/commit/8d1df08b81e1e0eea28e480de236dc0501674edc)
+
 # v2025.1.1-6
 
 - `SSO_ORGANIZATIONS_ID_MAPPING` organization can now be mapped using `uuid` or `name`.
