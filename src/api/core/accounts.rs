@@ -989,9 +989,9 @@ async fn password_hint(data: Json<PasswordHintData>, mut conn: DbConn) -> EmptyR
                 // paths that send mail take noticeably longer than ones that
                 // don't. Add a randomized sleep to mitigate this somewhat.
                 use rand::{rngs::SmallRng, Rng, SeedableRng};
-                let mut rng = SmallRng::from_entropy();
+                let mut rng = SmallRng::from_os_rng();
                 let delta: i32 = 100;
-                let sleep_ms = (1_000 + rng.gen_range(-delta..=delta)) as u64;
+                let sleep_ms = (1_000 + rng.random_range(-delta..=delta)) as u64;
                 tokio::time::sleep(tokio::time::Duration::from_millis(sleep_ms)).await;
                 Ok(())
             } else {
@@ -1295,6 +1295,15 @@ async fn post_auth_request(
 
     nt.send_auth_request(&user.uuid, &auth_request.uuid, &data.device_identifier, &mut conn).await;
 
+    log_user_event(
+        EventType::UserRequestedDeviceApproval as i32,
+        &user.uuid,
+        client_headers.device_type,
+        &client_headers.ip.ip,
+        &mut conn,
+    )
+    .await;
+
     Ok(Json(json!({
         "id": auth_request.uuid,
         "publicKey": auth_request.public_key,
@@ -1376,9 +1385,26 @@ async fn put_auth_request(
 
         ant.send_auth_response(&auth_request.user_uuid, &auth_request.uuid).await;
         nt.send_auth_response(&auth_request.user_uuid, &auth_request.uuid, &data.device_identifier, &mut conn).await;
+
+        log_user_event(
+            EventType::OrganizationUserApprovedAuthRequest as i32,
+            &headers.user.uuid,
+            headers.device.atype,
+            &headers.ip.ip,
+            &mut conn,
+        )
+        .await;
     } else {
         // If denied, there's no reason to keep the request
         auth_request.delete(&mut conn).await?;
+        log_user_event(
+            EventType::OrganizationUserRejectedAuthRequest as i32,
+            &headers.user.uuid,
+            headers.device.atype,
+            &headers.ip.ip,
+            &mut conn,
+        )
+        .await;
     }
 
     Ok(Json(json!({
