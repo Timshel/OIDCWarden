@@ -16,17 +16,7 @@ test.afterAll('Teardown', async ({}) => {
 });
 
 test('Account creation', async ({ page }) => {
-    // Landing page
     await createAccount(test, page, users.user1);
-
-    await page.getByRole('button', { name: 'Continue' }).click();
-
-    // Unlock page
-    await page.getByLabel('Master password').fill(users.user1.password);
-    await page.getByRole('button', { name: 'Log in with master password' }).click();
-
-    // We are now in the default vault page
-    await expect(page).toHaveTitle(/Vaults/);
 });
 
 test('Master password login', async ({ page }) => {
@@ -90,6 +80,6 @@ test('Authenticator 2fa', async ({ context, page }) => {
         await page.getByRole('button', { name: 'Continue' }).click();
         await page.getByRole('button', { name: 'Turn off' }).click();
         await page.getByRole('button', { name: 'Yes' }).click();
-        await expect(page.getByTestId("toast-message")).toHaveText(/Two-step login provider turned off/);
+        await utils.checkNotification(page, 'Two-step login provider turned off');
     });
 });

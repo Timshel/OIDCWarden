@@ -30,7 +30,18 @@ use crate::{
 };
 
 pub fn routes() -> Vec<Route> {
-    routes![login, prelogin, identity_register, _prevalidate, prevalidate, authorize, oidcsignin, oidcsignin_error]
+    routes![
+        login,
+        prelogin,
+        identity_register,
+        _prevalidate,
+        prevalidate,
+        register_finish,
+        register_verification,
+        authorize,
+        oidcsignin,
+        oidcsignin_error
+    ]
 }
 
 #[post("/connect/token", data = "<data>")]
@@ -899,6 +910,36 @@ async fn prelogin(data: Json<PreloginData>, conn: DbConn) -> Json<Value> {
 
 #[post("/accounts/register", data = "<data>")]
 async fn identity_register(data: Json<RegisterData>, conn: DbConn) -> JsonResult {
+    _register(data, conn).await
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegisterVerificationData {
+    email: String,
+    name: Option<String>,
+    // receiveMarketingEmails: bool,
+}
+
+#[post("/accounts/register/send-verification-email", data = "<data>")]
+pub fn register_verification(data: Json<RegisterVerificationData>) -> JsonResult {
+    let data: RegisterVerificationData = data.into_inner();
+
+    // Check if the length of the username exceeds 50 characters (Same is Upstream Bitwarden)
+    // This also prevents issues with very long usernames causing to large JWT's. See #2419
+    if let Some(ref name) = data.name {
+        if name.len() > 50 {
+            err!("The field Name must be a string with a maximum length of 50.");
+        }
+    }
+
+    let token_claims = auth::generate_register_verify_claims(data.email.clone(), data.name, false);
+
+    Ok(Json(auth::encode_jwt(&token_claims).into()))
+}
+
+#[post("/accounts/register/finish", data = "<data>")]
+async fn register_finish(data: Json<RegisterData>, conn: DbConn) -> JsonResult {
     _register(data, conn).await
 }
 

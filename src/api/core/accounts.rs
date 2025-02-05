@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::{
     api::{
-        core::{log_user_event, two_factor::email},
+        core::{accept_org_invite, log_user_event, two_factor::email},
         register_push_device, unregister_push_device, AnonymousNotify, ApiResult, EmptyResult, JsonResult, Notify,
         PasswordOrOtpData, UpdateType,
     },
@@ -75,12 +75,20 @@ pub struct RegisterData {
     kdf_iterations: Option<i32>,
     kdf_memory: Option<i32>,
     kdf_parallelism: Option<i32>,
+
+    #[serde(alias = "userSymmetricKey")]
     key: String,
+    #[serde(alias = "userAsymmetricKeys")]
     keys: Option<KeysData>,
+
     master_password_hash: String,
     master_password_hint: Option<String>,
     name: Option<String>,
     token: Option<String>,
+
+    // Used only from the register/finish endpoint
+    email_verification_token: Option<String>,
+
     #[allow(dead_code)]
     organization_user_id: Option<MembershipId>,
 }
@@ -96,7 +104,6 @@ pub struct SetPasswordData {
     keys: Option<KeysData>,
     master_password_hash: String,
     master_password_hint: Option<String>,
-    #[allow(dead_code)]
     org_identifier: Option<String>,
 }
 
@@ -219,8 +226,19 @@ pub async fn _register(data: Json<RegisterData>, mut conn: DbConn) -> JsonResult
     user.set_password(&data.master_password_hash, Some(data.key), true, None);
     user.password_hint = password_hint;
 
+    let verification_name = match data.email_verification_token {
+        None => None,
+        Some(token) => {
+            let claims = crate::auth::decode_register_verify(&token)?;
+            if claims.sub != data.email {
+                err!("Email verification token does not match email");
+            }
+            claims.name
+        }
+    };
+
     // Add extra fields if present
-    if let Some(name) = data.name {
+    if let Some(name) = data.name.or(verification_name) {
         user.name = name;
     }
 
@@ -297,8 +315,24 @@ async fn post_set_password(data: Json<SetPasswordData>, headers: Headers, mut co
         user.public_key = Some(keys.public_key);
     }
 
+    if let Some(identifier) = data.org_identifier {
+        if identifier != crate::sso::FAKE_IDENTIFIER {
+            let org = match Organization::find_by_name(&identifier, &mut conn).await {
+                None => err!("Failed to retrieve the associated organization"),
+                Some(org) => org,
+            };
+
+            let membership = match Membership::find_by_user_and_org(&user.uuid, &org.uuid, &mut conn).await {
+                None => err!("Failed to retrieve the invitation"),
+                Some(org) => org,
+            };
+
+            accept_org_invite(&user, membership, None, &mut conn).await?;
+        }
+    }
+
     if CONFIG.mail_enabled() {
-        mail::send_set_password(&user.email.to_lowercase(), &user.name).await?;
+        mail::send_welcome(&user.email.to_lowercase()).await?;
     } else {
         Membership::accept_user_invitations(&user.uuid, &mut conn).await?;
     }

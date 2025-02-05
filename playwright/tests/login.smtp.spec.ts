@@ -30,53 +30,23 @@ test.afterAll('Teardown', async ({}) => {
 });
 
 test('Account creation', async ({ page }) => {
-    const emails = mailserver.iterator(users.user1.email);
+    const mailBuffer = mailserver.buffer(users.user1.email);
 
-    await createAccount(test, page, users.user1);
+    await createAccount(test, page, users.user1, mailBuffer);
 
-    const { value: created } = await emails.next();
-    expect(created.subject).toBe("Welcome");
-    expect(created.from[0]?.address).toBe(process.env.PW_SMTP_FROM);
-
-    // Back to the login page
-    await expect(page).toHaveTitle('OIDCWarden Web');
-    await expect(page.getByTestId("toast-message")).toHaveText(/Your new account has been created/);
-    await page.getByRole('button', { name: 'Continue' }).click();
-
-    // Unlock page
-    await page.getByLabel('Master password').fill(users.user1.password);
-    await page.getByRole('button', { name: 'Log in with master password' }).click();
-
-    // We are now in the default vault page
-    await expect(page).toHaveTitle(/Vaults/);
-
-    const { value: logged } = await emails.next();
-    expect(logged.subject).toBe("New Device Logged In From Firefox");
-    expect(logged.to[0]?.address).toBe(process.env.TEST_USER_MAIL);
-    expect(logged.from[0]?.address).toBe(process.env.PW_SMTP_FROM);
-
-    emails.return();
+    mailBuffer.close();
 });
 
 test('Login', async ({ context, page }) => {
-    const emails = mailserver.iterator(users.user1.email);
+    const mailBuffer = mailserver.buffer(users.user1.email);
 
-    await logUser(test, page, users.user1);
-
-    await test.step('new device email', async () => {
-        const { value: logged } = await emails.next();
-        expect(logged.subject).toBe("New Device Logged In From Firefox");
-        expect(logged.from[0]?.address).toBe(process.env.PW_SMTP_FROM);
-    });
+    await logUser(test, page, users.user1, mailBuffer);
 
     await test.step('verify email', async () => {
         await page.getByRole('button', { name: "Send email" }).click();
-        await expect(page.getByTestId("toast-message")).toHaveText(/Check your email inbox for a verification link/);
-        await page.locator('#toast-container').getByRole('button').click();
-        await expect(page.getByTestId("toast-message")).toHaveCount(0);
+        await utils.checkNotification(page, 'Check your email inbox for a verification link');
 
-        const { value: verify } = await emails.next();
-        expect(verify.subject).toBe("Verify Your Email");
+        const verify = await mailBuffer.next((m) => m.subject === "Verify Your Email");
         expect(verify.from[0]?.address).toBe(process.env.PW_SMTP_FROM);
 
         const page2 = await context.newPage();
@@ -85,10 +55,10 @@ test('Login', async ({ context, page }) => {
         await page2.close();
 
         await page.goto(link);
-        await expect(page.getByTestId("toast-message")).toHaveText("Account email verified");
+        await utils.checkNotification(page, 'Account email verified');
     });
 
-    emails.return();
+    mailBuffer.close();
 });
 
 test('Activaite 2fa', async ({ context, page }) => {
@@ -159,7 +129,8 @@ test('2fa', async ({ context, page }) => {
         await page.getByRole('button', { name: 'Continue' }).click();
         await page.getByRole('button', { name: 'Turn off' }).click();
         await page.getByRole('button', { name: 'Yes' }).click();
-        await expect(page.getByTestId("toast-message")).toHaveText(/Two-step login provider turned off/);
+
+        await utils.checkNotification(page, 'Two-step login provider turned off');
     });
 
     emails.close();

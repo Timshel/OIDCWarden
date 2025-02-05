@@ -30,7 +30,7 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
 
 test.afterAll('Teardown', async ({}) => {
     utils.stopVault();
-    [mailServer, mail1Buffer, mail2Buffer, mail3Buffer].map((m) => m?.close());
+    [mail1Buffer, mail2Buffer, mail3Buffer, mailServer].map((m) => m?.close());
 });
 
 test('Create user3', async ({ page }) => {
@@ -55,8 +55,7 @@ test('Invite users', async ({ page }) => {
         await page.getByLabel('Select collections').click();
         await page.getByLabel('Options list').getByText('Default collection').click();
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByTestId("toast-message")).toHaveText('User(s) invited');
-        await page.locator('#toast-container').getByRole('button').click();
+        await utils.checkNotification(page, 'User(s) invited');
     });
 
     await test.step('Invite user3', async () => {
@@ -67,8 +66,7 @@ test('Invite users', async ({ page }) => {
         await page.getByLabel('Select collections').click();
         await page.getByLabel('Options list').getByText('Default collection').click();
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByTestId("toast-message")).toHaveText('User(s) invited');
-        await page.locator('#toast-container').getByRole('button').click();
+        await utils.checkNotification(page, 'User(s) invited');
     });
 });
 
@@ -91,16 +89,17 @@ test('invited with new account', async ({ page }) => {
     });
 
     await test.step('Create Vault account', async () => {
-        await expect(page.getByText('Set master password')).toBeVisible();
-        await page.getByLabel('Master password', { exact: true }).fill(users.user2.password);
-        await page.getByLabel('Re-type master password').fill(users.user2.password);
-        await page.getByRole('button', { name: 'Submit' }).click();
+        await expect(page.getByRole('heading', { name: 'Join organisation' })).toBeVisible();
+        await page.getByLabel('Master password (required)', { exact: true }).fill(users.user2.password);
+        await page.getByLabel('Confirm master password (').fill(users.user2.password);
+        await page.getByRole('button', { name: 'Create account' }).click();
     });
 
     await test.step('Default vault page', async () => {
-        await expect(page).toHaveTitle(/Vaults/);
-        await expect(page.getByTestId("toast-title")).toHaveText("Invitation accepted");
-        await page.locator('#toast-container').getByRole('button').click();
+        await expect(page).toHaveTitle('Vaults | OIDCWarden Web');
+
+        await utils.checkNotification(page, 'Account successfully created!');
+        await utils.checkNotification(page, 'Invitation accepted');
     });
 
     await test.step('Check mails', async () => {
@@ -135,8 +134,7 @@ test('invited with existing account', async ({ page }) => {
 
     await test.step('Default vault page', async () => {
         await expect(page).toHaveTitle(/Vaults/);
-        await expect(page.getByTestId("toast-title")).toHaveText("Invitation accepted");
-        await page.locator('#toast-container').getByRole('button').click();
+        await utils.checkNotification(page, 'Invitation accepted');
     });
 
     await test.step('Check mails', async () => {
@@ -153,6 +151,7 @@ test('Org invite auto accept', async ({ page }, testInfo: TestInfo) => {
         SMTP_HOST: process.env.MAILDEV_HOST,
         SMTP_FROM: process.env.PW_SMTP_FROM,
         SSO_ENABLED: true,
+        SSO_ONLY: true,
         SSO_FRONTEND: "override",
     }, true);
 
@@ -173,15 +172,13 @@ test('Org invite auto accept', async ({ page }, testInfo: TestInfo) => {
         await page.getByLabel('Select collections').click();
         await page.getByLabel('Options list').getByText('Default collection').click();
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByTestId("toast-message")).toHaveText('User(s) invited');
-        await page.locator('#toast-container').getByRole('button').click();
+        await utils.checkNotification(page, 'User(s) invited');
     });
 
     await expect(page.getByRole('row', { name: users.user2.email })).toHaveText(/Needs confirmation/);
     await page.getByRole('row', { name: users.user2.email }).getByLabel('Options').click();
     await page.getByRole('menuitem', { name: 'Confirm' }).click();
-
-    await expect(page.getByTestId("toast-title")).toHaveText('Failed to confirm user');
+    await utils.checkNotification(page, 'Failed to confirm user');
 
     await  expect(mail2Buffer.next((m) => m.subject === "Enrolled in Test")).resolves.toBeDefined();
 });

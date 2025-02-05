@@ -1565,7 +1565,6 @@ where
     reg!("email/send_org_enrolled", ".html");
     reg!("email/send_org_invite", ".html");
     reg!("email/send_single_org_removed_from_org", ".html");
-    reg!("email/set_password", ".html");
     reg!("email/smtp_test", ".html");
     reg!("email/sso_change_email", ".html");
     reg!("email/twofactor_email", ".html");

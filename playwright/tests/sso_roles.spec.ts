@@ -52,6 +52,6 @@ test('No role cannot log', async ({ page }) => {
 
     await test.step('Auth failed', async () => {
         await expect(page).toHaveTitle('OIDCWarden Web vault');
-        await expect(page.getByTestId("toast-message")).toHaveText(/Invalid user role/);
+        await utils.checkNotification(page, 'Invalid user role');
     });
 });

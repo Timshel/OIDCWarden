@@ -1,5 +1,7 @@
 import { expect, type Browser,Page } from '@playwright/test';
 
+import * as utils from '../../global-utils';
+
 export async function create(test, page: Page, name: string) {
     await test.step('Create Org', async () => {
         await page.locator('a').filter({ hasText: 'Password Manager' }).first().click();
@@ -7,8 +9,8 @@ export async function create(test, page: Page, name: string) {
         await page.getByRole('link', { name: 'New organisation' }).click();
         await page.getByLabel('Organisation name (required)').fill(name);
         await page.getByRole('button', { name: 'Submit' }).click();
-        await expect(page.getByTestId('toast-title')).toHaveText('Organisation created');
-        await page.locator('#toast-container').getByRole('button').click();
+
+        await utils.checkNotification(page, 'Organisation created');
     });
 }
 
@@ -33,8 +35,7 @@ export async function invite(test, page: Page, name: string, email: string) {
         await page.getByLabel('Select collections').click();
         await page.getByLabel('Options list').getByText('Default collection').click();
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByTestId('toast-message')).toHaveText('User(s) invited');
-        await page.locator('#toast-container').getByRole('button').click();
+        await utils.checkNotification(page, 'User(s) invited');
     });
 }
 
@@ -45,8 +46,7 @@ export async function confirm(test, page: Page, name: string, user_name: string)
         await page.getByRole('menuitem', { name: 'Confirm' }).click();
         await expect(page.getByRole('heading', { name: 'Confirm user' })).toBeVisible();
         await page.getByRole('button', { name: 'Confirm' }).click();
-        await expect(page.getByTestId('toast-message')).toHaveText(/confirmed/);
-        await page.locator('#toast-container').getByRole('button').click();
+        await utils.checkNotification(page, 'confirmed');
     });
 }
 
@@ -57,7 +57,6 @@ export async function revoke(test, page: Page, name: string, user_name: string) 
         await page.getByRole('menuitem', { name: 'Revoke access' }).click();
         await expect(page.getByRole('heading', { name: 'Revoke access' })).toBeVisible();
         await page.getByRole('button', { name: 'Revoke access' }).click();
-        await expect(page.getByTestId('toast-message')).toHaveText(/Revoked organisation access/);
-        await page.locator('#toast-container').getByRole('button').click();
+        await utils.checkNotification(page, 'Revoked organisation access');
     });
 }

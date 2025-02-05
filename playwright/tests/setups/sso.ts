@@ -1,6 +1,8 @@
 import { expect, type Page, Test } from '@playwright/test';
 import { type MailBuffer, MailServer } from 'maildev';
 
+import * as utils from '../../global-utils';
+
 /**
  * If a MailBuffer is passed it will be used and consume the expected emails
  */
@@ -35,21 +37,24 @@ export async function logNewUser(
             });
 
             await test.step('Create Vault account', async () => {
-                await expect(page.getByText('Set master password')).toBeVisible();
-                await page.getByLabel('Master password', { exact: true }).fill(user.password);
-                await page.getByLabel('Re-type master password').fill(user.password);
-                await page.getByRole('button', { name: 'Submit' }).click();
+                await expect(page.getByRole('heading', { name: 'Join organisation' })).toBeVisible();
+                await page.getByLabel('Master password (required)', { exact: true }).fill(user.password);
+                await page.getByLabel('Confirm master password (').fill(user.password);
+                await page.getByRole('button', { name: 'Create account' }).click();
             });
 
             await test.step('Default vault page', async () => {
-                await expect(page).toHaveTitle(/Vaults/);
+                await expect(page).toHaveTitle('Vaults | OIDCWarden Web');
                 await expect(page.getByTitle('All vaults', { exact: true })).toBeVisible();
             });
 
+            await utils.checkNotification(page, 'Account successfully created!');
+            await utils.checkNotification(page, 'Invitation accepted');
+
             if( mailBuffer ){
                 await test.step('Check emails', async () => {
+                    await expect(mailBuffer.next((m) => m.subject === "Welcome")).resolves.toBeDefined();
                     await expect(mailBuffer.next((m) => m.subject.includes("New Device Logged"))).resolves.toBeDefined();
-                    await expect(mailBuffer.next((m) => m.subject === "Master Password Has Been Changed")).resolves.toBeDefined();
                 });
             }
         });

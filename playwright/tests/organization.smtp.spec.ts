@@ -1,104 +1,85 @@
 import { test, expect, type TestInfo } from '@playwright/test';
 import { MailDev } from 'maildev';
 
-import * as utils from "../global-utils";
+import * as utils from '../global-utils';
 import * as orgs from './setups/orgs';
 import { createAccount, logUser } from './setups/user';
 
 let users = utils.loadEnv();
 
-let mailserver, user1Mails, user2Mails, user3Mails;
+let mailServer, mail1Buffer, mail2Buffer, mail3Buffer;
 
 test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
-    mailserver = new MailDev({
+    mailServer = new MailDev({
         port: process.env.MAILDEV_SMTP_PORT,
         web: { port: process.env.MAILDEV_HTTP_PORT },
     })
 
-    await mailserver.listen();
+    await mailServer.listen();
 
     await utils.startVault(browser, testInfo, {
         SMTP_HOST: process.env.MAILDEV_HOST,
         SMTP_FROM: process.env.PW_SMTP_FROM,
     });
 
-    user1Mails = mailserver.iterator(users.user1.email);
-    user2Mails = mailserver.iterator(users.user2.email);
-    user3Mails = mailserver.iterator(users.user3.email);
+    mail1Buffer = mailServer.buffer(users.user1.email);
+    mail2Buffer = mailServer.buffer(users.user2.email);
+    mail3Buffer = mailServer.buffer(users.user3.email);
 });
 
 test.afterAll('Teardown', async ({}, testInfo: TestInfo) => {
     utils.stopVault(testInfo);
-    utils.closeMails(mailserver, [user1Mails, user2Mails, user3Mails]);
+    [mail1Buffer, mail2Buffer, mail3Buffer, mailServer].map((m) => m?.close());
 });
 
 test('Create user3', async ({ page }) => {
-    await createAccount(test, page, users.user3, user3Mails);
+    await createAccount(test, page, users.user3, mail3Buffer);
 });
 
 test('Invite users', async ({ page }) => {
-    await createAccount(test, page, users.user1, user1Mails);
-    await logUser(test, page, users.user1, user1Mails);
+    await createAccount(test, page, users.user1, mail1Buffer);
 
-    await orgs.create(test, page, "Test");
-    await orgs.members(test, page, "Test");
-    await orgs.invite(test, page, "Test", users.user2.email);
-    await orgs.invite(test, page, "Test", users.user3.email, {
+    await orgs.create(test, page, 'Test');
+    await orgs.members(test, page, 'Test');
+    await orgs.invite(test, page, 'Test', users.user2.email);
+    await orgs.invite(test, page, 'Test', users.user3.email, {
         navigate: false,
     });
 });
 
 test('invited with new account', async ({ page }) => {
-    const { value: invited } = await user2Mails.next();
-    expect(invited.subject).toContain("Join Test")
+    const invited = await mail2Buffer.next((mail) => mail.subject === 'Join Test');
 
     await test.step('Create account', async () => {
         await page.setContent(invited.html);
-        const link = await page.getByTestId("invite").getAttribute("href");
+        const link = await page.getByTestId('invite').getAttribute('href');
         await page.goto(link);
         await expect(page).toHaveTitle(/Create account | OIDCWarden Web/);
 
-        await page.getByLabel('Name').fill(users.user2.name);
-        await page.getByLabel('Master password\n   (required)', { exact: true }).fill(users.user2.password);
-        await page.getByLabel('Re-type master password').fill(users.user2.password);
+        // await page.getByLabel('Name').fill(users.user2.name);
+        await page.getByLabel('Master password (required)', { exact: true }).fill(users.user2.password);
+        await page.getByLabel('Confirm master password (').fill(users.user2.password);
         await page.getByRole('button', { name: 'Create account' }).click();
+        await utils.checkNotification(page, 'Your new account has been created');
 
-        // Back to the login page
-        await expect(page).toHaveTitle('OIDCWarden Web');
-        await expect(page.getByTestId("toast-message")).toHaveText(/Your new account has been created/);
-        await page.locator('#toast-container').getByRole('button').click();
-
-        const { value: welcome } = await user2Mails.next();
-        expect(welcome.subject).toContain("Welcome")
+        // Redirected to the vault
+        await expect(page).toHaveTitle('Vaults | OIDCWarden Web');
+        await utils.checkNotification(page, 'You have been logged in!');
+        await utils.checkNotification(page, 'Invitation accepted');
     });
 
-    await test.step('Login', async () => {
-        await page.getByLabel(/Email address/).fill(users.user2.email);
-        await page.getByRole('button', { name: 'Continue' }).click();
-
-        // Unlock page
-        await page.getByLabel('Master password').fill(users.user2.password);
-        await page.getByRole('button', { name: 'Log in with master password' }).click();
-
-        // We are now in the default vault page
-        await expect(page).toHaveTitle(/Vaults/);
-        await expect(page.getByTestId("toast-title")).toHaveText("Invitation accepted");
-        await page.locator('#toast-container').getByRole('button').click();
-
-        const { value: logged } = await user2Mails.next();
-        expect(logged.subject).toContain("New Device Logged");
+    await test.step('Check mails', async () => {
+        await expect(mail2Buffer.next((m) => m.subject === 'Welcome')).resolves.toBeDefined();
+        await expect(mail2Buffer.next((m) => m.subject === 'New Device Logged In From Firefox')).resolves.toBeDefined();
+        await expect(mail1Buffer.next((m) => m.subject.includes('Invitation to Test accepted'))).resolves.toBeDefined();
     });
-
-    const { value: accepted } = await user1Mails.next();
-    expect(accepted.subject).toContain("Invitation to Test accepted")
 });
 
 test('invited with existing account', async ({ page }) => {
-    const { value: invited } = await user3Mails.next();
-    expect(invited.subject).toContain("Join Test")
+    const invited = await mail3Buffer.next((mail) => mail.subject === 'Join Test');
 
     await page.setContent(invited.html);
-    const link = await page.getByTestId("invite").getAttribute("href");
+    const link = await page.getByTestId('invite').getAttribute('href');
 
     await page.goto(link);
 
@@ -111,31 +92,24 @@ test('invited with existing account', async ({ page }) => {
     await page.getByRole('button', { name: 'Log in with master password' }).click();
 
     // We are now in the default vault page
-    await expect(page).toHaveTitle(/OIDCWarden Web/);
-    await expect(page.getByTestId("toast-title")).toHaveText("Invitation accepted");
-    await page.locator('#toast-container').getByRole('button').click();
+    await expect(page).toHaveTitle('Vaults | OIDCWarden Web');
+    await utils.checkNotification(page, 'Invitation accepted');
 
-    const { value: logged } = await user3Mails.next();
-    expect(logged.subject).toContain("New Device Logged")
-
-    const { value: accepted } = await user1Mails.next();
-    expect(accepted.subject).toContain("Invitation to Test accepted")
+    await expect(mail3Buffer.next((m) => m.subject === 'New Device Logged In From Firefox')).resolves.toBeDefined();
+    await expect(mail1Buffer.next((m) => m.subject.includes('Invitation to Test accepted'))).resolves.toBeDefined();
 });
 
 test('Confirm invited user', async ({ page }) => {
-    await logUser(test, page, users.user1, user1Mails);
+    await logUser(test, page, users.user1, mail1Buffer);
 
-    await orgs.members(test, page, "Test");
-    await orgs.confirm(test, page, "Test", users.user2.name);
+    await orgs.members(test, page, 'Test');
+    await orgs.confirm(test, page, 'Test', users.user2.name);
 
-    await test.step('Check user2 mail', async () => {
-        const { value: logged } = await user2Mails.next();
-        expect(logged.subject).toContain("Invitation to Test confirmed");
-    });
+    await expect(mail2Buffer.next((m) => m.subject.includes('Invitation to Test confirmed'))).resolves.toBeDefined();
 });
 
 test('Organization is visible', async ({ page }) => {
-    await logUser(test, page, users.user2, user2Mails);
+    await logUser(test, page, users.user2, mail2Buffer);
     await page.getByLabel('vault: Test').click();
     await expect(page.getByLabel('Filter: Default collection')).toBeVisible();
 });

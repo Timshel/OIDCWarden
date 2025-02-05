@@ -1,31 +1,40 @@
 import { expect, type Browser,Page } from '@playwright/test';
 
-export async function createAccount(test, page: Page, user: { email: string, name: string, password: string }, emails) {
+import { type MailBuffer } from 'maildev';
+
+import * as utils from '../../global-utils';
+
+export async function createAccount(test, page: Page, user: { email: string, name: string, password: string }, mailBuffer?: MailBuffer) {
     await test.step('Create user', async () => {
         // Landing page
         await page.goto('/');
         await page.getByRole('link', { name: 'Create account' }).click();
 
-        // Back to Vault create account
+        // Vault create account
         await expect(page).toHaveTitle(/Create account | OIDCWarden Web/);
         await page.getByLabel(/Email address/).fill(user.email);
         await page.getByLabel('Name').fill(user.name);
-        await page.getByLabel('Master password\n   (required)', { exact: true }).fill(user.password);
-        await page.getByLabel('Re-type master password').fill(user.password);
+        await page.getByRole('button', { name: 'Continue' }).click();
+
+        // Vault finish Creation
+        await page.getByLabel('Master password (required)', { exact: true }).fill(user.password);
+        await page.getByLabel('Confirm master password (').fill(user.password);
         await page.getByRole('button', { name: 'Create account' }).click();
 
-        // Back to the login page
-        await expect(page).toHaveTitle('OIDCWarden Web');
-        await expect(page.getByTestId("toast-message")).toHaveText(/Your new account has been created/);
+        await utils.checkNotification(page, 'Your new account has been created')
 
-        if( emails ){
-            const { value: welcome } = await emails.next();
-            expect(welcome.subject).toContain("Welcome");
+        // Redirected to the vault
+        await expect(page).toHaveTitle('Vaults | OIDCWarden Web');
+        await utils.checkNotification(page, 'You have been logged in!');
+
+        if( mailBuffer ){
+            await expect(mailBuffer.next((m) => m.subject === "Welcome")).resolves.toBeDefined();
+            await expect(mailBuffer.next((m) => m.subject === "New Device Logged In From Firefox")).resolves.toBeDefined();
         }
     });
 }
 
-export async function logUser(test, page: Page, user: { email: string, password: string }, emails) {
+export async function logUser(test, page: Page, user: { email: string, password: string }, mailBuffer?: MailBuffer) {
     await test.step('Log user', async () => {
         // Landing page
         await page.goto('/');
@@ -39,9 +48,8 @@ export async function logUser(test, page: Page, user: { email: string, password:
         // We are now in the default vault page
         await expect(page).toHaveTitle(/Vaults/);
 
-        if( emails ){
-            const { value: logged } = await emails.next();
-            expect(logged.subject).toContain("New Device Logged");
+        if( mailBuffer ){
+            await expect(mailBuffer.next((m) => m.subject === "New Device Logged In From Firefox")).resolves.toBeDefined();
         }
     });
 }
