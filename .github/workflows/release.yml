@@ -35,8 +35,8 @@ jobs:
 
   docker-build:
     needs: skip_check
-    if: ${{ needs.skip_check.outputs.should_skip != 'true' && github.repository == 'dani-garcia/vaultwarden' }}
-    name: Build Vaultwarden containers
+    if: ${{ needs.skip_check.outputs.should_skip != 'true' && github.repository == 'timshel/oidcwarden' }}
+    name: Build OIDCWarden containers
     permissions:
       packages: write
       contents: read
