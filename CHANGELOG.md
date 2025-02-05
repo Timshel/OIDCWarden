@@ -1,8 +1,15 @@
 # Changelog
 
+# v2025.1.2-1
+
+- :warning: upgrade to `openidconnect` `4.0.0`, proceed with caution :warning:
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.1.2-4`
+
 # v2025.1.1-7
 
 - Integrate latest change from `Vaultwarden` up to [8d1df08](https://github.com/dani-garcia/vaultwarden/commit/8d1df08b81e1e0eea28e480de236dc0501674edc)
+  \
+  :warning: endup not being built due to a merge error.
 
 # v2025.1.1-6
 
