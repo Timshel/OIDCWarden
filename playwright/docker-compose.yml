@@ -96,7 +96,7 @@ services:
   Maildev:
     profiles: ["oidcwarden", "maildev"]
     container_name: maildev
-    image: timshel/maildev
+    image: timshel/maildev:3.0.4
     ports:
       - ${SMTP_PORT}:1025
       - 1080:1080
