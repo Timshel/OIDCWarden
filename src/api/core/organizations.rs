@@ -346,7 +346,7 @@ async fn get_user_collections(headers: Headers, mut conn: DbConn) -> Json<Value>
 // We return the org_id if it exists ortherwise we return the first associated with the user
 #[get("/organizations/<identifier>/auto-enroll-status")]
 async fn get_auto_enroll_status(identifier: &str, headers: Headers, mut conn: DbConn) -> JsonResult {
-    let org = if identifier == crate::sso::FAKE_IDENTIFIER.to_string() {
+    let org = if identifier == crate::sso::FAKE_IDENTIFIER {
         match Membership::find_main_user_org(&headers.user.uuid, &mut conn).await {
             Some(member) => Organization::find_by_uuid(&member.org_uuid, &mut conn).await,
             None => None,
