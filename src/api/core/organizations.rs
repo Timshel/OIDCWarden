@@ -1964,7 +1964,6 @@ async fn list_policies_token(org_id: OrganizationId, token: &str, mut conn: DbCo
 }
 
 // Called during the SSO enrollment.
-// Cannot use the OrganizationId guard since the Org does not exists.
 // Return the org policy if it exists, otherwise use the default one.
 #[get("/organizations/<org_id>/policies/master-password", rank = 1)]
 async fn get_master_password_policy(org_id: OrganizationId, _headers: Headers, mut conn: DbConn) -> JsonResult {

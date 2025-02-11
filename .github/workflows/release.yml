@@ -8,7 +8,7 @@ on:
 
     tags:
       # https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
-      - '[1-2].[0-9]+.[0-9]+'
+      - 'v202[5-9]+.[0-9]+.[0-9]+-[0-9]+'
 
 jobs:
   # https://github.com/marketplace/actions/skip-duplicate-actions
