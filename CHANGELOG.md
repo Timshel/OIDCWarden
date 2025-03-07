@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.1.2-2
+
+- Fix member edit, `Owner` and `Admin` were losing collection access.
+
 # v2025.1.2-1
 
 - :warning: upgrade to `openidconnect` `4.0.0`, proceed with caution :warning:
