@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.1.2-3
+
+- Fix member invite, `Owner` and `Admin` were not granted collection access.
+
 # v2025.1.2-2
 
 - Fix member edit, `Owner` and `Admin` were losing collection access.
