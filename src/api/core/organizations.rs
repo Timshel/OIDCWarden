@@ -1053,8 +1053,6 @@ struct InviteData {
     r#type: NumberOrString,
     collections: Option<Vec<CollectionData>>,
     #[serde(default)]
-    access_all: bool,
-    #[serde(default)]
     permissions: HashMap<String, Value>,
 }
 
@@ -1068,7 +1066,7 @@ async fn send_invite(
     if org_id != headers.org_id {
         err!("Organization not found", "Organization id's do not match");
     }
-    let mut data: InviteData = data.into_inner();
+    let data: InviteData = data.into_inner();
 
     // HACK: We need the raw user-type to be sure custom role is selected to determine the access_all permission
     // The from_str() will convert the custom role type into a manager role type
@@ -1086,13 +1084,12 @@ async fn send_invite(
     // HACK: This converts the Custom role which has the `Manage all collections` box checked into an access_all flag
     // Since the parent checkbox is not sent to the server we need to check and verify the child checkboxes
     // If the box is not checked, the user will still be a manager, but not with the access_all permission
-    if raw_type.eq("4")
-        && data.permissions.get("editAnyCollection") == Some(&json!(true))
-        && data.permissions.get("deleteAnyCollection") == Some(&json!(true))
-        && data.permissions.get("createNewCollections") == Some(&json!(true))
-    {
-        data.access_all = true;
-    }
+    let access_all = new_type == MembershipType::Owner
+        || new_type == MembershipType::Admin
+        || (raw_type.eq("4")
+            && data.permissions.get("editAnyCollection") == Some(&json!(true))
+            && data.permissions.get("deleteAnyCollection") == Some(&json!(true))
+            && data.permissions.get("createNewCollections") == Some(&json!(true)));
 
     let mut user_created: bool = false;
     let collections = data.collections.into_iter().flatten().collect();
@@ -1138,7 +1135,7 @@ async fn send_invite(
             &user,
             new_type,
             &data.groups,
-            data.access_all,
+            access_all,
             &collections,
             headers.user.email.clone(),
             false,
