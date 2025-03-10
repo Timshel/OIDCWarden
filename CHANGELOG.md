@@ -1,5 +1,10 @@
 # Changelog
 
+# v2025.2.2-1
+
+- Integrate latest change from `Vaultwarden` up to [6edceb5](https://github.com/dani-garcia/vaultwarden/commit/6edceb5f7acfee8ffe1ae2f07afd76dc588dda60)
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.2.2-1`
+
 # v2025.1.2-3
 
 - Fix member invite, `Owner` and `Admin` were not granted collection access.
