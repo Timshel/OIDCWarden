@@ -2747,6 +2747,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "subtle",
  "syslog",
  "time",
  "tokio",
