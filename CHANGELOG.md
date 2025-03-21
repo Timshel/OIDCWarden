@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.2.2-2
+
+- Ignore unsupported User role
+
 # v2025.2.2-1
 
 - Integrate latest change from `Vaultwarden` up to [6edceb5](https://github.com/dani-garcia/vaultwarden/commit/6edceb5f7acfee8ffe1ae2f07afd76dc588dda60)
