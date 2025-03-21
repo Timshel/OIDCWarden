@@ -2,6 +2,7 @@ use chrono::Utc;
 use derive_more::{AsRef, Deref, Display, From};
 use regex::Regex;
 use serde::de::DeserializeOwned;
+use serde_with::{serde_as, DefaultOnError};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -352,6 +353,10 @@ pub enum UserRole {
     User,
 }
 
+#[serde_as]
+#[derive(Deserialize)]
+struct UserRoles(#[serde_as(as = "Vec<DefaultOnError>")] Vec<Option<UserRole>>);
+
 #[derive(
     Clone,
     Debug,
@@ -409,10 +414,10 @@ pub struct UserInformation {
 // Errors are logged but will return None
 fn roles_claim(email: &str, token: &serde_json::Value) -> Option<UserRole> {
     if let Some(json_roles) = token.pointer(&CONFIG.sso_roles_token_path()) {
-        match serde_json::from_value::<Vec<UserRole>>(json_roles.clone()) {
-            Ok(mut roles) => {
+        match serde_json::from_value::<UserRoles>(json_roles.clone()) {
+            Ok(UserRoles(mut roles)) => {
                 roles.sort();
-                roles.into_iter().next()
+                roles.into_iter().find(|r| r.is_some()).flatten()
             }
             Err(err) => {
                 debug!("Failed to parse user ({email}) roles: {err}");
@@ -452,15 +457,17 @@ fn additional_claims(email: &str, token: &str) -> ApiResult<AdditionnalClaims> {
             Err(err) => err!(format!("Could not decode access token: {:?}", err)),
             Ok(claims) => {
                 if CONFIG.sso_roles_enabled() {
-                    role = roles_claim(email, &claims);
-                    if !CONFIG.sso_roles_default_to_user() && role.is_none() {
-                        info!("User {email} failed to login due to missing/invalid role");
-                        err!(
-                            "Invalid user role. Contact your administrator",
-                            ErrorEvent {
-                                event: EventType::UserFailedLogIn
-                            }
-                        )
+                    match roles_claim(email, &claims) {
+                        None if !CONFIG.sso_roles_default_to_user() => {
+                            info!("User {email} failed to login due to missing/invalid role");
+                            err!(
+                                "Invalid user role. Contact your administrator",
+                                ErrorEvent {
+                                    event: EventType::UserFailedLogIn
+                                }
+                            )
+                        }
+                        r => role = r,
                     }
                 }
 
