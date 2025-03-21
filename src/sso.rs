@@ -350,6 +350,8 @@ struct AdditionnalClaims {
 pub enum UserRole {
     Admin,
     User,
+    #[serde(other)]
+    UNKNOWN,
 }
 
 #[derive(
