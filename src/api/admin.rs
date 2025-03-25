@@ -50,6 +50,7 @@ pub fn routes() -> Vec<Route> {
         invite_user,
         logout,
         delete_user,
+        delete_sso_user,
         deauth_user,
         disable_user,
         enable_user,
@@ -242,6 +243,7 @@ struct AdminTemplateData {
     page_data: Option<Value>,
     logged_in: bool,
     urlpath: String,
+    sso_enabled: bool,
 }
 
 impl AdminTemplateData {
@@ -251,6 +253,7 @@ impl AdminTemplateData {
             page_data: Some(page_data),
             logged_in: true,
             urlpath: CONFIG.domain_path(),
+            sso_enabled: CONFIG.sso_enabled(),
         }
     }
 
@@ -340,7 +343,7 @@ fn logout(cookies: &CookieJar<'_>) -> Redirect {
 async fn get_users_json(_token: AdminToken, mut conn: DbConn) -> Json<Value> {
     let users = User::get_all(&mut conn).await;
     let mut users_json = Vec::with_capacity(users.len());
-    for u in users {
+    for (u, _) in users {
         let mut usr = u.to_json(&mut conn).await;
         usr["userEnabled"] = json!(u.enabled);
         usr["createdAt"] = json!(format_naive_datetime_local(&u.created_at, DT_FMT));
@@ -358,7 +361,7 @@ async fn get_users_json(_token: AdminToken, mut conn: DbConn) -> Json<Value> {
 async fn users_overview(_token: AdminToken, mut conn: DbConn) -> ApiResult<Html<String>> {
     let users = User::get_all(&mut conn).await;
     let mut users_json = Vec::with_capacity(users.len());
-    for u in users {
+    for (u, sso_u) in users {
         let mut usr = u.to_json(&mut conn).await;
         usr["cipher_count"] = json!(Cipher::count_owned_by_user(&u.uuid, &mut conn).await);
         usr["attachment_count"] = json!(Attachment::count_by_user(&u.uuid, &mut conn).await);
@@ -369,6 +372,9 @@ async fn users_overview(_token: AdminToken, mut conn: DbConn) -> ApiResult<Html<
             Some(dt) => json!(format_naive_datetime_local(&dt, DT_FMT)),
             None => json!("Never"),
         };
+
+        usr["sso_identifier"] = json!(sso_u.map(|u| u.identifier.to_string()).unwrap_or("".to_string()));
+
         users_json.push(usr);
     }
 
@@ -408,6 +414,27 @@ async fn delete_user(user_id: UserId, token: AdminToken, mut conn: DbConn) -> Em
     for membership in memberships {
         log_event(
             EventType::OrganizationUserDeleted as i32,
+            &membership.uuid,
+            &membership.org_uuid,
+            &ACTING_ADMIN_USER.into(),
+            14, // Use UnknownBrowser type
+            &token.ip.ip,
+            &mut conn,
+        )
+        .await;
+    }
+
+    res
+}
+
+#[delete("/users/<user_id>/sso", format = "application/json")]
+async fn delete_sso_user(user_id: UserId, token: AdminToken, mut conn: DbConn) -> EmptyResult {
+    let memberships = Membership::find_any_state_by_user(&user_id, &mut conn).await;
+    let res = SsoUser::delete(&user_id, &mut conn).await;
+
+    for membership in memberships {
+        log_event(
+            EventType::OrganizationUserUnlinkedSso as i32,
             &membership.uuid,
             &membership.org_uuid,
             &ACTING_ADMIN_USER.into(),
