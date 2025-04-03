@@ -37,7 +37,7 @@ pub fn routes() -> Vec<Route> {
         _prevalidate,
         prevalidate,
         register_finish,
-        register_verification,
+        register_verification_email,
         authorize,
         oidcsignin,
         oidcsignin_error
@@ -910,37 +910,67 @@ async fn prelogin(data: Json<PreloginData>, conn: DbConn) -> Json<Value> {
 
 #[post("/accounts/register", data = "<data>")]
 async fn identity_register(data: Json<RegisterData>, conn: DbConn) -> JsonResult {
-    _register(data, conn).await
+    _register(data, false, conn).await
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RegisterVerificationData {
+struct RegisterVerificationData {
     email: String,
     name: Option<String>,
     // receiveMarketingEmails: bool,
 }
 
-#[post("/accounts/register/send-verification-email", data = "<data>")]
-pub fn register_verification(data: Json<RegisterVerificationData>) -> JsonResult {
-    let data: RegisterVerificationData = data.into_inner();
+#[derive(rocket::Responder)]
+enum RegisterVerificationResponse {
+    NoContent(()),
+    Token(Json<String>),
+}
 
-    // Check if the length of the username exceeds 50 characters (Same is Upstream Bitwarden)
-    // This also prevents issues with very long usernames causing to large JWT's. See #2419
-    if let Some(ref name) = data.name {
-        if name.len() > 50 {
-            err!("The field Name must be a string with a maximum length of 50.");
-        }
+#[post("/accounts/register/send-verification-email", data = "<data>")]
+async fn register_verification_email(
+    data: Json<RegisterVerificationData>,
+    mut conn: DbConn,
+) -> ApiResult<RegisterVerificationResponse> {
+    let data = data.into_inner();
+
+    if !CONFIG.is_signup_allowed(&data.email) {
+        err!("Registration not allowed or user already exists")
     }
 
-    let token_claims = auth::generate_register_verify_claims(data.email.clone(), data.name, false);
+    let should_send_mail = CONFIG.mail_enabled() && CONFIG.signups_verify();
 
-    Ok(Json(auth::encode_jwt(&token_claims).into()))
+    if User::find_by_mail(&data.email, &mut conn).await.is_some() {
+        if should_send_mail {
+            // There is still a timing side channel here in that the code
+            // paths that send mail take noticeably longer than ones that
+            // don't. Add a randomized sleep to mitigate this somewhat.
+            use rand::{rngs::SmallRng, Rng, SeedableRng};
+            let mut rng = SmallRng::from_os_rng();
+            let delta: i32 = 100;
+            let sleep_ms = (1_000 + rng.random_range(-delta..=delta)) as u64;
+            tokio::time::sleep(tokio::time::Duration::from_millis(sleep_ms)).await;
+        }
+        return Ok(RegisterVerificationResponse::NoContent(()));
+    }
+
+    let token_claims = auth::generate_register_verify_claims(data.email.clone(), data.name.clone(), should_send_mail);
+    let token = auth::encode_jwt(&token_claims);
+
+    if should_send_mail {
+        mail::send_register_verify_email(&data.email, &token).await?;
+
+        Ok(RegisterVerificationResponse::NoContent(()))
+    } else {
+        // If email verification is not required, return the token directly
+        // the clients will use this token to finish the registration
+        Ok(RegisterVerificationResponse::Token(Json(token)))
+    }
 }
 
 #[post("/accounts/register/finish", data = "<data>")]
 async fn register_finish(data: Json<RegisterData>, conn: DbConn) -> JsonResult {
-    _register(data, conn).await
+    _register(data, true, conn).await
 }
 
 // https://github.com/bitwarden/jslib/blob/master/common/src/models/request/tokenRequest.ts

@@ -108,7 +108,7 @@ macro_rules! make_config {
 
                 let mut builder = ConfigBuilder::default();
                 $($(
-                    builder.$name = make_config! { @getenv paste::paste!(stringify!([<$name:upper>])), $ty };
+                    builder.$name = make_config! { @getenv pastey::paste!(stringify!([<$name:upper>])), $ty };
                 )+)+
 
                 builder
@@ -137,7 +137,7 @@ macro_rules! make_config {
                         builder.$name = v.clone();
 
                         if self.$name.is_some() {
-                            overrides.push(paste::paste!(stringify!([<$name:upper>])).into());
+                            overrides.push(pastey::paste!(stringify!([<$name:upper>])).into());
                         }
                     }
                 )+)+
@@ -235,7 +235,7 @@ macro_rules! make_config {
                                 element.insert("default".into(), serde_json::to_value(def.$name).unwrap());
                                 element.insert("type".into(), (_get_form_type(stringify!($ty))).into());
                                 element.insert("doc".into(), (_get_doc(concat!($($doc),+))).into());
-                                element.insert("overridden".into(), (overridden.contains(&paste::paste!(stringify!([<$name:upper>])).into())).into());
+                                element.insert("overridden".into(), (overridden.contains(&pastey::paste!(stringify!([<$name:upper>])).into())).into());
                                 element
                             }),
                         )+
@@ -491,7 +491,8 @@ make_config! {
         disable_icon_download:  bool,   true,   def,    false;
         /// Allow new signups |> Controls whether new users can register. Users can be invited by the vaultwarden admin even if this is disabled
         signups_allowed:        bool,   true,   def,    true;
-        /// Require email verification on signups. This will prevent logins from succeeding until the address has been verified
+        /// Require email verification on signups. On new client versions, this will require verification at signup time. On older clients,
+        /// this will prevent logins from succeeding until the address has been verified
         signups_verify:         bool,   true,   def,    false;
         /// If signups require email verification, automatically re-send verification email if it hasn't been sent for a while (in seconds)
         signups_verify_resend_time: u64, true,  def,    3_600;
@@ -798,7 +799,7 @@ make_config! {
         email_expiration_time:  u64,    true,   def,      600;
         /// Maximum attempts |> Maximum attempts before an email token is reset and a new email will need to be sent
         email_attempts_limit:   u64,    true,   def,      3;
-        /// Automatically enforce at login |> Setup email 2FA provider regardless of any organization policy
+        /// Setup email 2FA at signup |> Setup email 2FA provider on registration regardless of any organization policy
         email_2fa_enforce_on_verified_invite: bool,   true,   def,      false;
         /// Auto-enable 2FA (Know the risks!) |> Automatically setup email 2FA as fallback provider when needed
         email_2fa_auto_fallback: bool,  true,   def,      false;
@@ -906,6 +907,9 @@ fn validate_config(cfg: &ConfigItems) -> Result<(), Error> {
         "inline-menu-positioning-improvements",
         "ssh-key-vault-item",
         "ssh-agent",
+        "anon-addy-self-host-alias",
+        "simple-login-self-host-alias",
+        "mutual-tls",
     ];
     let configured_flags = parse_experimental_client_feature_flags(&cfg.experimental_client_feature_flags);
     let invalid_flags: Vec<_> = configured_flags.keys().filter(|flag| !KNOWN_FLAGS.contains(&flag.as_str())).collect();
@@ -1560,6 +1564,7 @@ where
     reg!("email/protected_action", ".html");
     reg!("email/pw_hint_none", ".html");
     reg!("email/pw_hint_some", ".html");
+    reg!("email/register_verify_email", ".html");
     reg!("email/send_2fa_removed_from_org", ".html");
     reg!("email/send_emergency_access_invite", ".html");
     reg!("email/send_org_enrolled", ".html");
