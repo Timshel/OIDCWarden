@@ -40,7 +40,7 @@ test('No role cannot log', async ({ page }) => {
 
     await test.step('Landing page', async () => {
         await page.goto('/');
-        await page.getByRole('button', { name: 'Log in'}).click();
+        await page.getByRole('button', { name: 'Continue'}).click();
     });
 
     await test.step('Keycloak login', async () => {

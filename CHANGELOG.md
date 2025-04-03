@@ -1,5 +1,14 @@
 # Changelog
 
+# v2025.3.1-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.3.1-4`
+  \
+  :warning: `v2025.3.x` brings change to the login flow, the SSO button is now available on the landing page.
+- Integrate latest change from `Vaultwarden` up to [8dfe8059](https://github.com/dani-garcia/vaultwarden/commit/8dfe8059)
+- Fix invited user registration without SMTP
+- Add sso identifier in admin user panel
+
 # v2025.2.2-2
 
 - Ignore unsupported User role

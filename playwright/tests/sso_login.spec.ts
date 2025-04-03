@@ -28,7 +28,7 @@ test('Non SSO login', async ({ page }) => {
     // Landing page
     await page.goto('/');
     await page.getByLabel(/Email address/).fill(users.user1.email);
-    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('button', { name: 'Log in with master password' }).click();
 
     // Unlock page
     await page.getByLabel('Master password').fill(users.user1.password);
@@ -47,13 +47,12 @@ test('Non SSO login impossible', async ({ page, browser }, testInfo: TestInfo) =
     // Landing page
     await page.goto('/');
     await page.getByLabel(/Email address/).fill(users.user1.email);
-    await page.getByRole('button', { name: 'Continue' }).click();
+
+    // SSO login is there
+    await expect(page.getByRole('button', { name: /Use single sign-on/ })).toHaveCount(1);
 
     // No Master password
-    await expect(page.getByLabel('Master password')).toBeHidden();
-
-    // Check the selector for the next test
-    await expect(page.getByRole('link', { name: /Enterprise single sign-on/ })).toHaveCount(1);
+    await expect(page.getByRole('button', { name: /Log in with master password/ })).toHaveCount(0);
 });
 
 test('No SSO login', async ({ page }, testInfo: TestInfo) => {
@@ -64,9 +63,12 @@ test('No SSO login', async ({ page }, testInfo: TestInfo) => {
     // Landing page
     await page.goto('/');
     await page.getByLabel(/Email address/).fill(users.user1.email);
-    await page.getByRole('button', { name: 'Continue' }).click();
 
     // No SSO button (rely on a correct selector checked in previous test)
     await page.getByLabel('Master password');
-    await expect(page.getByRole('link', { name: /Enterprise single sign-on/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Use single sign-on/ })).toHaveCount(0);
+
+    // Can continue to Master password
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByRole('button', { name: /Log in with master password/ })).toHaveCount(1);
 });

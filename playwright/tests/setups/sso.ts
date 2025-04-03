@@ -17,17 +17,13 @@ export async function logNewUser(
         await test.step('Create user', async () => {
             await test.step('Landing page', async () => {
                 await page.goto('/');
-                if( !options.override ) {
+                if( options.override ) {
+                    await page.getByRole('button', { name: 'Continue' }).click();
+                } else {
                     await page.getByLabel(/Email address/).fill(user.email);
+                    await page.getByRole('button', { name: /Use single sign-on/ }).click();
                 }
-                await page.getByRole('button', { name: options.override ? 'Log in' : 'Continue' }).click();
             });
-
-            if( !options.override ) {
-                await test.step('SSo start page', async () => {
-                    await page.getByRole('link', { name: /Enterprise single sign-on/ }).click();
-                });
-            }
 
             await test.step('Keycloak login', async () => {
                 await expect(page.getByRole('heading', { name: 'Sign in to your account' })).toBeVisible();
@@ -79,17 +75,13 @@ export async function logUser(
         await test.step('Log user', async () => {
             await test.step('Landing page', async () => {
                 await page.goto('/');
-                if( !options.override ) {
+                if( options.override ) {
+                    await page.getByRole('button', { name: 'Continue' }).click();
+                } else {
                     await page.getByLabel(/Email address/).fill(user.email);
+                    await page.getByRole('button', { name: /Use single sign-on/ }).click();
                 }
-                await page.getByRole('button', { name: options.override ? 'Log in' : 'Continue' }).click();
             });
-
-            if( !options.override ) {
-                await test.step('SSo start page', async () => {
-                    await page.getByRole('link', { name: /Enterprise single sign-on/ }).click();
-                });
-            }
 
             await test.step('Keycloak login', async () => {
                 await expect(page.getByRole('heading', { name: 'Sign in to your account' })).toBeVisible();
