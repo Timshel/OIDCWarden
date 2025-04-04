@@ -957,6 +957,7 @@ async fn register_verification_email(
         } else {
             mail::send_register_verify_email(&data.email, &token).await?;
         }
+
         Ok(RegisterVerificationResponse::NoContent(()))
     } else {
         // If email verification is not required, return the token directly
