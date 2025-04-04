@@ -1,6 +1,6 @@
 # OIDCWarden
 
-Fork from [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
+Soft fork from [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
 Goal is to provide an OIDC compatible solution with the ultimate goal of merging features back in Vaultwarden.
 
 A master password is still required and not controlled by the SSO (depending on your point of view this might be a feature ;).
@@ -12,6 +12,8 @@ Bitwarden [key connector](https://bitwarden.com/help/about-key-connector) is not
 ## Acknowledgement
 
 Project made possible with support from the [sponsors](https://github.com/sponsors/Timshel) and the [TU Bergakademie Freiberg](https://tu-freiberg.de/en).
+\
+Would not be possible without the maintainers and contributors of the source project [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
 
 ## Versions
 
