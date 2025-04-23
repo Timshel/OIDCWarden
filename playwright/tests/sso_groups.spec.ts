@@ -53,7 +53,6 @@ test('User auto invite', async ({ context, page }) => {
 });
 
 test('Org invite auto accept', async ({ context, page }, testInfo: TestInfo) => {
-    test.setTimeout(40000);
     let mail1Buffer = mailServer.buffer(users.user1.email);
     let mail2Buffer = mailServer.buffer(users.user2.email);
     try {

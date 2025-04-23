@@ -61,3 +61,27 @@ export async function revoke(test, page: Page, name: string, user_email: string)
         await utils.checkNotification(page, 'Revoked organisation access');
     });
 }
+
+export async function checkRole(test, page: Page, name: string, user_email: string, role: string) {
+    await test.step(`${user_email} role ${role}`, async () => {
+        await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
+        expect(page.getByRole('row').filter({hasText: user_email}).getByRole('cell', { name: role })).toBeVisible();
+    });
+}
+
+export async function setRole(test, page: Page, name: string, user_email: string, role: string) {
+    await test.step(`SetRole ${user_email}`, async () => {
+        await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
+        await page.getByRole('row').filter({hasText: user_email}).getByLabel('Options').click();
+        await page.getByRole('menuitem', { name: 'Member role' }).click();
+        await expect(page.getByRole('heading', { name: 'Edit Member' })).toBeVisible();
+        await page.getByRole('radio', { name: role }).click();
+
+        if( role === 'Custom' ){
+            await page.getByRole('checkbox', { name: 'Manage all collections' }).click();
+        }
+
+        await page.getByRole('button', { name: 'Save' }).click();
+        await utils.checkNotification(page, 'Edited user');
+    });
+}

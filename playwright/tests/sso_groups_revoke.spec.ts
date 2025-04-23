@@ -103,7 +103,14 @@ test('Check members', async ({ context, page }, testInfo: TestInfo) => {
     });
 });
 
-test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
+async function mappingTest(
+    test: Test,
+    context: Context,
+    page: Page,
+    testInfo: TestInfo,
+    mapping: String,
+    revoked: boolean,
+) {
     await utils.restartVault(page, testInfo, {
         ORGANIZATION_INVITE_AUTO_ACCEPT: true,
         SMTP_FROM: process.env.PW_SMTP_FROM,
@@ -111,7 +118,7 @@ test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
         SSO_ENABLED: true,
         SSO_ONLY: true,
         SSO_ORGANIZATIONS_INVITE: true,
-        SSO_ORGANIZATIONS_ID_MAPPING: "Test:Test;All:All",
+        SSO_ORGANIZATIONS_ID_MAPPING: mapping,
         SSO_ORGANIZATIONS_REVOCATION: true,
         SSO_SCOPES: "email profile groups",
     }, true);
@@ -133,8 +140,20 @@ test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
         await orgs.confirm(test, page, 'Toto', users.user2.email);
     });
 
-    await test.step('Org still present', async () => {
+    await test.step(revoked ? 'Org removed' : 'Org still visible', async () => {
         await logUser(test, page, users.user2);
-        await expect(page.getByRole('button', { name: 'vault: Toto', exact: true})).toBeVisible();
+        await expect(page.getByRole('button', { name: 'vault: Toto', exact: true})).toHaveCount(revoked ? 0 : 1);
     });
+}
+
+test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
+    await mappingTest(test, context, page, testInfo, "Test:Test;All:All", true);
+});
+
+test('With missing mapping', async ({ context, page }, testInfo: TestInfo) => {
+    await mappingTest(test, context, page, testInfo, "Test:Test", false);
+});
+
+test('With custom mapping', async ({ context, page }, testInfo: TestInfo) => {
+    await mappingTest(test, context, page, testInfo, "Test:Test;All:Toto", false);
 });

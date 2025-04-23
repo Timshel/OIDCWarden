@@ -4,7 +4,7 @@ use regex::Regex;
 use serde::de::DeserializeOwned;
 use serde_with::{serde_as, DefaultOnError};
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::time::Duration;
 use url::Url;
 
@@ -343,6 +343,7 @@ pub async fn authorize_url(
 #[derive(Debug)]
 struct AdditionnalClaims {
     role: Option<UserRole>,
+    org_role: Option<UserOrgRole>,
     groups: Vec<String>,
 }
 
@@ -353,9 +354,29 @@ pub enum UserRole {
     User,
 }
 
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+enum UserOrgRole {
+    OrgUnsync,
+    OrgOwner,
+    OrgAdmin,
+    OrgManager,
+    OrgUser,
+}
+
+impl UserOrgRole {
+    fn membership_type(&self) -> MembershipType {
+        match *self {
+            UserOrgRole::OrgOwner => MembershipType::Owner,
+            UserOrgRole::OrgAdmin => MembershipType::Admin,
+            UserOrgRole::OrgManager => MembershipType::Manager,
+            _ => MembershipType::User,
+        }
+    }
+}
+
 #[serde_as]
 #[derive(Deserialize)]
-struct UserRoles(#[serde_as(as = "Vec<DefaultOnError>")] Vec<Option<UserRole>>);
+struct UserRoles<T: DeserializeOwned>(#[serde_as(as = "Vec<DefaultOnError>")] Vec<Option<T>>);
 
 #[derive(
     Clone,
@@ -393,7 +414,8 @@ pub struct AuthenticatedUser {
     pub email_verified: Option<bool>,
     pub user_name: Option<String>,
     pub role: Option<UserRole>,
-    pub groups: Vec<String>,
+    org_role: Option<UserOrgRole>,
+    groups: Vec<String>,
 }
 
 impl AuthenticatedUser {
@@ -411,10 +433,16 @@ pub struct UserInformation {
     pub user_name: Option<String>,
 }
 
-// Errors are logged but will return None
-fn roles_claim(email: &str, token: &serde_json::Value) -> Option<UserRole> {
-    if let Some(json_roles) = token.pointer(&CONFIG.sso_roles_token_path()) {
-        match serde_json::from_value::<UserRoles>(json_roles.clone()) {
+// Return the top most defined Role (https://doc.rust-lang.org/std/cmp/trait.PartialOrd.html#derivable)
+fn deserialize_top_role<T: DeserializeOwned + Ord>(
+    deserialize: bool,
+    email: &str,
+    json_roles: &serde_json::Value,
+) -> Option<T> {
+    use crate::serde::Deserialize;
+
+    if deserialize {
+        match UserRoles::<T>::deserialize(json_roles) {
             Ok(UserRoles(mut roles)) => {
                 roles.sort();
                 roles.into_iter().find(|r| r.is_some()).flatten()
@@ -425,8 +453,20 @@ fn roles_claim(email: &str, token: &serde_json::Value) -> Option<UserRole> {
             }
         }
     } else {
-        debug!("No roles in {email} id_token at {}", &CONFIG.sso_roles_token_path());
         None
+    }
+}
+
+// Errors are logged but will return None
+fn roles_claim(email: &str, token: &serde_json::Value) -> (Option<UserRole>, Option<UserOrgRole>) {
+    if let Some(json_roles) = token.pointer(&CONFIG.sso_roles_token_path()) {
+        (
+            deserialize_top_role(CONFIG.sso_roles_enabled(), email, json_roles),
+            deserialize_top_role(CONFIG.sso_organizations_invite(), email, json_roles),
+        )
+    } else {
+        debug!("No roles in {email} id_token at {}", &CONFIG.sso_roles_token_path());
+        (None, None)
     }
 }
 
@@ -449,27 +489,14 @@ fn groups_claim(email: &str, token: &serde_json::Value) -> Vec<String> {
 // Trying to conditionnally read additionnal configurable claims using openidconnect appear nightmarish
 // So we just decode the token again as a JsValue
 fn additional_claims(email: &str, token: &str) -> ApiResult<AdditionnalClaims> {
-    let mut role = None;
+    let mut roles = (None, None);
     let mut groups = Vec::new();
 
     if CONFIG.sso_roles_enabled() || CONFIG.sso_organizations_invite() {
         match insecure_decode::<serde_json::Value>("id_token", token) {
             Err(err) => err!(format!("Could not decode access token: {:?}", err)),
             Ok(claims) => {
-                if CONFIG.sso_roles_enabled() {
-                    match roles_claim(email, &claims) {
-                        None if !CONFIG.sso_roles_default_to_user() => {
-                            info!("User {email} failed to login due to missing/invalid role");
-                            err!(
-                                "Invalid user role. Contact your administrator",
-                                ErrorEvent {
-                                    event: EventType::UserFailedLogIn
-                                }
-                            )
-                        }
-                        r => role = r,
-                    }
-                }
+                roles = roles_claim(email, &claims);
 
                 if CONFIG.sso_organizations_invite() {
                     groups = groups_claim(email, &claims);
@@ -479,7 +506,8 @@ fn additional_claims(email: &str, token: &str) -> ApiResult<AdditionnalClaims> {
     }
 
     Ok(AdditionnalClaims {
-        role,
+        role: roles.0,
+        org_role: roles.1,
         groups,
     })
 }
@@ -587,6 +615,16 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
 
             let additional_claims = additional_claims(&email, &id_token.to_string())?;
 
+            if CONFIG.sso_roles_enabled() && !CONFIG.sso_roles_default_to_user() && additional_claims.role.is_none() {
+                info!("User {email} failed to login due to missing/invalid role");
+                err!(
+                    "Invalid user role. Contact your administrator",
+                    ErrorEvent {
+                        event: EventType::UserFailedLogIn
+                    }
+                )
+            }
+
             let refresh_token = token_response.refresh_token().map(|t| t.secret().to_string());
             if refresh_token.is_none() && CONFIG.sso_scopes_vec().contains(&"offline_access".to_string()) {
                 error!("Scope offline_access is present but response contain no refresh_token");
@@ -603,8 +641,11 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
                 email_verified: id_claims.email_verified(),
                 user_name: user_name.clone(),
                 role: additional_claims.role,
+                org_role: additional_claims.org_role,
                 groups: additional_claims.groups,
             };
+
+            debug!("Authentified user {:?}", authenticated_user);
 
             AC_CACHE.insert(state.clone(), authenticated_user);
 
@@ -765,21 +806,19 @@ pub async fn exchange_refresh_token(
 
 pub async fn sync_groups(
     user: &User,
+    sso_user: &AuthenticatedUser,
     device: &Device,
     ip: &ClientIp,
-    groups: &Vec<String>,
     conn: &mut DbConn,
 ) -> ApiResult<()> {
-    if CONFIG.sso_organizations_invite() {
+    if CONFIG.sso_organizations_invite() && sso_user.org_role != Some(UserOrgRole::OrgUnsync) {
         let acting_user = ACTING_AUTO_ENROLL_USER.into();
         let id_mapping = CONFIG.sso_organizations_id_mapping_map();
         let org_collections: Vec<CollectionData> = vec![];
         let org_groups: Vec<GroupId> = vec![];
+        let groups = &sso_user.groups;
 
-        let db_user_orgs = Membership::find_any_state_by_user(&user.uuid, conn).await;
-        let mut memberships = db_user_orgs.into_iter().map(|m| (m.org_uuid.clone(), m)).collect::<HashMap<_, _>>();
-
-        let orgs = if id_mapping.is_empty() {
+        let mut orgs: HashMap<OrganizationId, Organization> = (if id_mapping.is_empty() {
             Organization::find_by_uuids_or_names(&vec![], groups, conn).await
         } else {
             use itertools::Itertools;
@@ -796,50 +835,80 @@ pub async fn sync_groups(
                 .partition_map(std::convert::identity);
 
             Organization::find_by_uuids_or_names(&uuids, &names, conn).await
-        };
+        })
+        .into_iter()
+        .map(|o| (o.uuid.clone(), o))
+        .collect();
 
-        for org in &orgs {
-            if let Some((_, m)) = memberships.remove_entry(&org.uuid) {
-                if m.is_revoked() {
-                    drop(organization_logic::restore_member(&acting_user, device, ip, m, conn).await);
-                }
-            } else {
-                info!("Invitation to {} organization sent to {}", org.name, user.email);
-                organization_logic::invite(
-                    &acting_user,
-                    device,
-                    ip,
-                    org,
-                    user,
-                    MembershipType::User,
-                    &org_groups,
-                    CONFIG.sso_organizations_all_collections(),
-                    &org_collections,
-                    org.billing_email.clone(),
-                    true,
-                    conn,
-                )
-                .await?;
-            };
-        }
-
-        if CONFIG.sso_organizations_revocation() {
-            if groups.len() == orgs.len() {
-                let org_mapped: HashSet<&OrganizationId> = orgs.iter().map(|o| &o.uuid).collect();
-                for m in memberships.into_values() {
-                    if id_mapping.is_empty() || org_mapped.contains(&m.org_uuid) {
-                        drop(organization_logic::revoke_member(&acting_user, device, ip, m, conn).await);
-                    }
-                }
-            } else {
-                let org_names: Vec<String> = orgs.into_iter().map(|o| o.name).collect();
+        let allow_revoking = {
+            if groups.len() != orgs.len() {
+                let org_names: Vec<&String> = orgs.values().map(|o| &o.name).collect();
                 warn!(
                     "Failed to match all groups ({:?}) to organizations ({:?}) with mapping ({:?}), will not revoke",
                     groups, org_names, id_mapping
                 );
+
+                false
+            } else {
+                CONFIG.sso_organizations_revocation()
+            }
+        };
+
+        let new_type = sso_user.org_role.as_ref().map(|or| or.membership_type()).unwrap_or(MembershipType::User);
+
+        for mut mbs in Membership::find_any_state_by_user(&user.uuid, conn).await {
+            match orgs.remove(&mbs.org_uuid) {
+                Some(_) => {
+                    if mbs.atype != new_type as i32 {
+                        let er = organization_logic::set_membership_type(
+                            &acting_user,
+                            device,
+                            ip,
+                            &mut mbs,
+                            new_type,
+                            true,
+                            conn,
+                        )
+                        .await;
+
+                        if let Err(e) = er {
+                            error!("Failed to set_membership_type {}: {}", sso_user.email, e);
+                        }
+                    }
+                    if mbs.is_revoked() {
+                        if let Err(er) = organization_logic::restore_member(&acting_user, device, ip, mbs, conn).await {
+                            error!("Failed to restore_member {}: {}", sso_user.email, er);
+                        }
+                    }
+                }
+                None if allow_revoking => {
+                    if let Err(er) = organization_logic::revoke_member(&acting_user, device, ip, mbs, conn).await {
+                        error!("Failed to restore_member {}: {}", sso_user.email, er);
+                    }
+                }
+                None => {}
             }
         }
-    }
+
+        for org in orgs.into_values() {
+            info!("Invitation to {} organization sent to {}", org.name, user.email);
+            organization_logic::invite(
+                &acting_user,
+                device,
+                ip,
+                &org,
+                user,
+                new_type,
+                &org_groups,
+                new_type > MembershipType::User || CONFIG.sso_organizations_all_collections(),
+                &org_collections,
+                org.billing_email.clone(),
+                true,
+                conn,
+            )
+            .await?;
+        }
+    };
 
     Ok(())
 }

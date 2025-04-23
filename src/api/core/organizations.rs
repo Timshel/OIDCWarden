@@ -1535,16 +1535,6 @@ async fn edit_member(
         err!("Invalid type")
     };
 
-    // HACK: This converts the Custom role which has the `Manage all collections` box checked into an access_all flag
-    // Since the parent checkbox is not sent to the server we need to check and verify the child checkboxes
-    // If the box is not checked, the user will still be a manager, but not with the access_all permission
-    let access_all = new_type == MembershipType::Owner
-        || new_type == MembershipType::Admin
-        || (raw_type.eq("4")
-            && data.permissions.get("editAnyCollection") == Some(&json!(true))
-            && data.permissions.get("deleteAnyCollection") == Some(&json!(true))
-            && data.permissions.get("createNewCollections") == Some(&json!(true)));
-
     let mut member_to_edit = match Membership::find_by_uuid_and_org(&member_id, &org_id, &mut conn).await {
         Some(member) => member,
         None => err!("The specified user isn't member of the organization"),
@@ -1561,36 +1551,24 @@ async fn edit_member(
         err!("Only Owners can edit Owner users")
     }
 
-    if member_to_edit.atype == MembershipType::Owner
-        && new_type != MembershipType::Owner
-        && member_to_edit.status == MembershipStatus::Confirmed as i32
-    {
-        // Removing owner permission, check that there is at least one other confirmed owner
-        if Membership::count_confirmed_by_org_and_type(&org_id, MembershipType::Owner, &mut conn).await <= 1 {
-            err!("Can't delete the last owner")
-        }
-    }
+    // HACK: This converts the Custom role which has the `Manage all collections` box checked into an access_all flag
+    // Since the parent checkbox is not sent to the server we need to check and verify the child checkboxes
+    // If the box is not checked, the user will still be a manager, but not with the access_all permission
+    let custom_access_all = raw_type.eq("4")
+        && data.permissions.get("editAnyCollection") == Some(&json!(true))
+        && data.permissions.get("deleteAnyCollection") == Some(&json!(true))
+        && data.permissions.get("createNewCollections") == Some(&json!(true));
 
-    // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
-    // It returns different error messages per function.
-    if new_type < MembershipType::Admin {
-        match OrgPolicy::is_user_allowed(&member_to_edit.user_uuid, &org_id, true, &mut conn).await {
-            Ok(_) => {}
-            Err(OrgPolicyErr::TwoFactorMissing) => {
-                if CONFIG.email_2fa_auto_fallback() {
-                    two_factor::email::find_and_activate_email_2fa(&member_to_edit.user_uuid, &mut conn).await?;
-                } else {
-                    err!("You cannot modify this user to this type because they have not setup 2FA");
-                }
-            }
-            Err(OrgPolicyErr::SingleOrgEnforced) => {
-                err!("You cannot modify this user to this type because they are a member of an organization which forbids it");
-            }
-        }
-    }
-
-    member_to_edit.access_all = access_all;
-    member_to_edit.atype = new_type as i32;
+    organization_logic::set_membership_type(
+        &headers.user.uuid,
+        &headers.device,
+        &headers.ip,
+        &mut member_to_edit,
+        new_type,
+        custom_access_all,
+        &mut conn,
+    )
+    .await?;
 
     // Delete all the odd collections
     for c in CollectionUser::find_by_organization_and_user_uuid(&org_id, &member_to_edit.user_uuid, &mut conn).await {
@@ -1598,7 +1576,7 @@ async fn edit_member(
     }
 
     // If no accessAll, add the collections received
-    if !access_all {
+    if !member_to_edit.access_all {
         for col in data.collections.iter().flatten() {
             match Collection::find_by_uuid_and_org(&col.id, &org_id, &mut conn).await {
                 None => err!("Collection not found in Organization"),
@@ -1624,18 +1602,7 @@ async fn edit_member(
         group_entry.save(&mut conn).await?;
     }
 
-    log_event(
-        EventType::OrganizationUserUpdated as i32,
-        &member_to_edit.uuid,
-        &org_id,
-        &headers.user.uuid,
-        headers.device.atype,
-        &headers.ip.ip,
-        &mut conn,
-    )
-    .await;
-
-    member_to_edit.save(&mut conn).await
+    Ok(())
 }
 
 #[delete("/organizations/<org_id>/users", data = "<data>")]

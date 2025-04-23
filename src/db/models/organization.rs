@@ -80,7 +80,7 @@ impl MembershipStatus {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, num_derive::FromPrimitive)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, num_derive::FromPrimitive)]
 pub enum MembershipType {
     Owner = 0,
     Admin = 1,

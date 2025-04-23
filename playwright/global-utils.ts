@@ -29,6 +29,16 @@ export function loadEnv(){
             name: process.env.TEST_USER3,
             password: process.env.TEST_USER3_PASSWORD,
         },
+        user4: {
+            email: process.env.TEST_USER4_MAIL,
+            name: process.env.TEST_USER4,
+            password: process.env.TEST_USER4_PASSWORD,
+        },
+        user5: {
+            email: process.env.TEST_USER5_MAIL,
+            name: process.env.TEST_USER5,
+            password: process.env.TEST_USER5_PASSWORD,
+        },
     }
 }
 
