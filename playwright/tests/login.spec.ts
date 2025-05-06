@@ -35,7 +35,7 @@ test('Authenticator 2fa', async ({ context, page }) => {
         await page.getByRole('menuitem', { name: 'Account settings' }).click();
         await page.getByRole('link', { name: 'Security' }).click();
         await page.getByRole('link', { name: 'Two-step login' }).click();
-        await page.locator('li').filter({ hasText: /Authenticator app/ }).getByRole('button').click();
+        await page.locator('bit-item').filter({ hasText: /Authenticator app/ }).getByRole('button').click();
         await page.getByLabel('Master password (required)').fill(users.user1.password);
         await page.getByRole('button', { name: 'Continue' }).click();
 
@@ -74,7 +74,7 @@ test('Authenticator 2fa', async ({ context, page }) => {
         await page.getByRole('menuitem', { name: 'Account settings' }).click();
         await page.getByRole('link', { name: 'Security' }).click();
         await page.getByRole('link', { name: 'Two-step login' }).click();
-        await page.locator('li').filter({ hasText: /Authenticator app/ }).getByRole('button').click();
+        await page.locator('bit-item').filter({ hasText: /Authenticator app/ }).getByRole('button').click();
         await page.getByLabel('Master password (required)').click();
         await page.getByLabel('Master password (required)').fill(users.user1.password);
         await page.getByRole('button', { name: 'Continue' }).click();

@@ -80,11 +80,11 @@ test('Confirm invited user', async ({ page }) => {
 
 test('Organization is visible', async ({ context, page }) => {
     await logUser(test, page, users.user2);
-    await page.getByLabel('vault: Test').click();
+    await page.getByRole('button', { name: 'vault: Test', exact: true }).click();
     await expect(page.getByLabel('Filter: Default collection')).toBeVisible();
 
     const page2 = await context.newPage();
     await logUser(test, page2, users.user3);
-    await page2.getByLabel('vault: Test').click();
+    await page.getByRole('button', { name: 'vault: Test', exact: true }).click();
     await expect(page2.getByLabel('Filter: Default collection')).toBeVisible();
 });

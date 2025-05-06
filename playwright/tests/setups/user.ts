@@ -17,7 +17,7 @@ export async function createAccount(test, page: Page, user: { email: string, nam
         await page.getByRole('button', { name: 'Continue' }).click();
 
         // Vault finish Creation
-        await page.getByLabel('Master password (required)', { exact: true }).fill(user.password);
+        await page.getByLabel('New master password (required)', { exact: true }).fill(user.password);
         await page.getByLabel('Confirm master password (').fill(user.password);
         await page.getByRole('button', { name: 'Create account' }).click();
 

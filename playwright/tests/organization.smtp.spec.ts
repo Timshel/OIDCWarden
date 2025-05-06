@@ -57,7 +57,7 @@ test('invited with new account', async ({ page }) => {
         await expect(page).toHaveTitle(/Create account | OIDCWarden Web/);
 
         // await page.getByLabel('Name').fill(users.user2.name);
-        await page.getByLabel('Master password (required)', { exact: true }).fill(users.user2.password);
+        await page.getByLabel('New master password (required)', { exact: true }).fill(users.user2.password);
         await page.getByLabel('Confirm master password (').fill(users.user2.password);
         await page.getByRole('button', { name: 'Create account' }).click();
         await utils.checkNotification(page, 'Your new account has been created');
@@ -110,6 +110,6 @@ test('Confirm invited user', async ({ page }) => {
 
 test('Organization is visible', async ({ page }) => {
     await logUser(test, page, users.user2, mail2Buffer);
-    await page.getByLabel('vault: Test').click();
+    await page.getByRole('button', { name: 'vault: Test', exact: true }).click();
     await expect(page.getByLabel('Filter: Default collection')).toBeVisible();
 });

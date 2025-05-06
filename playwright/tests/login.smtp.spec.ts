@@ -71,7 +71,7 @@ test('Activaite 2fa', async ({ context, page }) => {
         await page.getByRole('menuitem', { name: 'Account settings' }).click();
         await page.getByRole('link', { name: 'Security' }).click();
         await page.getByRole('link', { name: 'Two-step login' }).click();
-        await page.locator('li').filter({ hasText: 'Email Email Enter a code sent' }).getByRole('button').click();
+        await page.locator('bit-item').filter({ hasText: 'Email Email Enter a code sent' }).getByRole('button').click();
         await page.getByLabel('Master password (required)').fill(users.user1.password);
         await page.getByRole('button', { name: 'Continue' }).click();
         await page.getByRole('button', { name: 'Send email' }).click();
@@ -123,7 +123,7 @@ test('2fa', async ({ context, page }) => {
         await page.getByRole('menuitem', { name: 'Account settings' }).click();
         await page.getByRole('link', { name: 'Security' }).click();
         await page.getByRole('link', { name: 'Two-step login' }).click();
-        await page.locator('li').filter({ hasText: 'Email Email Turned on Enter a' }).getByRole('button').click();
+        await page.locator('bit-item').filter({ hasText: 'Email' }).getByRole('button').click();
         await page.getByLabel('Master password (required)').click();
         await page.getByLabel('Master password (required)').fill(users.user1.password);
         await page.getByRole('button', { name: 'Continue' }).click();

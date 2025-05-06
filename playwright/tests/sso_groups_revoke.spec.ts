@@ -65,23 +65,23 @@ test('Org setup', async ({ context, page }, testInfo: TestInfo) => {
 
 test('Check User2', async ({ context, page }, testInfo: TestInfo) => {
     await logUser(test, page, users.user2);
-    await expect(page.getByLabel('vault: All', { exact: true })).toBeVisible();
-    await expect(page.getByLabel('vault: Toto', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'vault: All', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'vault: Toto', exact: true })).toHaveCount(0);
 });
 
 test('Check User3', async ({ context, page }, testInfo: TestInfo) => {
     await logUser(test, page, users.user3);
-    await expect(page.getByLabel('vault: All', { exact: true })).toHaveCount(0);
-    await expect(page.getByLabel('vault: Toto', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'vault: All', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'vault: Toto', exact: true })).toHaveCount(0);
 });
 
 test('Check members', async ({ context, page }, testInfo: TestInfo) => {
     await logUser(test, page, users.user1);
 
     await test.step('Owner see all orgs', async () => {
-        await expect(page.getByLabel('vault: All', { exact: true })).toBeVisible();
-        await expect(page.getByLabel('vault: Test', { exact: true })).toBeVisible();
-        await expect(page.getByLabel('vault: Toto', { exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'vault: All', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'vault: Test', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'vault: Toto', exact: true })).toBeVisible();
     });
 
     await test.step('Restored access to All', async () => {
@@ -139,6 +139,6 @@ test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
 
     await test.step('Org still present', async () => {
         await logUser(test, page, users.user2);
-        await expect(page.getByLabel('vault: Toto', { exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'vault: Toto', exact: true})).toBeVisible();
     });
 });
