@@ -189,7 +189,7 @@ export async function startVault(browser: Browser, testInfo: TestInfo, env = {},
 
     console.log(`Starting OIDCWarden`);
     execSync(`docker compose --profile playwright --env-file test.env up -d OIDCWarden`, {
-        env: { ...env, ...dbConfig(testInfo) },
+        env: { LOGIN_RATELIMIT_MAX_BURST: 100, ...env, ...dbConfig(testInfo) },
     });
     await waitFor("/", browser);
     console.log(`OIDCWarden running on: ${process.env.DOMAIN}`);
