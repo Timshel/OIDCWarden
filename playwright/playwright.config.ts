@@ -38,8 +38,13 @@ export default defineConfig({
         locale: 'en-GB',
         timezoneId: 'Europe/London',
 
-        /* Collect trace ? See https://playwright.dev/docs/trace-viewer */
+        /* Always collect trace (other values add random test failures) See https://playwright.dev/docs/trace-viewer */
         trace: 'on',
+        viewport: {
+            width: 1080,
+            height: 720,
+        },
+        video: "on",
     },
 
     /* Configure projects for major browsers */
