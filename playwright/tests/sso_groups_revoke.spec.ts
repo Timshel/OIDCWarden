@@ -120,8 +120,6 @@ test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
         await logNewUser(test, page, users.user2);
     });
 
-    await context.clearCookies();
-
     await test.step('org setup', async () => {
         await logNewUser(test, page, users.user1);
 
@@ -134,8 +132,6 @@ test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
         await orgs.invite(test, page, 'Toto', users.user2.email);
         await orgs.confirm(test, page, 'Toto', users.user2.email);
     });
-
-    await context.clearCookies();
 
     await test.step('Org still present', async () => {
         await logUser(test, page, users.user2);

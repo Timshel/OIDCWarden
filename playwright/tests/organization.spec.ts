@@ -83,8 +83,7 @@ test('Organization is visible', async ({ context, page }) => {
     await page.getByRole('button', { name: 'vault: Test', exact: true }).click();
     await expect(page.getByLabel('Filter: Default collection')).toBeVisible();
 
-    const page2 = await context.newPage();
-    await logUser(test, page2, users.user3);
+    await logUser(test, page, users.user3);
     await page.getByRole('button', { name: 'vault: Test', exact: true }).click();
-    await expect(page2.getByLabel('Filter: Default collection')).toBeVisible();
+    await expect(page.getByLabel('Filter: Default collection')).toBeVisible();
 });

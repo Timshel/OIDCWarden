@@ -22,6 +22,7 @@ export async function members(test, page: Page, name: string) {
         await expect(page.getByRole('heading', { name: `${name} collections` })).toBeVisible();
         await page.locator('div').filter({ hasText: 'Members' }).nth(2).click();
         await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
+        await expect(page.getByRole('cell', { name: 'All' })).toBeVisible();
     });
 }
 

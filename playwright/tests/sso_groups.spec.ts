@@ -44,7 +44,6 @@ test('User auto invite', async ({ context, page }) => {
         });
 
         await test.step('Log user2 and receive invite', async () => {
-            await context.clearCookies();
             await logNewUser(test, page, users.user2, { mailBuffer: mail2Buffer });
             await expect(mail2Buffer.next((m) => m.subject === "Join Test")).resolves.toBeDefined();
         });
@@ -79,7 +78,6 @@ test('Org invite auto accept', async ({ context, page }, testInfo: TestInfo) => 
         });
 
         await test.step('Invite user2', async () => {
-            await context.clearCookies();
             await logNewUser(test, page, users.user2, { mailBuffer: mail2Buffer, override: true });
 
             await expect(mail2Buffer.next((m) => m.subject === "Enrolled in Test")).resolves.toBeDefined();

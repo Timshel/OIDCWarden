@@ -6,6 +6,8 @@ import * as utils from '../../global-utils';
 
 export async function createAccount(test, page: Page, user: { email: string, name: string, password: string }, mailBuffer?: MailBuffer) {
     await test.step('Create user', async () => {
+        await page.context().clearCookies();
+
         // Landing page
         await page.goto('/');
         await page.getByRole('link', { name: 'Create account' }).click();
@@ -36,6 +38,8 @@ export async function createAccount(test, page: Page, user: { email: string, nam
 
 export async function logUser(test, page: Page, user: { email: string, password: string }, mailBuffer?: MailBuffer) {
     await test.step('Log user', async () => {
+        await page.context().clearCookies();
+
         // Landing page
         await page.goto('/');
         await page.getByLabel(/Email address/).fill(user.email);
