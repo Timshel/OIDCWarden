@@ -48,16 +48,16 @@ test('Org setup', async ({ context, page }, testInfo: TestInfo) => {
     await orgs.create(test, page, 'Toto');
     await orgs.members(test, page, 'Toto');
     await orgs.invite(test, page, 'Toto', users.user2.email);
-    await orgs.confirm(test, page, 'Toto', users.user2.name);
+    await orgs.confirm(test, page, 'Toto', users.user2.email);
     await orgs.invite(test, page, 'Toto', users.user3.email);
 
     await orgs.create(test, page, 'All');
     await orgs.members(test, page, 'All');
     await orgs.invite(test, page, 'All', users.user2.email);
-    await orgs.confirm(test, page, 'All', users.user2.name);
-    await orgs.revoke(test, page, 'All', users.user2.name);
+    await orgs.confirm(test, page, 'All', users.user2.email);
+    await orgs.revoke(test, page, 'All', users.user2.email);
     await orgs.invite(test, page, 'All', users.user3.email);
-    await orgs.revoke(test, page, 'All', users.user3.name);
+    await orgs.revoke(test, page, 'All', users.user3.email);
 
     // We create test too otherwise revokation is disabled.
     await orgs.create(test, page, 'Test');
@@ -132,7 +132,7 @@ test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
         await orgs.create(test, page, 'Toto');
         await orgs.members(test, page, 'Toto');
         await orgs.invite(test, page, 'Toto', users.user2.email);
-        await orgs.confirm(test, page, 'Toto', users.user2.name);
+        await orgs.confirm(test, page, 'Toto', users.user2.email);
     });
 
     await context.clearCookies();
