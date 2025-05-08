@@ -23,12 +23,10 @@ test('Master password login', async ({ page }) => {
     await logUser(test, page, users.user1);
 });
 
-test('Authenticator 2fa', async ({ context, page }) => {
+test('Authenticator 2fa', async ({ page }) => {
     let totp;
 
-    await test.step('Login', async () => {
-        await logUser(test, page, users.user1);
-    });
+    await logUser(test, page, users.user1);
 
     await test.step('Activate', async () => {
         await page.getByRole('button', { name: users.user1.name }).click();
