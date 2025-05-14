@@ -25,6 +25,7 @@ db_object! {
         pub billing_email: String,
         pub private_key: Option<String>,
         pub public_key: Option<String>,
+        pub external_id: Option<String>,
     }
 
     #[derive(Identifiable, Queryable, Insertable, AsChangeset)]
@@ -177,6 +178,7 @@ impl Organization {
             billing_email,
             private_key,
             public_key,
+            external_id: None,
         }
     }
     // https://github.com/bitwarden/server/blob/13d1e74d6960cf0d042620b72d85bf583a4236f7/src/Api/Models/Response/Organizations/OrganizationResponseModel.cs
@@ -227,6 +229,9 @@ impl Organization {
             "planType": 6, // Custom plan
             "usersGetPremium": true,
             "object": "organization",
+
+            // Custom field used for SSO org mapping
+            "externalId": self.external_id,
         })
     }
 }

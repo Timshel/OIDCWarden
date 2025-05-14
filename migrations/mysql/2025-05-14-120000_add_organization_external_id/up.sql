@@ -1,0 +1,1 @@
+ALTER TABLE organizations ADD COLUMN external_id VARCHAR(255) UNIQUE DEFAULT NULL;

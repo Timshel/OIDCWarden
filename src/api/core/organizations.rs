@@ -130,6 +130,7 @@ struct OrgData {
 struct OrganizationUpdateData {
     billing_email: String,
     name: String,
+    external_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -311,6 +312,13 @@ async fn post_organization(
 
     org.name = data.name;
     org.billing_email = data.billing_email.to_lowercase();
+
+    // External Id field is active only when SSO and Org mapping are enabled
+    if CONFIG.sso_enabled() && CONFIG.sso_organizations_invite() {
+        org.external_id = data.external_id;
+    } else {
+        org.external_id = None;
+    }
 
     org.save(&mut conn).await?;
 
@@ -2530,8 +2538,13 @@ impl GroupRequest {
     pub fn update_group(&self, mut group: Group) -> Group {
         group.name.clone_from(&self.name);
         group.access_all = self.access_all;
-        // Group Updates do not support changing the external_id
+
+        // By default Group Updates do not support changing the external_id
         // These input fields are in a disabled state, and can only be updated/added via ldap_import
+        // But we reuse the field for SSO organization mapping.
+        if CONFIG.sso_enabled() && CONFIG.sso_organizations_invite() && CONFIG.org_groups_enabled() {
+            group.external_id = self.external_id.clone();
+        }
 
         group
     }

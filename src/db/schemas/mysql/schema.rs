@@ -126,6 +126,7 @@ table! {
         billing_email -> Text,
         private_key -> Nullable<Text>,
         public_key -> Nullable<Text>,
+        external_id -> Nullable<Text>,
     }
 }
 
