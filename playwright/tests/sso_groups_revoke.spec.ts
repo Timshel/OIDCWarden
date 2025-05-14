@@ -51,27 +51,30 @@ test('Org setup', async ({ context, page }, testInfo: TestInfo) => {
     await orgs.confirm(test, page, 'Toto', users.user2.email);
     await orgs.invite(test, page, 'Toto', users.user3.email);
 
-    await orgs.create(test, page, 'All');
-    await orgs.members(test, page, 'All');
-    await orgs.invite(test, page, 'All', users.user2.email);
-    await orgs.confirm(test, page, 'All', users.user2.email);
-    await orgs.revoke(test, page, 'All', users.user2.email);
-    await orgs.invite(test, page, 'All', users.user3.email);
-    await orgs.revoke(test, page, 'All', users.user3.email);
+    await orgs.create(test, page, '/All');
+    await orgs.members(test, page, '/All');
+    await orgs.invite(test, page, '/All', users.user2.email);
+    await orgs.confirm(test, page, '/All', users.user2.email);
+    await orgs.revoke(test, page, '/All', users.user2.email);
+    await orgs.invite(test, page, '/All', users.user3.email);
+    await orgs.revoke(test, page, '/All', users.user3.email);
 
     // We create test too otherwise revokation is disabled.
-    await orgs.create(test, page, 'Test');
+    await orgs.create(test, page, '/Test');
+    await orgs.create(test, page, '/Test/Group1');
+    await orgs.create(test, page, '/All/Group1');
+    await orgs.create(test, page, '/All/Group2');
 });
 
 test('Check User2', async ({ context, page }, testInfo: TestInfo) => {
     await logUser(test, page, users.user2);
-    await expect(page.getByRole('button', { name: 'vault: All', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'vault: /All', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'vault: Toto', exact: true })).toHaveCount(0);
 });
 
 test('Check User3', async ({ context, page }, testInfo: TestInfo) => {
     await logUser(test, page, users.user3);
-    await expect(page.getByRole('button', { name: 'vault: All', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'vault: /All', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'vault: Toto', exact: true })).toHaveCount(0);
 });
 
@@ -79,19 +82,19 @@ test('Check members', async ({ context, page }, testInfo: TestInfo) => {
     await logUser(test, page, users.user1);
 
     await test.step('Owner see all orgs', async () => {
-        await expect(page.getByRole('button', { name: 'vault: All', exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'vault: Test', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'vault: /All', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'vault: /Test', exact: true })).toBeVisible();
         await expect(page.getByRole('button', { name: 'vault: Toto', exact: true })).toBeVisible();
     });
 
-    await test.step('Restored access to All', async () => {
-        await orgs.members(test, page, 'All');
+    await test.step('Restored access to /All', async () => {
+        await orgs.members(test, page, '/All');
         await expect(page.getByRole('row', { name: users.user2.name })).toBeVisible();
         await expect(page.getByRole('row', { name: users.user3.name })).toHaveText(/Needs confirmation/);
     });
 
-    await test.step('Invited to Test', async () => {
-        await orgs.members(test, page, 'Test');
+    await test.step('Invited to /Test', async () => {
+        await orgs.members(test, page, '/Test');
         await expect(page.getByRole('row', { name: users.user2.name })).toHaveText(/Needs confirmation/);
     });
 
@@ -133,6 +136,9 @@ async function mappingTest(
         // Create default orgs
         await orgs.create(test, page, 'Test');
         await orgs.create(test, page, 'All');
+        await orgs.create(test, page, 'TestGroup1');
+        await orgs.create(test, page, 'AllGroup1');
+        await orgs.create(test, page, 'AllGroup2');
 
         await orgs.create(test, page, 'Toto');
         await orgs.members(test, page, 'Toto');
@@ -147,13 +153,13 @@ async function mappingTest(
 }
 
 test('With mapping', async ({ context, page }, testInfo: TestInfo) => {
-    await mappingTest(test, context, page, testInfo, "Test:Test;All:All", true);
+    await mappingTest(test, context, page, testInfo, "/Test:Test;/All:All;/Test/Group1:TestGroup1;/All/Group1:AllGroup1;/All/Group2:AllGroup2", true);
 });
 
 test('With missing mapping', async ({ context, page }, testInfo: TestInfo) => {
-    await mappingTest(test, context, page, testInfo, "Test:Test", false);
+    await mappingTest(test, context, page, testInfo, "/Test:Test", false);
 });
 
 test('With custom mapping', async ({ context, page }, testInfo: TestInfo) => {
-    await mappingTest(test, context, page, testInfo, "Test:Test;All:Toto", false);
+    await mappingTest(test, context, page, testInfo, "/Test:Test;/All:Toto;/Test/Group1:TestGroup1;/All/Group1:AllGroup1;/All/Group2:AllGroup2", false);
 });

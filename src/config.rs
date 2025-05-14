@@ -699,14 +699,18 @@ make_config! {
         sso_roles_default_to_user:      bool,   false,   def,    true;
         /// Id token path to read roles
         sso_roles_token_path:           String, false,  auto,   |c| format!("/resource_access/{}/roles", c.sso_client_id);
-        /// Invite users to Organizations
+        /// Invite users to Organizations |> Deprecated, More details [README.md](https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation)
         sso_organizations_invite:       bool,   false,   def,    false;
+        /// Organizations mapping |> Enable the mapping of organization, membership role and groups.
+        sso_organizations_enabled:      bool,   false,   def,    false;
         /// Process revocation
         sso_organizations_revocation:   bool,   false,   def,    false;
         /// Id token path to read Organization/Groups
         sso_organizations_token_path:   String, false,   def,    "/groups".to_string();
-        /// Organization Id mapping |> "ProviderId:VaultwardenId;" with `VaultwardenId` as the org `uuid` or the `name`
+        /// Organization Id mapping |> Deprecated. More details [README.md](https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation)
         sso_organizations_id_mapping:   String, true,   def,    String::new();
+        /// Emable organization group mapping |> Deprecated, More details [README.md](https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation)
+        sso_organizations_groups_enabled: bool, false, def, false;
         /// Grant acceess to all collections
         sso_organizations_all_collections: bool, true,  def,   true;
         /// Client cache for discovery endpoint. |> Duration in seconds (0 or less to disable). More details: https://github.com/timshel/OIDCWarden/blob/main/SSO.md#client-cache
@@ -955,6 +959,18 @@ fn validate_config(cfg: &ConfigItems) -> Result<(), Error> {
         internal_sso_redirect_url(&cfg.sso_callback_path)?;
         check_master_password_policy(&cfg.sso_master_password_policy)?;
         internal_sso_authorize_extra_params_vec(&cfg.sso_authorize_extra_params)?;
+
+        if cfg.sso_organizations_invite && !cfg.sso_organizations_enabled {
+            warn!("SSO_ORGANIZATIONS_INVITE is DEPRECATED, replaced by SSO_ORGANIZATIONS_ENABLED");
+        }
+
+        if !cfg.sso_organizations_id_mapping.is_empty() {
+            warn!("SSO_ORGANIZATIONS_ID_MAPPING is now DEPRECATED, More details: https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation");
+        }
+
+        if cfg.org_groups_enabled && !cfg.sso_organizations_groups_enabled {
+            warn!("SSO_ORGANIZATIONS_GROUPS_ENABLED is DEPRECATED, More details: https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation");
+        }
     }
 
     if cfg._enable_yubico {

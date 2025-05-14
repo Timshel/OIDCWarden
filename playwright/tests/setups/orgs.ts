@@ -3,7 +3,7 @@ import { expect, type Browser,Page } from '@playwright/test';
 import * as utils from '../../global-utils';
 
 export async function create(test, page: Page, name: string) {
-    await test.step('Create Org', async () => {
+    await test.step(`Create Org ${name}`, async () => {
         await page.locator('a').filter({ hasText: 'Password Manager' }).first().click();
         await expect(page.getByTitle('All vaults', { exact: true })).toBeVisible();
         await page.getByRole('link', { name: 'New organisation' }).click();

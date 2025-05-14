@@ -37,7 +37,7 @@ test.afterAll('Teardown', async ({}) => {
 test('Roles', async ({ context, page }, testInfo: TestInfo) => {
     await test.step('Setup', async () => {
         await logNewUser(test, page, users.user1);
-        await orgs.create(test, page, 'All');
+        await orgs.create(test, page, '/All');
     });
 
     await test.step('Log users', async () => {
@@ -49,59 +49,59 @@ test('Roles', async ({ context, page }, testInfo: TestInfo) => {
 
     await test.step('Check', async () => {
         await logUser(test, page, users.user1);
-        await orgs.members(test, page, 'All');
-        await orgs.checkRole(test, page, 'All', users.user1.email, 'Owner');
+        await orgs.members(test, page, '/All');
+        await orgs.checkRole(test, page, '/All', users.user1.email, 'Owner');
 
-        await orgs.checkRole(test, page, 'All', users.user2.email, 'Owner');
-        await orgs.checkRole(test, page, 'All', users.user3.email, 'Admin');
-        await orgs.checkRole(test, page, 'All', users.user4.email, 'Custom');
-        await orgs.checkRole(test, page, 'All', users.user5.email, 'User');
+        await orgs.checkRole(test, page, '/All', users.user2.email, 'Owner');
+        await orgs.checkRole(test, page, '/All', users.user3.email, 'Admin');
+        await orgs.checkRole(test, page, '/All', users.user4.email, 'Custom');
+        await orgs.checkRole(test, page, '/All', users.user5.email, 'User');
     });
 
     await test.step('Confirm', async () => {
-        await orgs.confirm(test, page, 'All', users.user2.email);
-        await orgs.confirm(test, page, 'All', users.user3.email);
-        await orgs.confirm(test, page, 'All', users.user4.email);
-        await orgs.confirm(test, page, 'All', users.user5.email);
+        await orgs.confirm(test, page, '/All', users.user2.email);
+        await orgs.confirm(test, page, '/All', users.user3.email);
+        await orgs.confirm(test, page, '/All', users.user4.email);
+        await orgs.confirm(test, page, '/All', users.user5.email);
     });
 
     await test.step('Change role', async () => {
-        await orgs.setRole(test, page, 'All', users.user2.email, 'User');
-        await orgs.setRole(test, page, 'All', users.user3.email, 'Custom');
-        await orgs.setRole(test, page, 'All', users.user4.email, 'Admin');
-        await orgs.setRole(test, page, 'All', users.user5.email, 'Owner');
+        await orgs.setRole(test, page, '/All', users.user2.email, 'User');
+        await orgs.setRole(test, page, '/All', users.user3.email, 'Custom');
+        await orgs.setRole(test, page, '/All', users.user4.email, 'Admin');
+        await orgs.setRole(test, page, '/All', users.user5.email, 'Owner');
     });
 
     await test.step('Check User2', async () => {
         await logUser(test, page, users.user2);
-        await page.getByRole('button', { name: 'vault: All', exact: true }).click();
+        await page.getByRole('button', { name: 'vault: /All', exact: true }).click();
         await expect(page.getByLabel('Filter: Default collection')).toBeVisible();
     });
 
     await test.step('Check User3', async () => {
         await logUser(test, page, users.user3);
-        await page.getByRole('button', { name: 'vault: All', exact: true }).click();
+        await page.getByRole('button', { name: 'vault: /All', exact: true }).click();
         await expect(page.getByLabel('Filter: Default collection')).toBeVisible();
     });
 
     await test.step('Check User4', async () => {
         await logUser(test, page, users.user4);
-        await page.getByRole('button', { name: 'vault: All', exact: true }).click();
+        await page.getByRole('button', { name: 'vault: /All', exact: true }).click();
         await expect(page.getByLabel('Filter: Default collection')).toBeVisible();
     });
 
     await test.step('Check User5', async () => {
         await logUser(test, page, users.user5);
-        await page.getByRole('button', { name: 'vault: All', exact: true }).click();
+        await page.getByRole('button', { name: 'vault: /All', exact: true }).click();
         await expect(page.getByLabel('Filter: Default collection')).toHaveCount(0);
     });
 
     await test.step('Check again', async () => {
         await logUser(test, page, users.user1);
-        await orgs.members(test, page, 'All');
-        await orgs.checkRole(test, page, 'All', users.user2.email, 'Owner');
-        await orgs.checkRole(test, page, 'All', users.user3.email, 'Admin');
-        await orgs.checkRole(test, page, 'All', users.user4.email, 'Custom');
-        await orgs.checkRole(test, page, 'All', users.user5.email, 'User');
+        await orgs.members(test, page, '/All');
+        await orgs.checkRole(test, page, '/All', users.user2.email, 'Owner');
+        await orgs.checkRole(test, page, '/All', users.user3.email, 'Admin');
+        await orgs.checkRole(test, page, '/All', users.user4.email, 'Custom');
+        await orgs.checkRole(test, page, '/All', users.user5.email, 'User');
     });
 });

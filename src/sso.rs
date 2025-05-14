@@ -4,7 +4,7 @@ use regex::Regex;
 use serde::de::DeserializeOwned;
 use serde_with::{serde_as, DefaultOnError};
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use url::Url;
 
@@ -28,7 +28,8 @@ use crate::{
     business::organization_logic,
     db::{
         models::{
-            Device, EventType, GroupId, Membership, MembershipType, Organization, OrganizationId, SsoNonce, User,
+            Device, EventType, GroupId, GroupUser, Membership, MembershipType, Organization, OrganizationId, SsoNonce,
+            User, UserId,
         },
         DbConn,
     },
@@ -355,8 +356,9 @@ pub enum UserRole {
 }
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+#[allow(clippy::enum_variant_names)]
 enum UserOrgRole {
-    OrgUnsync,
+    OrgNoSync,
     OrgOwner,
     OrgAdmin,
     OrgManager,
@@ -462,7 +464,11 @@ fn roles_claim(email: &str, token: &serde_json::Value) -> (Option<UserRole>, Opt
     if let Some(json_roles) = token.pointer(&CONFIG.sso_roles_token_path()) {
         (
             deserialize_top_role(CONFIG.sso_roles_enabled(), email, json_roles),
-            deserialize_top_role(CONFIG.sso_organizations_invite(), email, json_roles),
+            deserialize_top_role(
+                CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled(),
+                email,
+                json_roles,
+            ),
         )
     } else {
         debug!("No roles in {email} id_token at {}", &CONFIG.sso_roles_token_path());
@@ -492,13 +498,13 @@ fn additional_claims(email: &str, token: &str) -> ApiResult<AdditionnalClaims> {
     let mut roles = (None, None);
     let mut groups = Vec::new();
 
-    if CONFIG.sso_roles_enabled() || CONFIG.sso_organizations_invite() {
+    if CONFIG.sso_roles_enabled() || CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() {
         match insecure_decode::<serde_json::Value>("id_token", token) {
             Err(err) => err!(format!("Could not decode access token: {:?}", err)),
             Ok(claims) => {
                 roles = roles_claim(email, &claims);
 
-                if CONFIG.sso_organizations_invite() {
+                if CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() {
                     groups = groups_claim(email, &claims);
                 }
             }
@@ -804,26 +810,53 @@ pub async fn exchange_refresh_token(
     }
 }
 
-pub async fn sync_groups(
+pub async fn sync_organizations(
     user: &User,
     sso_user: &AuthenticatedUser,
     device: &Device,
     ip: &ClientIp,
     conn: &mut DbConn,
 ) -> ApiResult<()> {
-    if CONFIG.sso_organizations_invite() && sso_user.org_role != Some(UserOrgRole::OrgUnsync) {
-        let acting_user = ACTING_AUTO_ENROLL_USER.into();
+    if (CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled())
+        && sso_user.org_role != Some(UserOrgRole::OrgNoSync)
+    {
         let id_mapping = CONFIG.sso_organizations_id_mapping_map();
-        let org_collections: Vec<CollectionData> = vec![];
-        let org_groups: Vec<GroupId> = vec![];
-        let groups = &sso_user.groups;
+        let user_groups = &sso_user.groups;
 
-        let mut orgs: HashMap<OrganizationId, Organization> = (if id_mapping.is_empty() {
-            Organization::find_by_uuids_or_names(&vec![], groups, conn).await
+        debug!("Organization and groups sync for user {:} with {:?}", user.email, user_groups);
+
+        let mut allow_revoking = CONFIG.sso_organizations_revocation();
+
+        let orgs = if id_mapping.is_empty() {
+            let identifiers = if CONFIG.org_groups_enabled() && CONFIG.sso_organizations_groups_enabled() {
+                parse_user_groups(user_groups)
+            } else {
+                user_groups.iter().map(|g| (g.clone(), None)).collect()
+            };
+
+            let org_groups = Organization::find_mapped_orgs_and_groups(identifiers.clone(), conn)
+                .await
+                .into_iter()
+                .filter(|(_, _, _, group_id)| {
+                    !group_id.is_some() || (CONFIG.org_groups_enabled() && CONFIG.sso_organizations_groups_enabled())
+                })
+                .collect::<Vec<(String, Option<String>, Organization, Option<GroupId>)>>();
+
+            allow_revoking = check_orgs_groups(&identifiers, &org_groups)? && allow_revoking;
+
+            let mut res: HashMap<OrganizationId, (Organization, HashSet<GroupId>)> = HashMap::new();
+            for (_, _, org, group_id) in org_groups {
+                let entry = res.entry(org.uuid.clone()).or_insert_with(|| (org, HashSet::new()));
+                if let Some(gi) = group_id {
+                    entry.1.insert(gi);
+                }
+            }
+            res
         } else {
-            use itertools::Itertools;
+            warn!("Using deprecated SSO_ORGANIZATIONS_ID_MAPPING, will be removed in next release");
+            use itertools::Itertools; // TODO: Remove from cargo.toml
 
-            let (names, uuids) = groups
+            let (names, uuids) = user_groups
                 .iter()
                 .flat_map(|group| match id_mapping.get(group) {
                     Some(e) => Some(e.clone()),
@@ -834,81 +867,263 @@ pub async fn sync_groups(
                 })
                 .partition_map(std::convert::identity);
 
-            Organization::find_by_uuids_or_names(&uuids, &names, conn).await
-        })
-        .into_iter()
-        .map(|o| (o.uuid.clone(), o))
-        .collect();
+            let orgs = Organization::find_by_uuids_or_names(&uuids, &names, conn).await;
 
-        let allow_revoking = {
-            if groups.len() != orgs.len() {
-                let org_names: Vec<&String> = orgs.values().map(|o| &o.name).collect();
+            if user_groups.len() != orgs.len() {
+                let org_names: Vec<&String> = orgs.iter().map(|o| &o.name).collect();
                 warn!(
                     "Failed to match all groups ({:?}) to organizations ({:?}) with mapping ({:?}), will not revoke",
-                    groups, org_names, id_mapping
+                    user_groups, org_names, id_mapping
                 );
 
-                false
-            } else {
-                CONFIG.sso_organizations_revocation()
+                allow_revoking = false
             }
+
+            orgs.into_iter()
+                .map(|o| (o.uuid.clone(), (o, HashSet::new())))
+                .collect::<HashMap<OrganizationId, (Organization, HashSet<GroupId>)>>()
         };
 
-        let new_type = sso_user.org_role.as_ref().map(|or| or.membership_type()).unwrap_or(MembershipType::User);
+        sync_orgs_and_role(user, sso_user, device, ip, orgs, allow_revoking, conn).await?;
+    }
 
-        for mut mbs in Membership::find_any_state_by_user(&user.uuid, conn).await {
-            match orgs.remove(&mbs.org_uuid) {
-                Some(_) => {
-                    if mbs.atype != new_type as i32 {
-                        let er = organization_logic::set_membership_type(
-                            &acting_user,
-                            device,
-                            ip,
-                            &mut mbs,
-                            new_type,
-                            true,
-                            conn,
-                        )
-                        .await;
+    Ok(())
+}
 
-                        if let Err(e) = er {
-                            error!("Failed to set_membership_type {}: {}", sso_user.email, e);
-                        }
-                    }
-                    if mbs.is_revoked() {
-                        if let Err(er) = organization_logic::restore_member(&acting_user, device, ip, mbs, conn).await {
-                            error!("Failed to restore_member {}: {}", sso_user.email, er);
-                        }
-                    }
-                }
-                None if allow_revoking => {
-                    if let Err(er) = organization_logic::revoke_member(&acting_user, device, ip, mbs, conn).await {
-                        error!("Failed to restore_member {}: {}", sso_user.email, er);
-                    }
-                }
-                None => {}
+fn check_orgs_groups(
+    identifiers: &Vec<(String, Option<String>)>,
+    org_groups: &Vec<(String, Option<String>, Organization, Option<GroupId>)>,
+) -> ApiResult<bool> {
+    let mut allow_revoking = true;
+
+    let mut check_mapping: HashMap<(&String, &Option<String>), i32> = HashMap::new();
+    for (identifier, group_name, _, _) in org_groups {
+        *check_mapping.entry((identifier, group_name)).or_default() += 1;
+    }
+    if check_mapping.len() != identifiers.len() || check_mapping.values().any(|v| *v != 1) {
+        allow_revoking = false;
+        warn!("Failed to correctly match user groups, revoking will be disabled");
+
+        for (id, group) in identifiers {
+            let count = check_mapping.remove(&(id, group)).unwrap_or(0);
+            match count {
+                0 => warn!("Identifier ({} - {:?})  returned no match", id, group),
+                1 => (),
+                c => warn!("Identifier ({} - {:?}) returned {} match", id, group, c),
             }
         }
 
-        for org in orgs.into_values() {
-            info!("Invitation to {} organization sent to {}", org.name, user.email);
-            organization_logic::invite(
-                &acting_user,
+        if check_mapping.values().any(|v| *v > 1) {
+            err_silent!("mapping with multiple match, sync will not proceed");
+        }
+    }
+
+    Ok(allow_revoking)
+}
+
+async fn sync_orgs_and_role(
+    user: &User,
+    sso_user: &AuthenticatedUser,
+    device: &Device,
+    ip: &ClientIp,
+    mut orgs: HashMap<OrganizationId, (Organization, HashSet<GroupId>)>,
+    allow_revoking: bool,
+    conn: &mut DbConn,
+) -> ApiResult<()> {
+    let acting_user: UserId = ACTING_AUTO_ENROLL_USER.into();
+    let provider_role = sso_user.org_role.as_ref().map(|or| or.membership_type());
+    let org_collections: Vec<CollectionData> = vec![];
+    let user_org_groups: Vec<GroupId> = vec![];
+
+    debug!(
+        "Matched organizations {:?}",
+        orgs.iter().map(|(_, (org, groups))| (&org.name, groups)).collect::<Vec<(&String, &HashSet<GroupId>)>>()
+    );
+
+    for mut mbs in Membership::find_any_state_by_user(&user.uuid, conn).await {
+        match orgs.remove(&mbs.org_uuid) {
+            Some((_, groups)) => {
+                if let Some(new_type) = provider_role.filter(|r| mbs.atype != *r as i32) {
+                    let er = organization_logic::set_membership_type(
+                        &acting_user,
+                        device,
+                        ip,
+                        &mut mbs,
+                        new_type,
+                        true,
+                        conn,
+                    )
+                    .await;
+
+                    if let Err(e) = er {
+                        error!("Failed to set_membership_type {}: {}", sso_user.email, e);
+                    }
+                }
+                if mbs.is_revoked() {
+                    if let Err(er) = organization_logic::restore_member(&acting_user, device, ip, &mut mbs, conn).await
+                    {
+                        error!("Failed to restore_member {}: {}", sso_user.email, er);
+                    }
+                }
+
+                sync_org_groups(&acting_user, user, device, ip, &mbs, groups, allow_revoking, conn).await?;
+            }
+            None if allow_revoking => {
+                if let Err(er) = organization_logic::revoke_member(&acting_user, device, ip, mbs, conn).await {
+                    error!("Failed to restore_member {}: {}", sso_user.email, er);
+                }
+            }
+            None => {}
+        }
+    }
+
+    let new_user_role = provider_role.unwrap_or(MembershipType::User);
+    for (org, groups) in orgs.into_values() {
+        info!("Invitation to {} organization sent to {}", org.name, user.email);
+        let mbs = organization_logic::invite(
+            &acting_user,
+            device,
+            ip,
+            &org,
+            user,
+            new_user_role,
+            &user_org_groups,
+            new_user_role > MembershipType::User || CONFIG.sso_organizations_all_collections(),
+            &org_collections,
+            org.billing_email.clone(),
+            true,
+            conn,
+        )
+        .await?;
+
+        sync_org_groups(&acting_user, user, device, ip, &mbs, groups, allow_revoking, conn).await?;
+    }
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn sync_org_groups(
+    acting_user: &UserId,
+    user: &User,
+    device: &Device,
+    ip: &ClientIp,
+    member: &Membership,
+    mut groups: HashSet<GroupId>,
+    allow_revoking: bool,
+    conn: &mut DbConn,
+) -> ApiResult<()> {
+    for gu in GroupUser::find_by_member(&member.uuid, conn).await {
+        debug!("Removing user {} from organization {} group {}", user.email, member.org_uuid, &gu.groups_uuid);
+
+        if !groups.remove(&gu.groups_uuid) && allow_revoking {
+            organization_logic::delete_group_user(
+                acting_user,
                 device,
                 ip,
-                &org,
-                user,
-                new_type,
-                &org_groups,
-                new_type > MembershipType::User || CONFIG.sso_organizations_all_collections(),
-                &org_collections,
-                org.billing_email.clone(),
-                true,
+                &member.org_uuid,
+                &member.uuid,
+                &gu.groups_uuid,
                 conn,
             )
             .await?;
         }
-    };
+    }
+
+    for group_id in groups {
+        debug!("Adding user {} to organization {} group {}", user.email, member.org_uuid, group_id);
+
+        organization_logic::add_group_user(
+            acting_user,
+            device,
+            ip,
+            &member.org_uuid,
+            member.uuid.clone(),
+            &group_id,
+            conn,
+        )
+        .await?;
+    }
 
     Ok(())
+}
+
+fn parse_user_groups(raw_groups: &Vec<String>) -> Vec<(String, Option<String>)> {
+    use std::path::Path;
+
+    let root = Path::new("/");
+    let mut orgs: HashMap<String, HashSet<String>> = HashMap::new();
+
+    for rg in raw_groups {
+        let p = root.join(Path::new(rg));
+
+        let (org, group) = match (p.parent().and_then(|o| o.to_str()), p.file_name().and_then(|g| g.to_str())) {
+            (None | Some("/"), Some(file_name)) => (Some(file_name.to_string()), None),
+            (Some(parent), file_name) => {
+                let mut org = parent.to_string();
+                org.remove(0);
+
+                (Some(org), file_name.map(|g| g.to_string()))
+            }
+            (None, None) => (None, None),
+        };
+
+        if let Some(o) = org {
+            let entry = orgs.entry(o).or_default();
+            if let Some(g) = group {
+                entry.insert(g);
+            }
+        }
+    }
+
+    let mut res = Vec::new();
+    for (key, groups) in orgs {
+        res.push((key.clone(), None));
+        for g in groups {
+            res.push((key.clone(), Some(g)));
+        }
+    }
+    res
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_user_groups() {
+        let raw_groups = vec![
+            "simpleorg1".to_string(),
+            "/simpleorg2".to_string(),
+            "/simpleorg3/".to_string(),
+            "simpleorg4/group41".to_string(),
+            "/simpleorg5/group51/".to_string(),
+            "org/withslash1/group61".to_string(),
+            "org/withslash2/group71/".to_string(),
+            "/simpleorg1/duplicate11".to_string(),
+            "/simpleorg1/duplicate12".to_string(),
+        ];
+
+        let mut res = parse_user_groups(&raw_groups);
+        res.sort();
+
+        assert_eq!(
+            res,
+            vec![
+                ("org/withslash1".to_string(), None),
+                ("org/withslash1".to_string(), Some("group61".to_string())),
+                ("org/withslash2".to_string(), None),
+                ("org/withslash2".to_string(), Some("group71".to_string())),
+                ("simpleorg1".to_string(), None),
+                ("simpleorg1".to_string(), Some("duplicate11".to_string())),
+                ("simpleorg1".to_string(), Some("duplicate12".to_string())),
+                ("simpleorg2".to_string(), None),
+                ("simpleorg3".to_string(), None),
+                ("simpleorg4".to_string(), None),
+                ("simpleorg4".to_string(), Some("group41".to_string())),
+                ("simpleorg5".to_string(), None),
+                ("simpleorg5".to_string(), Some("group51".to_string())),
+            ]
+        );
+    }
 }

@@ -314,7 +314,7 @@ async fn post_organization(
     org.billing_email = data.billing_email.to_lowercase();
 
     // External Id field is active only when SSO and Org mapping are enabled
-    if CONFIG.sso_enabled() && CONFIG.sso_organizations_invite() {
+    if CONFIG.sso_enabled() && (CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled()) {
         org.external_id = data.external_id;
     } else {
         org.external_id = None;
@@ -2471,7 +2471,7 @@ async fn _restore_member(
     conn: &mut DbConn,
 ) -> EmptyResult {
     match Membership::find_by_uuid_and_org(member_id, org_id, conn).await {
-        Some(member) if member.status < MembershipStatus::Accepted as i32 => {
+        Some(mut member) if member.status < MembershipStatus::Accepted as i32 => {
             if member.user_uuid == headers.user.uuid {
                 err!("You cannot restore yourself")
             }
@@ -2479,7 +2479,8 @@ async fn _restore_member(
                 err!("Only owners can restore other owners")
             }
 
-            organization_logic::restore_member(&headers.user.uuid, &headers.device, &headers.ip, member, conn).await?;
+            organization_logic::restore_member(&headers.user.uuid, &headers.device, &headers.ip, &mut member, conn)
+                .await?;
         }
         Some(_) => err!("User is already active"),
         None => err!("User not found in organization"),
@@ -2542,7 +2543,10 @@ impl GroupRequest {
         // By default Group Updates do not support changing the external_id
         // These input fields are in a disabled state, and can only be updated/added via ldap_import
         // But we reuse the field for SSO organization mapping.
-        if CONFIG.sso_enabled() && CONFIG.sso_organizations_invite() && CONFIG.org_groups_enabled() {
+        if CONFIG.sso_enabled()
+            && (CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled())
+            && CONFIG.org_groups_enabled()
+        {
             group.external_id = self.external_id.clone();
         }
 
@@ -2829,21 +2833,17 @@ async fn put_group_members(
 
     GroupUser::delete_all_by_group(&group_id, &mut conn).await?;
 
-    let assigned_members = data.into_inner();
-    for assigned_member in assigned_members {
-        let mut user_entry = GroupUser::new(group_id.clone(), assigned_member.clone());
-        user_entry.save(&mut conn).await?;
-
-        log_event(
-            EventType::OrganizationUserUpdatedGroups as i32,
-            &assigned_member,
-            &org_id,
+    for assigned_member in data.into_inner() {
+        organization_logic::add_group_user(
             &headers.user.uuid,
-            headers.device.atype,
-            &headers.ip.ip,
+            &headers.device,
+            &headers.ip,
+            &org_id,
+            assigned_member,
+            &group_id,
             &mut conn,
         )
-        .await;
+        .await?;
     }
 
     Ok(())
@@ -2913,20 +2913,17 @@ async fn put_user_groups(
 
     let assigned_group_ids = data.into_inner();
     for assigned_group_id in assigned_group_ids.group_ids {
-        let mut group_user = GroupUser::new(assigned_group_id.clone(), member_id.clone());
-        group_user.save(&mut conn).await?;
+        organization_logic::add_group_user(
+            &headers.user.uuid,
+            &headers.device,
+            &headers.ip,
+            &org_id,
+            member_id.clone(),
+            &assigned_group_id,
+            &mut conn,
+        )
+        .await?;
     }
-
-    log_event(
-        EventType::OrganizationUserUpdatedGroups as i32,
-        &member_id,
-        &org_id,
-        &headers.user.uuid,
-        headers.device.atype,
-        &headers.ip.ip,
-        &mut conn,
-    )
-    .await;
 
     Ok(())
 }
@@ -2965,18 +2962,16 @@ async fn delete_group_member(
         err!("Group could not be found or does not belong to the organization.");
     }
 
-    log_event(
-        EventType::OrganizationUserUpdatedGroups as i32,
-        &member_id,
-        &org_id,
+    organization_logic::delete_group_user(
         &headers.user.uuid,
-        headers.device.atype,
-        &headers.ip.ip,
+        &headers.device,
+        &headers.ip,
+        &org_id,
+        &member_id,
+        &group_id,
         &mut conn,
     )
-    .await;
-
-    GroupUser::delete_by_group_and_member(&group_id, &member_id, &mut conn).await
+    .await
 }
 
 #[derive(Deserialize)]

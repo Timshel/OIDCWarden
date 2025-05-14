@@ -2,6 +2,7 @@ import { test, expect, type TestInfo } from '@playwright/test';
 import { MailDev } from 'maildev';
 
 import * as utils from "../global-utils";
+import * as orgs from './setups/orgs';
 import { logNewUser, logUser } from './setups/sso';
 
 let users = utils.loadEnv();
@@ -40,39 +41,15 @@ test('Create user3', async ({ page }) => {
 test('Invite users', async ({ page }) => {
     await logNewUser(test, page, users.user1, { mailBuffer: mail1Buffer });
 
-    await test.step('Create Org', async () => {
-        await page.getByRole('link', { name: 'New organisation' }).click();
-        await page.getByLabel('Organisation name (required)').fill('Test');
-        await page.getByRole('button', { name: 'Submit' }).click();
-        await page.locator('div').filter({ hasText: 'Members' }).nth(2).click();
-    });
-
-    await test.step('Invite user2', async () => {
-        await page.getByRole('button', { name: 'Invite member' }).click();
-        await page.getByLabel('Email (required)').fill(users.user2.email);
-        await page.getByRole('tab', { name: 'Collections' }).click();
-        await page.getByLabel('Permission').selectOption('edit');
-        await page.getByLabel('Select collections').click();
-        await page.getByLabel('Options list').getByText('Default collection').click();
-        await page.getByRole('button', { name: 'Save' }).click();
-        await utils.checkNotification(page, 'User(s) invited');
-    });
-
-    await test.step('Invite user3', async () => {
-        await page.getByRole('button', { name: 'Invite member' }).click();
-        await page.getByLabel('Email (required)').fill(users.user3.email);
-        await page.getByRole('tab', { name: 'Collections' }).click();
-        await page.getByLabel('Permission').selectOption('edit');
-        await page.getByLabel('Select collections').click();
-        await page.getByLabel('Options list').getByText('Default collection').click();
-        await page.getByRole('button', { name: 'Save' }).click();
-        await utils.checkNotification(page, 'User(s) invited');
-    });
+    await orgs.create(test, page, '/Test');
+    await orgs.members(test, page, '/Test');
+    await orgs.invite(test, page, '/Test', users.user2.email);
+    await orgs.invite(test, page, '/Test', users.user3.email);
 });
 
 test('invited with new account', async ({ page }) => {
     const link = await test.step('Extract email link', async () => {
-        const invited = await mail2Buffer.next((m) => m.subject === "Join Test");
+        const invited = await mail2Buffer.next((m) => m.subject === "Join /Test");
         await page.setContent(invited.html);
         return await page.getByTestId("invite").getAttribute("href");
     });
@@ -104,13 +81,13 @@ test('invited with new account', async ({ page }) => {
 
     await test.step('Check mails', async () => {
         await expect(mail2Buffer.next((m) => m.subject.includes("New Device Logged"))).resolves.toBeDefined();
-        await expect(mail1Buffer.next((m) => m.subject === "Invitation to Test accepted")).resolves.toBeDefined();
+        await expect(mail1Buffer.next((m) => m.subject === "Invitation to /Test accepted")).resolves.toBeDefined();
     });
 });
 
 test('invited with existing account', async ({ page }) => {
     const link = await test.step('Extract email link', async () => {
-        const invited = await mail3Buffer.next((m) => m.subject === "Join Test");
+        const invited = await mail3Buffer.next((m) => m.subject === "Join /Test");
         await page.setContent(invited.html);
         return await page.getByTestId("invite").getAttribute("href");
     });
@@ -139,7 +116,7 @@ test('invited with existing account', async ({ page }) => {
 
     await test.step('Check mails', async () => {
         await expect(mail3Buffer.next((m) => m.subject.includes("New Device Logged"))).resolves.toBeDefined();
-        await expect(mail1Buffer.next((m) => m.subject === "Invitation to Test accepted")).resolves.toBeDefined();
+        await expect(mail1Buffer.next((m) => m.subject === "Invitation to /Test accepted")).resolves.toBeDefined();
     });
 });
 
@@ -157,28 +134,14 @@ test('Org invite auto accept', async ({ page }, testInfo: TestInfo) => {
 
     await logNewUser(test, page, users.user1, { mailBuffer: mail1Buffer, override: true });
 
-    await test.step('Create Org', async () => {
-        await page.getByRole('link', { name: 'New organisation' }).click();
-        await page.getByLabel('Organisation name (required)').fill('Test');
-        await page.getByRole('button', { name: 'Submit' }).click();
-        await page.locator('div').filter({ hasText: 'Members' }).nth(2).click();
-    });
-
-    await test.step('Invite user2', async () => {
-        await page.getByRole('button', { name: 'Invite member' }).click();
-        await page.getByLabel('Email (required)').fill(users.user2.email);
-        await page.getByRole('tab', { name: 'Collections' }).click();
-        await page.getByLabel('Permission').selectOption('edit');
-        await page.getByLabel('Select collections').click();
-        await page.getByLabel('Options list').getByText('Default collection').click();
-        await page.getByRole('button', { name: 'Save' }).click();
-        await utils.checkNotification(page, 'User(s) invited');
-    });
+    await orgs.create(test, page, '/Test');
+    await orgs.members(test, page, '/Test');
+    await orgs.invite(test, page, '/Test', users.user2.email);
 
     await expect(page.getByRole('row', { name: users.user2.email })).toHaveText(/Needs confirmation/);
     await page.getByRole('row', { name: users.user2.email }).getByLabel('Options').click();
     await page.getByRole('menuitem', { name: 'Confirm' }).click();
     await utils.checkNotification(page, 'Failed to confirm user');
 
-    await  expect(mail2Buffer.next((m) => m.subject === "Enrolled in Test")).resolves.toBeDefined();
+    await  expect(mail2Buffer.next((m) => m.subject === "Enrolled in /Test")).resolves.toBeDefined();
 });

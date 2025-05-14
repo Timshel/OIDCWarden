@@ -1,10 +1,21 @@
 # Changelog
 
-# v2025.4.1-1
+# v2025.5.0-1
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.5.0-1`
+- Add support for oganization groups sync
+  - Initially the feature will be avaible only if `ORG_GROUPS_ENABLED` and `SSO_ORGANIZATIONS_GROUPS_ENABLED` are activated
+  - `SSO_ORGANIZATIONS_GROUPS_ENABLED` will be removed in subsequent release (feature will be active if `ORG_GROUPS_ENABLED` is enabled).
+- :warning: multiple deprecations
+  - `SSO_ORGANIZATIONS_INVITE`: Will be removed with the next release. replaced with `SSO_ORGANIZATIONS_ENABLED`.
+  - `SSO_ORGANIZATIONS_ID_MAPPING` Will be removed with the next release. For now if present is still used, only Organization and User role mapping is done.
+- :warning: new database modification (add a column with a default value, rollback is possible)
 
-- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.4.1-1`
+# v2025.4.2-1 (Never released)
 
-# v2025.3.1-1
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.4.2-1`
+- Add support for organization role mapping
+
+# v2025.3.1-1 (Never released)
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.3.1-4`
   \

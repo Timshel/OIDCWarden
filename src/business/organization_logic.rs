@@ -20,7 +20,7 @@ pub async fn invite(
     invited_by_email: String,
     auto: bool,
     conn: &mut DbConn,
-) -> ApiResult<()> {
+) -> ApiResult<Membership> {
     let mut membership_status = MembershipStatus::Invited;
 
     // automatically accept existing users if mail is disabled or config if set
@@ -99,7 +99,7 @@ pub async fn invite(
         }
     }
 
-    Ok(())
+    Ok(new_member)
 }
 
 pub async fn revoke_member(
@@ -157,11 +157,11 @@ pub async fn restore_member(
     act_user_id: &UserId,
     device: &Device,
     ip: &ClientIp,
-    mut member: Membership,
+    member: &mut Membership,
     conn: &mut DbConn,
 ) -> EmptyResult {
     if member.atype < MembershipType::Admin {
-        admin_check(&member, "restore this user", conn).await?;
+        admin_check(member, "restore this user", conn).await?;
     }
 
     member.restore();
@@ -203,7 +203,7 @@ pub async fn set_membership_type(
     // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
     // It returns different error messages per function.
     if new_type < MembershipType::Admin {
-        admin_check(&member, "modify this user to this type", conn).await?;
+        admin_check(member, "modify this user to this type", conn).await?;
     }
 
     member.access_all = new_type >= MembershipType::Admin || (new_type == MembershipType::Manager && custom_access_all);
@@ -221,4 +221,55 @@ pub async fn set_membership_type(
     .await;
 
     member.save(conn).await
+}
+
+pub async fn add_group_user(
+    act_user_id: &UserId,
+    device: &Device,
+    ip: &ClientIp,
+    org_id: &OrganizationId,
+    member_uuid: MembershipId,
+    group_id: &GroupId,
+    conn: &mut DbConn,
+) -> EmptyResult {
+    let mut user_entry = GroupUser::new(group_id.clone(), member_uuid);
+    user_entry.save(conn).await?;
+
+    log_event(
+        EventType::OrganizationUserUpdatedGroups as i32,
+        group_id,
+        org_id,
+        act_user_id,
+        device.atype,
+        &ip.ip,
+        conn,
+    )
+    .await;
+
+    Ok(())
+}
+
+pub async fn delete_group_user(
+    act_user_id: &UserId,
+    device: &Device,
+    ip: &ClientIp,
+    org_id: &OrganizationId,
+    member_uuid: &MembershipId,
+    group_id: &GroupId,
+    conn: &mut DbConn,
+) -> EmptyResult {
+    GroupUser::delete_by_group_and_member(group_id, member_uuid, conn).await?;
+
+    log_event(
+        EventType::OrganizationUserUpdatedGroups as i32,
+        group_id,
+        org_id,
+        act_user_id,
+        device.atype,
+        &ip.ip,
+        conn,
+    )
+    .await;
+
+    Ok(())
 }

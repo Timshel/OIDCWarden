@@ -305,7 +305,9 @@ async fn _sso_login(
     // Set the user_uuid here to be passed back used for event logging.
     *user_uuid = Some(user.uuid.clone());
 
-    sso::sync_groups(&user, &auth_user, &device, ip, conn).await?;
+    if let Err(err) = sso::sync_organizations(&user, &auth_user, &device, ip, conn).await {
+        error!("Failure during sso organization sync: {err}");
+    }
 
     if auth_user.is_admin() {
         info!("User {} logged with admin cookie", user.email);

@@ -2,6 +2,7 @@ import { test, expect, type TestInfo } from '@playwright/test';
 import { MailDev } from 'maildev';
 
 import * as utils from "../global-utils";
+import * as orgs from './setups/orgs';
 import { logNewUser, logUser } from './setups/sso';
 
 let users = utils.loadEnv();
@@ -35,14 +36,7 @@ test('User auto invite', async ({ context, page }) => {
     let mail2Buffer = mailServer.buffer(users.user2.email);
     try {
         await logNewUser(test, page, users.user1);
-
-        await test.step('Create Org', async () => {
-            await page.getByRole('link', { name: 'New organisation' }).click();
-            await page.getByLabel('Organisation name (required)').fill('Test');
-            await page.getByRole('button', { name: 'Submit' }).click();
-            await page.locator('div').filter({ hasText: 'Members' }).nth(2).click();
-        });
-
+        await orgs.create(test, page, 'Test');
         await test.step('Log user2 and receive invite', async () => {
             await logNewUser(test, page, users.user2, { mailBuffer: mail2Buffer });
             await expect(mail2Buffer.next((m) => m.subject === "Join Test")).resolves.toBeDefined();
@@ -68,14 +62,7 @@ test('Org invite auto accept', async ({ context, page }, testInfo: TestInfo) => 
         }, true);
 
         await logNewUser(test, page, users.user1, { mailBuffer: mail1Buffer, override: true });
-
-        await test.step('Create Org', async () => {
-            await page.getByRole('link', { name: 'New organisation' }).click();
-            await page.getByLabel('Organisation name (required)').fill('Test');
-            await page.getByRole('button', { name: 'Submit' }).click();
-            await page.locator('div').filter({ hasText: 'Members' }).nth(2).click();
-        });
-
+        await orgs.create(test, page, 'Test');
         await test.step('Invite user2', async () => {
             await logNewUser(test, page, users.user2, { mailBuffer: mail2Buffer, override: true });
 

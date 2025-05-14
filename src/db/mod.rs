@@ -349,6 +349,7 @@ macro_rules! db_object {
 
             impl [<$name Db>] {
                 #[allow(clippy::wrong_self_convention)]
+                #[allow(unused)]
                 #[inline(always)] pub fn to_db(x: &super::$name) -> Self { Self { $( $field: x.$field.clone(), )+ } }
             }
 
