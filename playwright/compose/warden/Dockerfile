@@ -2,8 +2,8 @@ FROM playwright_oidc_warden_prebuilt AS prebuilt
 
 FROM node:18-bookworm AS build
 
-arg REPO_URL
-arg COMMIT_HASH
+ARG REPO_URL
+ARG COMMIT_HASH
 
 ENV REPO_URL=${REPO_URL:-https://github.com/Timshel/oidc_web_builds}
 ENV COMMIT_HASH=$COMMIT_HASH

@@ -21,7 +21,7 @@ use crate::{
         ApiResult, EmptyResult, JsonResult,
     },
     auth,
-    auth::{AuthMethod, AuthMethodScope, ClientHeaders, ClientIp},
+    auth::{AuthMethod, AuthMethodScope, ClientHeaders, ClientIp, ClientVersion},
     db::{models::*, DbConn},
     error::MapResult,
     mail, sso,
@@ -48,6 +48,7 @@ pub fn routes() -> Vec<Route> {
 async fn login(
     data: Form<ConnectData>,
     client_header: ClientHeaders,
+    client_version: Option<ClientVersion>,
     cookies: &CookieJar<'_>,
     mut conn: DbConn,
 ) -> JsonResult {
@@ -71,7 +72,7 @@ async fn login(
             _check_is_some(&data.device_name, "device_name cannot be blank")?;
             _check_is_some(&data.device_type, "device_type cannot be blank")?;
 
-            _password_login(data, &mut user_id, &mut conn, &client_header.ip).await
+            _password_login(data, &mut user_id, &mut conn, &client_header.ip, &client_version).await
         }
         "client_credentials" => {
             _check_is_some(&data.client_id, "client_id cannot be blank")?;
@@ -92,7 +93,7 @@ async fn login(
             _check_is_some(&data.device_name, "device_name cannot be blank")?;
             _check_is_some(&data.device_type, "device_type cannot be blank")?;
 
-            _sso_login(data, &mut user_id, &mut conn, cookies, &client_header.ip).await
+            _sso_login(data, &mut user_id, &mut conn, cookies, &client_header.ip, &client_version).await
         }
         "authorization_code" => err!("SSO sign-in is not available"),
         t => err!("Invalid type", t),
@@ -147,7 +148,7 @@ async fn _refresh_login(data: ConnectData, conn: &mut DbConn) -> JsonResult {
             err_code!(format!("Unable to refresh login credentials: {}", err.message()), Status::Unauthorized.code)
         }
         Ok((mut device, auth_tokens)) => {
-            // Save to update `device.updated_at` to track usage
+            // Save to update `device.updated_at` to track usage and toggle new status
             device.save(conn).await?;
 
             let result = json!({
@@ -170,6 +171,7 @@ async fn _sso_login(
     conn: &mut DbConn,
     cookies: &CookieJar<'_>,
     ip: &ClientIp,
+    client_version: &Option<ClientVersion>,
 ) -> JsonResult {
     AuthMethod::Sso.check_scope(data.scope.as_ref())?;
 
@@ -221,7 +223,7 @@ async fn _sso_login(
 
     let now = Utc::now().naive_utc();
     // Will trigger 2FA flow if needed
-    let (user, mut device, new_device, twofactor_token, sso_user) = match user_with_sso {
+    let (user, mut device, twofactor_token, sso_user) = match user_with_sso {
         None => {
             if !CONFIG.is_email_domain_allowed(&user_infos.email) {
                 err!(
@@ -253,9 +255,9 @@ async fn _sso_login(
             user.verified_at = Some(now);
             user.save(conn).await?;
 
-            let (device, new_device) = get_device(&data, conn, &user).await?;
+            let device = get_device(&data, conn, &user).await?;
 
-            (user, device, new_device, None, None)
+            (user, device, None, None)
         }
         Some((user, _)) if !user.enabled => {
             err!(
@@ -267,8 +269,8 @@ async fn _sso_login(
             )
         }
         Some((mut user, sso_user)) => {
-            let (mut device, new_device) = get_device(&data, conn, &user).await?;
-            let twofactor_token = twofactor_auth(&user, &data, &mut device, ip, conn).await?;
+            let mut device = get_device(&data, conn, &user).await?;
+            let twofactor_token = twofactor_auth(&user, &data, &mut device, ip, client_version, conn).await?;
 
             if user.private_key.is_none() {
                 // User was invited a stub was created
@@ -287,7 +289,7 @@ async fn _sso_login(
                 info!("User {} email changed in SSO provider from {} to {}", user.uuid, user.email, user_infos.email);
             }
 
-            (user, device, new_device, twofactor_token, sso_user)
+            (user, device, twofactor_token, sso_user)
         }
     };
 
@@ -322,7 +324,7 @@ async fn _sso_login(
         auth_user.expires_in,
     )?;
 
-    authenticated_response(&user, &mut device, new_device, auth_tokens, twofactor_token, &now, conn, ip).await
+    authenticated_response(&user, &mut device, auth_tokens, twofactor_token, &now, conn, ip).await
 }
 
 #[derive(Default, Deserialize, Serialize)]
@@ -342,6 +344,7 @@ async fn _password_login(
     user_id: &mut Option<UserId>,
     conn: &mut DbConn,
     ip: &ClientIp,
+    client_version: &Option<ClientVersion>,
 ) -> JsonResult {
     // Validate scope
     AuthMethod::Password.check_scope(data.scope.as_ref())?;
@@ -449,27 +452,26 @@ async fn _password_login(
         )
     }
 
-    let (mut device, new_device) = get_device(&data, conn, &user).await?;
+    let mut device = get_device(&data, conn, &user).await?;
 
-    let twofactor_token = twofactor_auth(&user, &data, &mut device, ip, conn).await?;
+    let twofactor_token = twofactor_auth(&user, &data, &mut device, ip, client_version, conn).await?;
 
     let auth_tokens = auth::AuthTokens::new(&device, &user, AuthMethod::Password);
 
-    authenticated_response(&user, &mut device, new_device, auth_tokens, twofactor_token, &now, conn, ip).await
+    authenticated_response(&user, &mut device, auth_tokens, twofactor_token, &now, conn, ip).await
 }
 
 #[allow(clippy::too_many_arguments)]
 async fn authenticated_response(
     user: &User,
     device: &mut Device,
-    new_device: bool,
     auth_tokens: auth::AuthTokens,
     twofactor_token: Option<String>,
     now: &NaiveDateTime,
     conn: &mut DbConn,
     ip: &ClientIp,
 ) -> JsonResult {
-    if CONFIG.mail_enabled() && new_device {
+    if CONFIG.mail_enabled() && device.is_new() {
         if let Err(e) = mail::send_new_device_logged_in(&user.email, &ip.ip.to_string(), now, device).await {
             error!("Error sending new device email: {:#?}", e);
 
@@ -485,11 +487,11 @@ async fn authenticated_response(
     }
 
     // register push device
-    if !new_device {
+    if !device.is_new() {
         register_push_device(device, conn).await?;
     }
 
-    // Save to update `device.updated_at` to track usage
+    // Save to update `device.updated_at` to track usage and toggle new status
     device.save(conn).await?;
 
     // Fetch all valid Master Password Policies and merge them into one with all true's and larges numbers as one policy
@@ -613,9 +615,9 @@ async fn _user_api_key_login(
         )
     }
 
-    let (mut device, new_device) = get_device(&data, conn, &user).await?;
+    let mut device = get_device(&data, conn, &user).await?;
 
-    if CONFIG.mail_enabled() && new_device {
+    if CONFIG.mail_enabled() && device.is_new() {
         let now = Utc::now().naive_utc();
         if let Err(e) = mail::send_new_device_logged_in(&user.email, &ip.ip.to_string(), &now, &device).await {
             error!("Error sending new device email: {:#?}", e);
@@ -639,7 +641,7 @@ async fn _user_api_key_login(
     // let orgs = Membership::find_confirmed_by_user(&user.uuid, conn).await;
     let access_claims = auth::LoginJwtClaims::default(&device, &user, &AuthMethod::UserApiKey);
 
-    // Save to update `device.updated_at` to track usage
+    // Save to update `device.updated_at` to track usage and toggle new status
     device.save(conn).await?;
 
     info!("User {} logged in successfully via API key. IP: {}", user.email, ip.ip);
@@ -693,25 +695,18 @@ async fn _organization_api_key_login(data: ConnectData, conn: &mut DbConn, ip: &
 }
 
 /// Retrieves an existing device or creates a new device from ConnectData and the User
-async fn get_device(data: &ConnectData, conn: &mut DbConn, user: &User) -> ApiResult<(Device, bool)> {
+async fn get_device(data: &ConnectData, conn: &mut DbConn, user: &User) -> ApiResult<Device> {
     // On iOS, device_type sends "iOS", on others it sends a number
     // When unknown or unable to parse, return 14, which is 'Unknown Browser'
     let device_type = util::try_parse_string(data.device_type.as_ref()).unwrap_or(14);
     let device_id = data.device_identifier.clone().expect("No device id provided");
     let device_name = data.device_name.clone().expect("No device name provided");
 
-    let mut new_device = false;
     // Find device or create new
-    let device = match Device::find_by_uuid_and_user(&device_id, &user.uuid, conn).await {
-        Some(device) => device,
-        None => {
-            let device = Device::new(device_id, user.uuid.clone(), device_name, device_type);
-            new_device = true;
-            device
-        }
-    };
-
-    Ok((device, new_device))
+    match Device::find_by_uuid_and_user(&device_id, &user.uuid, conn).await {
+        Some(device) => Ok(device),
+        None => Device::new(device_id, user.uuid.clone(), device_name, device_type, conn).await,
+    }
 }
 
 async fn twofactor_auth(
@@ -719,6 +714,7 @@ async fn twofactor_auth(
     data: &ConnectData,
     device: &mut Device,
     ip: &ClientIp,
+    client_version: &Option<ClientVersion>,
     conn: &mut DbConn,
 ) -> ApiResult<Option<String>> {
     let twofactors = TwoFactor::find_by_user(&user.uuid, conn).await;
@@ -736,7 +732,10 @@ async fn twofactor_auth(
 
     let twofactor_code = match data.two_factor_token {
         Some(ref code) => code,
-        None => err_json!(_json_err_twofactor(&twofactor_ids, &user.uuid, data, conn).await?, "2FA token not provided"),
+        None => err_json!(
+            _json_err_twofactor(&twofactor_ids, &user.uuid, data, client_version, conn).await?,
+            "2FA token not provided"
+        ),
     };
 
     let selected_twofactor = twofactors.into_iter().find(|tf| tf.atype == selected_id && tf.enabled);
@@ -782,7 +781,7 @@ async fn twofactor_auth(
                 }
                 _ => {
                     err_json!(
-                        _json_err_twofactor(&twofactor_ids, &user.uuid, data, conn).await?,
+                        _json_err_twofactor(&twofactor_ids, &user.uuid, data, client_version, conn).await?,
                         "2FA Remember token not provided"
                     )
                 }
@@ -815,6 +814,7 @@ async fn _json_err_twofactor(
     providers: &[i32],
     user_id: &UserId,
     data: &ConnectData,
+    client_version: &Option<ClientVersion>,
     conn: &mut DbConn,
 ) -> ApiResult<Value> {
     let mut result = json!({
@@ -887,8 +887,16 @@ async fn _json_err_twofactor(
                     err!("No twofactor email registered")
                 };
 
-                // Send email immediately if email is the only 2FA option
-                if providers.len() == 1 {
+                // Starting with version 2025.5.0 the client will call `/api/two-factor/send-email-login`.
+                let disabled_send = if let Some(cv) = client_version {
+                    let ver_match = semver::VersionReq::parse(">=2025.5.0").unwrap();
+                    ver_match.matches(&cv.0)
+                } else {
+                    false
+                };
+
+                // Send email immediately if email is the only 2FA option.
+                if providers.len() == 1 && !disabled_send {
                     email::send_token(user_id, conn).await?
                 }
 

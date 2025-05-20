@@ -224,3 +224,14 @@ export async function checkNotification(page: Page, hasText: string) {
     await page.locator('bit-toast').filter({ hasText }).getByRole('button').click();
     await expect(page.locator('bit-toast').filter({ hasText })).toHaveCount(0);
 }
+
+export async function cleanLanding(page: Page) {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('button').nth(0)).toBeVisible();
+
+    const logged = await page.getByRole('button', { name: 'Log out' }).count();
+    if( logged > 0 ){
+        await page.getByRole('button', { name: 'Log out' }).click();
+        await page.getByRole('button', { name: 'Log out' }).click();
+    }
+}

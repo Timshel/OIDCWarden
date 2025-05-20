@@ -3,6 +3,7 @@ import * as OTPAuth from "otpauth";
 
 import * as utils from "../global-utils";
 import { createAccount, logUser } from './setups/user';
+import { activateTOTP, disableTOTP } from './setups/2fa';
 
 let users = utils.loadEnv();
 let totp;
@@ -24,27 +25,9 @@ test('Master password login', async ({ page }) => {
 });
 
 test('Authenticator 2fa', async ({ page }) => {
-    let totp;
-
     await logUser(test, page, users.user1);
 
-    await test.step('Activate', async () => {
-        await page.getByRole('button', { name: users.user1.name }).click();
-        await page.getByRole('menuitem', { name: 'Account settings' }).click();
-        await page.getByRole('link', { name: 'Security' }).click();
-        await page.getByRole('link', { name: 'Two-step login' }).click();
-        await page.locator('bit-item').filter({ hasText: /Authenticator app/ }).getByRole('button').click();
-        await page.getByLabel('Master password (required)').fill(users.user1.password);
-        await page.getByRole('button', { name: 'Continue' }).click();
-
-        const secret = await page.getByLabel('Key').innerText();
-        totp = new OTPAuth.TOTP({ secret, period: 30 });
-
-        await page.getByLabel(/Verification code/).fill(totp.generate());
-        await page.getByRole('button', { name: 'Turn on' }).click();
-        await page.getByRole('heading', { name: 'Turned on', exact: true });
-        await page.getByLabel('Close').click();
-    })
+    let totp = await activateTOTP(test, page, users.user1);
 
     await test.step('logout', async () => {
         await page.getByRole('button', { name: users.user1.name }).click();
@@ -53,7 +36,7 @@ test('Authenticator 2fa', async ({ page }) => {
     });
 
     await test.step('login', async () => {
-        let timestamp = Date.now(); // Need to use the next token
+        let timestamp = Date.now(); // Needed to use the next token
         timestamp = timestamp + (totp.period - (Math.floor(timestamp / 1000) % totp.period) + 1) * 1000;
 
         await page.getByLabel(/Email address/).fill(users.user1.email);
@@ -61,23 +44,12 @@ test('Authenticator 2fa', async ({ page }) => {
         await page.getByLabel('Master password').fill(users.user1.password);
         await page.getByRole('button', { name: 'Log in with master password' }).click();
 
+        await expect(page.getByRole('heading', { name: 'Verify your Identity' })).toBeVisible();
         await page.getByLabel(/Verification code/).fill(totp.generate({timestamp}));
         await page.getByRole('button', { name: 'Continue' }).click();
 
         await expect(page).toHaveTitle(/Vaults/);
     });
 
-    await test.step('disable', async () => {
-        await page.getByRole('button', { name: 'Test' }).click();
-        await page.getByRole('menuitem', { name: 'Account settings' }).click();
-        await page.getByRole('link', { name: 'Security' }).click();
-        await page.getByRole('link', { name: 'Two-step login' }).click();
-        await page.locator('bit-item').filter({ hasText: /Authenticator app/ }).getByRole('button').click();
-        await page.getByLabel('Master password (required)').click();
-        await page.getByLabel('Master password (required)').fill(users.user1.password);
-        await page.getByRole('button', { name: 'Continue' }).click();
-        await page.getByRole('button', { name: 'Turn off' }).click();
-        await page.getByRole('button', { name: 'Yes' }).click();
-        await utils.checkNotification(page, 'Two-step login provider turned off');
-    });
+    await disableTOTP(test, page, users.user1);
 });

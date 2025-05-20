@@ -23,7 +23,7 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
         SMTP_HOST: process.env.MAILDEV_HOST,
         SSO_ENABLED: true,
         SSO_ONLY: true,
-        SSO_ORGANIZATIONS_INVITE: true,
+        SSO_ORGANIZATIONS_ENABLED: true,
         SSO_ORGANIZATIONS_REVOCATION: true,
         SSO_SCOPES: "email profile groups",
     });
@@ -120,7 +120,7 @@ async function mappingTest(
         SMTP_HOST: process.env.MAILDEV_HOST,
         SSO_ENABLED: true,
         SSO_ONLY: true,
-        SSO_ORGANIZATIONS_INVITE: true,
+        SSO_ORGANIZATIONS_ENABLED: true,
         SSO_ORGANIZATIONS_ID_MAPPING: mapping,
         SSO_ORGANIZATIONS_REVOCATION: true,
         SSO_SCOPES: "email profile groups",

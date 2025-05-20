@@ -3,6 +3,7 @@ import { MailDev } from 'maildev';
 
 const utils = require('../global-utils');
 import { createAccount, logUser } from './setups/user';
+import { activateEmail, retrieveEmailCode, disableEmail } from './setups/2fa';
 
 let users = utils.loadEnv();
 
@@ -61,41 +62,17 @@ test('Login', async ({ context, page }) => {
     mailBuffer.close();
 });
 
-test('Activaite 2fa', async ({ context, page }) => {
+test('Activate 2fa', async ({ page }) => {
     const emails = mailserver.buffer(users.user1.email);
 
     await logUser(test, page, users.user1);
 
-    await test.step('activate', async () => {
-        await page.getByRole('button', { name: users.user1.name }).click();
-        await page.getByRole('menuitem', { name: 'Account settings' }).click();
-        await page.getByRole('link', { name: 'Security' }).click();
-        await page.getByRole('link', { name: 'Two-step login' }).click();
-        await page.locator('bit-item').filter({ hasText: 'Email Email Enter a code sent' }).getByRole('button').click();
-        await page.getByLabel('Master password (required)').fill(users.user1.password);
-        await page.getByRole('button', { name: 'Continue' }).click();
-        await page.getByRole('button', { name: 'Send email' }).click();
-    });
-
-    const code = await test.step('retrieve code', async () => {
-        const codeMail = await emails.next((mail) => mail.subject.includes("Login Verification Code"));
-        const page2 = await context.newPage();
-        await page2.setContent(codeMail.html);
-        const code = await page2.getByTestId("2fa").innerText();
-        await page2.close();
-        return code;
-    });
-
-    await test.step('input code', async () => {
-        await page.getByLabel('2. Enter the resulting 6').fill(code);
-        await page.getByRole('button', { name: 'Turn on' }).click();
-        await page.getByRole('heading', { name: 'Turned on', exact: true });
-    });
+    await activateEmail(test, page, users.user1, emails);
 
     emails.close();
 });
 
-test('2fa', async ({ context, page }) => {
+test('2fa', async ({ page }) => {
     const emails = mailserver.buffer(users.user1.email);
 
     await test.step('login', async () => {
@@ -106,32 +83,15 @@ test('2fa', async ({ context, page }) => {
         await page.getByLabel('Master password').fill(users.user1.password);
         await page.getByRole('button', { name: 'Log in with master password' }).click();
 
-        const codeMail = await emails.next((mail) => mail.subject.includes("Login Verification Code"));
-        const page2 = await context.newPage();
-        await page2.setContent(codeMail.html);
-        const code = await page2.getByTestId("2fa").innerText();
-        await page2.close();
-
+        await expect(page.getByRole('heading', { name: 'Verify your Identity' })).toBeVisible();
+        const code = await retrieveEmailCode(test, page, emails);
         await page.getByLabel(/Verification code/).fill(code);
         await page.getByRole('button', { name: 'Continue' }).click();
 
         await expect(page).toHaveTitle(/Vaults/);
     })
 
-    await test.step('disable', async () => {
-        await page.getByRole('button', { name: 'Test' }).click();
-        await page.getByRole('menuitem', { name: 'Account settings' }).click();
-        await page.getByRole('link', { name: 'Security' }).click();
-        await page.getByRole('link', { name: 'Two-step login' }).click();
-        await page.locator('bit-item').filter({ hasText: 'Email' }).getByRole('button').click();
-        await page.getByLabel('Master password (required)').click();
-        await page.getByLabel('Master password (required)').fill(users.user1.password);
-        await page.getByRole('button', { name: 'Continue' }).click();
-        await page.getByRole('button', { name: 'Turn off' }).click();
-        await page.getByRole('button', { name: 'Yes' }).click();
-
-        await utils.checkNotification(page, 'Two-step login provider turned off');
-    });
+    await disableEmail(test, page, users.user1);
 
     emails.close();
 });
