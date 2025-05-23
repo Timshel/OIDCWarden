@@ -229,6 +229,32 @@ Afterwards you can use these settings to derive the `admin` role from the ID tok
 * `SSO_ROLES_DEFAULT_TO_USER=true`
 * `SSO_ROLES_TOKEN_PATH=/roles
 
+## Rauthy
+
+To use a provider controlled session you will need to run Rauthy with `DISABLE_REFRESH_TOKEN_NBF=true` otherwise the server will fail when trying to read a not yet valid `refresh_token` (`Bitwarden` clients will trigger a refresh even if the `access_token` is still valid. Details on rauthy [side](https://github.com/sebadob/rauthy/issues/651)). Alternative is to use the default session handling with `SSO_AUTH_ONLY_NOT_SESSION=true`.
+
+No specific config needed when creating the Client.
+
+Your configuration should look like this:
+
+* `SSO_AUTHORITY=http://${provider_host}/auth/v1`
+* `SSO_CLIENT_ID=${Client ID}`
+* `SSO_CLIENT_SECRET=${Client Secret}`
+* `SSO_AUTH_ONLY_NOT_SESSION=true` Only needed if not running `Rauthy` with `DISABLE_REFRESH_TOKEN_NBF=true`
+
+## Slack
+
+You will need to create an app in https://api.slack.com/apps/.
+
+It appears that the `access_token` returned is not in JWT format and an expiration date is not sent with it. As such you will need to use the default session lifecycle.
+
+Your configuration should look like this:
+
+* `SSO_AUTHORITY=https://slack.com`
+* `SSO_CLIENT_ID=${Application Client ID}`
+* `SSO_CLIENT_SECRET=${Application Client Secret}`
+* `SSO_AUTH_ONLY_NOT_SESSION=true`
+
 ## Zitadel
 
 To obtain a `refresh_token` to be able to extend session you'll need to add the `offline_access` scope.
