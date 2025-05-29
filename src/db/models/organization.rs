@@ -63,8 +63,8 @@ db_object! {
     }
 }
 
-// https://github.com/bitwarden/server/blob/b86a04cef9f1e1b82cf18e49fc94e017c641130c/src/Core/Enums/OrganizationUserStatusType.cs
-#[derive(Copy, Clone, PartialEq)]
+// https://github.com/bitwarden/server/blob/9ebe16587175b1c0e9208f84397bb75d0d595510/src/Core/AdminConsole/Enums/OrganizationUserStatusType.cs
+#[derive(Clone, PartialEq)]
 pub enum MembershipStatus {
     Revoked = -1,
     Invited = 0,
@@ -185,7 +185,7 @@ impl Organization {
             external_id: None,
         }
     }
-    // https://github.com/bitwarden/server/blob/13d1e74d6960cf0d042620b72d85bf583a4236f7/src/Api/Models/Response/Organizations/OrganizationResponseModel.cs
+    // https://github.com/bitwarden/server/blob/9ebe16587175b1c0e9208f84397bb75d0d595510/src/Api/AdminConsole/Models/Response/Organizations/OrganizationResponseModel.cs
     pub fn to_json(&self) -> Value {
         json!({
             "id": self.uuid,
@@ -211,7 +211,6 @@ impl Organization {
             "useResetPassword": CONFIG.mail_enabled(),
             "allowAdminAccessToAllCollectionItems": true,
             "limitCollectionCreation": true,
-            "limitCollectionCreationDeletion": true,
             "limitCollectionDeletion": true,
 
             "businessName": self.name,
@@ -448,7 +447,7 @@ impl Organization {
         }}
     }
 
-    pub async fn find_main_org_user_email(user_email: &str, conn: &mut DbConn) -> Option<Self> {
+    pub async fn find_main_org_user_email(user_email: &str, conn: &mut DbConn) -> Option<Organization> {
         let lower_mail = user_email.to_lowercase();
 
         db_run! { conn: {
@@ -526,7 +525,7 @@ impl Membership {
                 "manageScim": false // Not supported (Not AGPLv3 Licensed)
         });
 
-        // https://github.com/bitwarden/server/blob/13d1e74d6960cf0d042620b72d85bf583a4236f7/src/Api/Models/Response/ProfileOrganizationResponseModel.cs
+        // https://github.com/bitwarden/server/blob/9ebe16587175b1c0e9208f84397bb75d0d595510/src/Api/AdminConsole/Models/Response/ProfileOrganizationResponseModel.cs
         json!({
             "id": self.org_uuid,
             "identifier": null, // Not supported
@@ -553,6 +552,8 @@ impl Membership {
             "usePasswordManager": true,
             "useCustomPermissions": true,
             "useActivateAutofillPolicy": false,
+            "useAdminSponsoredFamilies": false,
+            "useRiskInsights": false, // Not supported (Not AGPLv3 Licensed)
 
             "organizationUserId": self.uuid,
             "providerId": null,
@@ -560,7 +561,6 @@ impl Membership {
             "providerType": null,
             "familySponsorshipFriendlyName": null,
             "familySponsorshipAvailable": false,
-            "planProductType": 3,
             "productTierType": 3, // Enterprise tier
             "keyConnectorEnabled": false,
             "keyConnectorUrl": null,
@@ -569,10 +569,11 @@ impl Membership {
             "familySponsorshipToDelete": null,
             "accessSecretsManager": false,
             "limitCollectionCreation": self.atype < MembershipType::Manager, // If less then a manager return true, to limit collection creations
-            "limitCollectionCreationDeletion": true,
             "limitCollectionDeletion": true,
+            "limitItemDeletion": false,
             "allowAdminAccessToAllCollectionItems": true,
             "userIsManagedByOrganization": false, // Means not managed via the Members UI, like SSO
+            "userIsClaimedByOrganization": false, // The new key instead of the obsolete userIsManagedByOrganization
 
             "permissions": permissions,
 
@@ -718,6 +719,8 @@ impl Membership {
             "permissions": permissions,
 
             "ssoBound": false, // Not supported
+            "managedByOrganization": false, // This key is obsolete replaced by claimedByOrganization
+            "claimedByOrganization": false, // Means not managed via the Members UI, like SSO
             "usesKeyConnector": false, // Not supported
             "accessSecretsManager": false, // Not supported (Not AGPLv3 Licensed)
 
@@ -973,6 +976,21 @@ impl Membership {
             users_organizations::table
                 .filter(users_organizations::org_uuid.eq(org_uuid))
                 .filter(users_organizations::status.eq(MembershipStatus::Confirmed as i32))
+                .load::<MembershipDb>(conn)
+                .unwrap_or_default().from_db()
+        }}
+    }
+
+    // Get all users which are either owner or admin, or a manager which can manage/access all
+    pub async fn find_confirmed_and_manage_all_by_org(org_uuid: &OrganizationId, conn: &mut DbConn) -> Vec<Self> {
+        db_run! { conn: {
+            users_organizations::table
+                .filter(users_organizations::org_uuid.eq(org_uuid))
+                .filter(users_organizations::status.eq(MembershipStatus::Confirmed as i32))
+                .filter(
+                    users_organizations::atype.eq_any(vec![MembershipType::Owner as i32, MembershipType::Admin as i32])
+                    .or(users_organizations::atype.eq(MembershipType::Manager as i32).and(users_organizations::access_all.eq(true)))
+                )
                 .load::<MembershipDb>(conn)
                 .unwrap_or_default().from_db()
         }}

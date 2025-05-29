@@ -33,7 +33,7 @@ pub async fn invite(
     let mut new_member = Membership::new(user.uuid.clone(), org.uuid.clone(), Some(invited_by_email.clone()));
     new_member.access_all = access_all;
     new_member.atype = membership_type as i32;
-    new_member.status = membership_status as i32;
+    new_member.status = membership_status.clone() as i32;
 
     // If no accessAll, add the collections received
     if !access_all {

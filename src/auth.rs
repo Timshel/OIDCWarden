@@ -16,8 +16,8 @@ use std::{
 use crate::{
     api::ApiResult,
     db::models::{
-        AttachmentId, CipherId, CollectionId, DeviceId, EmergencyAccessId, MembershipId, OrgApiKeyId, OrganizationId,
-        SendFileId, SendId, UserId,
+        AttachmentId, CipherId, CollectionId, DeviceId, DeviceType, EmergencyAccessId, MembershipId, OrgApiKeyId,
+        OrganizationId, SendFileId, SendId, UserId,
     },
     error::Error,
     sso, CONFIG,
@@ -29,6 +29,8 @@ const JWT_ALGORITHM: Algorithm = Algorithm::RS256;
 pub static BW_EXPIRATION: Lazy<TimeDelta> = Lazy::new(|| TimeDelta::try_minutes(5).unwrap());
 
 pub static DEFAULT_REFRESH_VALIDITY: Lazy<TimeDelta> = Lazy::new(|| TimeDelta::try_days(30).unwrap());
+pub static MOBILE_REFRESH_VALIDITY: Lazy<TimeDelta> = Lazy::new(|| TimeDelta::try_days(90).unwrap());
+
 pub static DEFAULT_ACCESS_VALIDITY: Lazy<TimeDelta> = Lazy::new(|| TimeDelta::try_hours(2).unwrap());
 static JWT_HEADER: Lazy<Header> = Lazy::new(|| Header::new(JWT_ALGORITHM));
 
@@ -112,7 +114,7 @@ pub fn decode_jwt<T: DeserializeOwned>(token: &str, issuer: String) -> Result<T,
             ErrorKind::InvalidToken => err!("Token is invalid"),
             ErrorKind::InvalidIssuer => err!("Issuer is invalid"),
             ErrorKind::ExpiredSignature => err!("Token has expired"),
-            _ => err!("Error decoding JWT"),
+            _ => err!(format!("Error decoding JWT: {:?}", err)),
         },
     }
 }
@@ -192,6 +194,11 @@ pub struct LoginJwtClaims {
     pub sstamp: String,
     // device uuid
     pub device: DeviceId,
+    // what kind of device, like FirefoxBrowser or Android derived from DeviceType
+    pub devicetype: String,
+    // the type of client_id, like web, cli, desktop, browser or mobile
+    pub client_id: String,
+
     // [ "api", "offline_access" ]
     pub scope: Vec<String>,
     // [ "Application" ]
@@ -199,7 +206,15 @@ pub struct LoginJwtClaims {
 }
 
 impl LoginJwtClaims {
-    pub fn new(device: &Device, user: &User, nbf: i64, exp: i64, scope: Vec<String>, now: DateTime<Utc>) -> Self {
+    pub fn new(
+        device: &Device,
+        user: &User,
+        nbf: i64,
+        exp: i64,
+        scope: Vec<String>,
+        client_id: Option<String>,
+        now: DateTime<Utc>,
+    ) -> Self {
         // ---
         // Disabled these keys to be added to the JWT since they could cause the JWT to get too large
         // Also These key/value pairs are not used anywhere by either Vaultwarden or Bitwarden Clients
@@ -239,12 +254,14 @@ impl LoginJwtClaims {
             // orgmanager,
             sstamp: user.security_stamp.clone(),
             device: device.uuid.clone(),
+            devicetype: DeviceType::from_i32(device.atype).to_string(),
+            client_id: client_id.unwrap_or("undefined".to_string()),
             scope,
             amr: vec!["Application".into()],
         }
     }
 
-    pub fn default(device: &Device, user: &User, auth_method: &AuthMethod) -> Self {
+    pub fn default(device: &Device, user: &User, auth_method: &AuthMethod, client_id: Option<String>) -> Self {
         let time_now = Utc::now();
         Self::new(
             device,
@@ -252,6 +269,7 @@ impl LoginJwtClaims {
             time_now.timestamp(),
             (time_now + *DEFAULT_ACCESS_VALIDITY).timestamp(),
             auth_method.scope_vec(),
+            client_id,
             time_now,
         )
     }
@@ -367,7 +385,7 @@ pub fn generate_organization_api_key_login_claims(
         exp: (time_now + TimeDelta::try_hours(1).unwrap()).timestamp(),
         iss: JWT_ORG_API_KEY_ISSUER.to_string(),
         sub: org_api_key_uuid,
-        client_id: format!("organization.{}", org_id),
+        client_id: format!("organization.{org_id}"),
         client_sub: org_id,
         scope: vec!["api.organization".into()],
     }
@@ -625,7 +643,7 @@ impl<'r> FromRequest<'r> for Headers {
                     let mut user = user;
                     user.reset_stamp_exception();
                     if let Err(e) = user.save(&mut conn).await {
-                        error!("Error updating user: {:#?}", e);
+                        error!("Error updating user: {e:#?}");
                     }
                     err_handler!("Stamp exception is expired")
                 } else if !stamp_exception.routes.contains(&current_route.to_string()) {
@@ -763,17 +781,6 @@ impl<'r> FromRequest<'r> for AdminHeaders {
             })
         } else {
             err_handler!("You need to be Admin or Owner to call this endpoint")
-        }
-    }
-}
-
-impl From<AdminHeaders> for Headers {
-    fn from(h: AdminHeaders) -> Headers {
-        Headers {
-            host: h.host,
-            device: h.device,
-            user: h.user,
-            ip: h.ip,
         }
     }
 }
@@ -947,8 +954,10 @@ impl<'r> FromRequest<'r> for OwnerHeaders {
 
 pub struct OrgMemberHeaders {
     pub host: String,
+    pub device: Device,
     pub user: User,
-    pub org_id: OrganizationId,
+    pub membership: Membership,
+    pub ip: ClientIp,
 }
 
 #[rocket::async_trait]
@@ -960,11 +969,24 @@ impl<'r> FromRequest<'r> for OrgMemberHeaders {
         if headers.is_member() {
             Outcome::Success(Self {
                 host: headers.host,
+                device: headers.device,
                 user: headers.user,
-                org_id: headers.membership.org_uuid,
+                membership: headers.membership,
+                ip: headers.ip,
             })
         } else {
             err_handler!("You need to be a Member of the Organization to call this endpoint")
+        }
+    }
+}
+
+impl From<OrgMemberHeaders> for Headers {
+    fn from(h: OrgMemberHeaders) -> Headers {
+        Headers {
+            host: h.host,
+            device: h.device,
+            user: h.user,
+            ip: h.ip,
         }
     }
 }
@@ -989,7 +1011,7 @@ impl<'r> FromRequest<'r> for ClientIp {
                     None => ip,
                 }
                 .parse()
-                .map_err(|_| warn!("'{}' header is malformed: {}", CONFIG.ip_header(), ip))
+                .map_err(|_| warn!("'{}' header is malformed: {ip}", CONFIG.ip_header()))
                 .ok()
             })
         } else {
@@ -1057,14 +1079,8 @@ pub enum AuthMethod {
     UserApiKey,
 }
 
-pub trait AuthMethodScope {
-    fn scope_vec(&self) -> Vec<String>;
-    fn scope(&self) -> String;
-    fn check_scope(&self, scope: Option<&String>) -> ApiResult<String>;
-}
-
-impl AuthMethodScope for AuthMethod {
-    fn scope(&self) -> String {
+impl AuthMethod {
+    pub fn scope(&self) -> String {
         match self {
             AuthMethod::OrgApiKey => "api.organization".to_string(),
             AuthMethod::Password => "api offline_access".to_string(),
@@ -1073,11 +1089,11 @@ impl AuthMethodScope for AuthMethod {
         }
     }
 
-    fn scope_vec(&self) -> Vec<String> {
+    pub fn scope_vec(&self) -> Vec<String> {
         self.scope().split_whitespace().map(str::to_string).collect()
     }
 
-    fn check_scope(&self, scope: Option<&String>) -> ApiResult<String> {
+    pub fn check_scope(&self, scope: Option<&String>) -> ApiResult<String> {
         let method_scope = self.scope();
         match scope {
             None => err!("Missing scope"),
@@ -1133,14 +1149,20 @@ impl AuthTokens {
     }
 
     // Create refresh_token and access_token with default validity
-    pub fn new(device: &Device, user: &User, sub: AuthMethod) -> Self {
+    pub fn new(device: &Device, user: &User, sub: AuthMethod, client_id: Option<String>) -> Self {
         let time_now = Utc::now();
 
-        let access_claims = LoginJwtClaims::default(device, user, &sub);
+        let access_claims = LoginJwtClaims::default(device, user, &sub, client_id);
+
+        let validity = if DeviceType::is_mobile(&device.atype) {
+            *MOBILE_REFRESH_VALIDITY
+        } else {
+            *DEFAULT_REFRESH_VALIDITY
+        };
 
         let refresh_claims = RefreshJwtClaims {
             nbf: time_now.timestamp(),
-            exp: (time_now + *DEFAULT_REFRESH_VALIDITY).timestamp(),
+            exp: (time_now + validity).timestamp(),
             iss: JWT_LOGIN_ISSUER.to_string(),
             sub,
             device_token: device.refresh_token.clone(),
@@ -1154,11 +1176,17 @@ impl AuthTokens {
     }
 }
 
-pub async fn refresh_tokens(refresh_token: &str, conn: &mut DbConn) -> ApiResult<(Device, AuthTokens)> {
-    let time_now = Utc::now();
-
+pub async fn refresh_tokens(
+    ip: &ClientIp,
+    refresh_token: &str,
+    client_id: Option<String>,
+    conn: &mut DbConn,
+) -> ApiResult<(Device, AuthTokens)> {
     let refresh_claims = match decode_refresh(refresh_token) {
-        Err(err) => err_silent!(format!("Impossible to read refresh_token: {}", err.message())),
+        Err(err) => {
+            debug!("Failed to decode {} refresh_token: {refresh_token}", ip.ip);
+            err_silent!(format!("Impossible to read refresh_token: {}", err.message()))
+        }
         Ok(claims) => claims,
     };
 
@@ -1176,18 +1204,16 @@ pub async fn refresh_tokens(refresh_token: &str, conn: &mut DbConn) -> ApiResult
         Some(user) => user,
     };
 
-    if refresh_claims.exp < time_now.timestamp() {
-        err!("Expired refresh token");
-    }
-
     let auth_tokens = match refresh_claims.sub {
         AuthMethod::Sso if CONFIG.sso_enabled() && CONFIG.sso_auth_only_not_session() => {
-            AuthTokens::new(&device, &user, refresh_claims.sub)
+            AuthTokens::new(&device, &user, refresh_claims.sub, client_id)
         }
-        AuthMethod::Sso if CONFIG.sso_enabled() => sso::exchange_refresh_token(&device, &user, &refresh_claims).await?,
+        AuthMethod::Sso if CONFIG.sso_enabled() => {
+            sso::exchange_refresh_token(&device, &user, client_id, refresh_claims).await?
+        }
         AuthMethod::Sso => err!("SSO is now disabled, Login again using email and master password"),
         AuthMethod::Password if CONFIG.sso_enabled() && CONFIG.sso_only() => err!("SSO is now required, Login again"),
-        AuthMethod::Password => AuthTokens::new(&device, &user, refresh_claims.sub),
+        AuthMethod::Password => AuthTokens::new(&device, &user, refresh_claims.sub, client_id),
         _ => err!("Invalid auth method, cannot refresh token"),
     };
 
