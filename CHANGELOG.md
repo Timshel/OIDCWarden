@@ -1,6 +1,12 @@
 # Changelog
 
+# v2025.5.1-1
+
+- Integrate change from `Vaultwarden` [1.34.1](https://github.com/dani-garcia/vaultwarden/tree/1.34.1)
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.5.1-1`
+
 # v2025.5.0-1
+
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.5.0-1`
 - :warning: Rework of the organization sync, see [README.md#organization_sync](README.md#organization_sync) :warning:
 - Add support for oganization groups sync
