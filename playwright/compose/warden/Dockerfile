@@ -10,6 +10,7 @@ ENV COMMIT_HASH=$COMMIT_HASH
 
 COPY --from=prebuilt /web-vault_button /web-vault_button
 COPY --from=prebuilt /web-vault_override /web-vault_override
+
 COPY build.sh /build.sh
 RUN /build.sh
 
@@ -35,6 +36,7 @@ WORKDIR /
 
 COPY --from=prebuilt /start.sh .
 COPY --from=prebuilt /oidcwarden .
+
 COPY --from=build /web-vault_button ./web-vault_button
 COPY --from=build /web-vault_override ./web-vault_override
 

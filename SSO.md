@@ -12,32 +12,32 @@ This introduces another way to control who can use the vault without having to u
 
 The following configurations are available
 
- - `SSO_ENABLED` : Activate the SSO
- - `SSO_ONLY` : disable email+Master password authentication
- - `SSO_SIGNUPS_MATCH_EMAIL`: On SSO Signup if a user with a matching email already exists make the association (default `true`)
- - `SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION`: Allow unknown email verification status (default `false`). Allowing this with `SSO_SIGNUPS_MATCH_EMAIL` open potential account takeover.
- - `SSO_AUTHORITY` : the OpenID Connect Discovery endpoint of your SSO
- 	- Should not include the `/.well-known/openid-configuration` part and no trailing `/`
+- `SSO_ENABLED` : Activate the SSO
+- `SSO_ONLY` : disable email+Master password authentication
+- `SSO_SIGNUPS_MATCH_EMAIL`: On SSO Signup if a user with a matching email already exists make the association (default `true`)
+- `SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION`: Allow unknown email verification status (default `false`). Allowing this with `SSO_SIGNUPS_MATCH_EMAIL` open potential account takeover.
+- `SSO_AUTHORITY` : the OpenID Connect Discovery endpoint of your SSO
+  - Should not include the `/.well-known/openid-configuration` part and no trailing `/`
  	- $SSO_AUTHORITY/.well-known/openid-configuration should return the a json document: https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationResponse
- - `SSO_SCOPES` : Optional, allow to override scopes if needed (default `"email profile"`)
- - `SSO_AUTHORIZE_EXTRA_PARAMS` : Optional, allow to add extra parameter to the authorize redirection (default `""`)
- - `SSO_PKCE`: Activate PKCE for the Auth Code flow (default `true`).
- - `SSO_AUDIENCE_TRUSTED`: Optional, Regex to trust additional audience for the IdToken (`client_id` is always trusted). Use single quote when writing the regex: `'^$'`.
- - `SSO_CLIENT_ID` : Client Id
- - `SSO_CLIENT_SECRET` : Client Secret
- - `SSO_MASTER_PASSWORD_POLICY`: Optional Master password policy (`enforceOnLogin` is not supported).
- - `SSO_AUTH_ONLY_NOT_SESSION`: Enable to use SSO only for authentication not session lifecycle.
- - `SSO_ROLES_ENABLED`: control if the mapping is done, default is `false`
- - `SSO_ROLES_DEFAULT_TO_USER`: do not block login in case of missing or invalid roles, default is `true`.
- - `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the Id token (used by organization membership role too).
- - `SSO_ORGANIZATIONS_ENABLED`: control if group/orgnization mapping is done (will send Org invitation), default is `false`
- - `SSO_ORGANIZATIONS_REVOCATION`: control if membership can be revoked, default is `false`
- - `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read groups/organization in the Id token
- - `SSO_ORGANIZATIONS_GROUPS_ENABLED`: Present only with initial release to force opt-in (still dependant on `ORG_GROUPS_ENABLED`). Will be removed with next release.
- - `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: `User` are granted access to all collections, default is `true`
- - `ORGANIZATION_INVITE_AUTO_ACCEPT`: Bypass the invitation logic and as users as `Accepted` (Apply to non SSO logic too)
- - `SSO_CLIENT_CACHE_EXPIRATION`: Cache calls to the discovery endpoint, duration in seconds, `0` to disable (default `0`);
- - `SSO_DEBUG_TOKENS`: Log all tokens for easier debugging (default `false`, `LOG_LEVEL=debug` or `LOG_LEVEL=info,oidcwarden::sso=debug` need to be set)
+- `SSO_SCOPES` : Optional, allow to override scopes if needed (default `"email profile"`)
+- `SSO_AUTHORIZE_EXTRA_PARAMS` : Optional, allow to add extra parameter to the authorize redirection (default `""`)
+- `SSO_PKCE`: Activate PKCE for the Auth Code flow (default `true`).
+- `SSO_AUDIENCE_TRUSTED`: Optional, Regex to trust additional audience for the IdToken (`client_id` is always trusted). Use single quote when writing the regex: `'^$'`.
+- `SSO_CLIENT_ID` : Client Id
+- `SSO_CLIENT_SECRET` : Client Secret
+- `SSO_MASTER_PASSWORD_POLICY`: Optional Master password policy (`enforceOnLogin` is not supported).
+- `SSO_AUTH_ONLY_NOT_SESSION`: Enable to use SSO only for authentication not session lifecycle.
+- `SSO_ROLES_ENABLED`: control if the mapping is done, default is `false`
+- `SSO_ROLES_DEFAULT_TO_USER`: do not block login in case of missing or invalid roles, default is `true`.
+- `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the Id token (used by organization membership role too).
+- `SSO_ORGANIZATIONS_ENABLED`: control if group/orgnization mapping is done (will send Org invitation), default is `false`
+- `SSO_ORGANIZATIONS_REVOCATION`: control if membership can be revoked, default is `false`
+- `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read groups/organization in the Id token
+- `SSO_ORGANIZATIONS_GROUPS_ENABLED`: Present only with initial release to force opt-in (still dependant on `ORG_GROUPS_ENABLED`). Will be removed with next release.
+- `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: `User` are granted access to all collections, default is `true`
+- `ORGANIZATION_INVITE_AUTO_ACCEPT`: Bypass the invitation logic and as users as `Accepted` (Apply to non SSO logic too)
+- `SSO_CLIENT_CACHE_EXPIRATION`: Cache calls to the discovery endpoint, duration in seconds, `0` to disable (default `0`);
+- `SSO_DEBUG_TOKENS`: Log all tokens for easier debugging (default `false`, `LOG_LEVEL=debug` or `LOG_LEVEL=info,oidcwarden::sso=debug` need to be set)
 
 The callback url is : `https://your.domain/identity/connect/oidc-signin`
 
@@ -46,17 +46,17 @@ The callback url is : `https://your.domain/identity/connect/oidc-signin`
 When logging in with SSO an identifier (`{iss}/{sub}` claims from the IdToken) is saved in a separate table (`sso_users`).
 This is used to link to the SSO provider identifier without changing the default user `uuid`. This is needed because:
 
- - Storing the SSO identifier is important to prevent account takeover due to email change.
- - We can't use the identifier as the User uuid since it's way longer (Max 255 chars for the `sub` part, cf [spec](https://openid.net/specs/openid-connect-core-1_0.html#CodeIDToken)).
- - We want to be able to associate existing account based on `email` but only when the user logs in for the first time (controlled by `SSO_SIGNUPS_MATCH_EMAIL`).
- - We need to be able to associate with existing stub account, such as the one created when inviting a user to an org (association is possible only if the user does not have a private key).
+- Storing the SSO identifier is important to prevent account takeover due to email change.
+- We can't use the identifier as the User uuid since it's way longer (Max 255 chars for the `sub` part, cf [spec](https://openid.net/specs/openid-connect-core-1_0.html#CodeIDToken)).
+- We want to be able to associate existing account based on `email` but only when the user logs in for the first time (controlled by `SSO_SIGNUPS_MATCH_EMAIL`).
+- We need to be able to associate with existing stub account, such as the one created when inviting a user to an org (association is possible only if the user does not have a private key).
 
 Additionally:
 
- - Signup to will be blocked if the Provider reports the email as `unverified`.
- - Changing the email needs to be done by the user since it requires updating the `key`.
- 	 On login if the email returned by the provider is not the one saved an email will be sent to the user to ask him to update it.
- - If set `SIGNUPS_DOMAINS_WHITELIST` is applied on SSO signup and when attempting to change the email.
+- Signup will be blocked if the Provider reports the email as `unverified`.
+- Changing the email needs to be done by the user since it requires updating the `key`.
+  On login if the email returned by the provider is not the one saved an email will be sent to the user to ask him to update it.
+- If set `SIGNUPS_DOMAINS_WHITELIST` is applied on SSO signup and when attempting to change the email.
 
 This means that if you ever need to change the provider url or the provider itself; you'll have to first delete the association
 then ensure that `SSO_SIGNUPS_MATCH_EMAIL` is activated to allow a new association.
