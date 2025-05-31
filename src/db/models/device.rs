@@ -70,20 +70,6 @@ impl Device {
     pub fn is_cli(&self) -> bool {
         matches!(DeviceType::from_i32(self.atype), DeviceType::WindowsCLI | DeviceType::MacOsCLI | DeviceType::LinuxCLI)
     }
-
-    pub fn is_browser(&self) -> bool {
-        matches!(
-            DeviceType::from_i32(self.atype),
-            DeviceType::ChromeBrowser
-                | DeviceType::FirefoxBrowser
-                | DeviceType::OperaBrowser
-                | DeviceType::EdgeBrowser
-                | DeviceType::IEBrowser
-                | DeviceType::UnknownBrowser
-                | DeviceType::SafariBrowser
-                | DeviceType::VivaldiBrowser
-        )
-    }
 }
 
 pub struct DeviceWithAuthRequest {

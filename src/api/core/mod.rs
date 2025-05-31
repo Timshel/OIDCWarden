@@ -224,7 +224,7 @@ fn config() -> Json<Value> {
           "url": "https://github.com/timshel/OIDCWarden"
         },
         "settings": {
-            "disableUserRegistration": !crate::CONFIG.signups_allowed() && crate::CONFIG.signups_domains_whitelist().is_empty(),
+            "disableUserRegistration": crate::CONFIG.is_signup_disabled(),
             "ssoEnabled": crate::CONFIG.sso_enabled(),
             "ssoOnly": crate::CONFIG.sso_enabled() && crate::CONFIG.sso_only(),
             "ssoOrgExternalId": crate::CONFIG.sso_enabled() && (crate::CONFIG.sso_organizations_invite() || crate::CONFIG.sso_organizations_enabled()),

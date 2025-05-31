@@ -37,11 +37,13 @@ In the long term distribution will focus on a better OpenID flow (`web-vault` `o
 New release are tested using Playwright integration tests. Currenttly tested flow include:
 
 - Login flow using Master password and/or SSO
-- 2FA using email and TOTP
+- 2FA using email and TOTP (with/without SSO)
+- Role mapping (acces to admin console)
 - Organization and collection creation
 - Organization invitation using Master password and SSO
 - Organization auto-invitation
-- Role mapping
+- Organization membership role sync (Owner, admin ...)
+- Organization membership revocation
 
 Goal will be to continue to increase the test coverage but I would recommand to always deploy a specific version and always backup/test before deploying a new release.
 

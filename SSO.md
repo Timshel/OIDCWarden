@@ -118,6 +118,12 @@ Server configuration, nothing specific just set:
 - `SSO_CLIENT_ID`
 - `SSO_CLIENT_SECRET`
 
+### Testing
+
+If you want to run a testing instance of Keycloak the Playwright [docker-compose](playwright/docker-compose.yml) can be used.
+\
+More details on how to use it in [README.md](playwright/README.md#openid-connect-test-setup).
+
 ## Auth0
 
 Not working due to the following issue https://github.com/ramosbugs/openidconnect-rs/issues/23 (they appear not to follow the spec).
@@ -227,7 +233,7 @@ Afterwards you can use these settings to derive the `admin` role from the ID tok
 
 * `SSO_ROLES_ENABLED=true`
 * `SSO_ROLES_DEFAULT_TO_USER=true`
-* `SSO_ROLES_TOKEN_PATH=/roles
+* `SSO_ROLES_TOKEN_PATH=/roles`
 
 ## Rauthy
 

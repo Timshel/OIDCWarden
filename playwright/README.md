@@ -98,7 +98,7 @@ npx playwright codegen "http://127.0.0.1:8000"
 It's possible to change the `web-vault` used by referencing a different `bw_web_builds` commit.
 
 ```bash
-export PW_WV_REPO_URL=https://github.com/Timshel/oidc_web_builds.git
+export PW_WV_REPO_URL=https://github.com/Timshel/oidc_web_vault.git
 export PW_WV_COMMIT_HASH=8707dc76df3f0cceef2be5bfae37bb29bd17fae6
 DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env build Playwright
 ```
@@ -138,7 +138,7 @@ To use your computer external ip (for example when testing with a phone) you wil
 
 ## Switching OIDCWarden front-end
 
-You can switch between both [version](https://github.com/Timshel/oidc_web_builds) of the front-end using the env variable `SSO_FRONTEND` with `button` or `override` (default is `button`).
+You can switch between both [version](https://github.com/Timshel/oidc_web_vault) of the front-end using the env variable `SSO_FRONTEND` with `button` or `override` (default is `button`).
 
 ## Running only Keycloak
 
@@ -148,19 +148,7 @@ You can run just `Keycloak` with `--profile keycloak`:
 > docker compose --profile keycloak --env-file .env up
 ```
 
-When running with a local OIDCWarden, if you are using a front-end build from [dani-garcia/bw_web_builds](https://github.com/dani-garcia/bw_web_builds/releases) you'll need to make the SSO button visible using :
-
-```bash
-sed -i 's#a\[routerlink="/sso"\],##' web-vault/app/main.*.css
-```
-
-Or use one of the prebuilt front-end from [timshel/oidc_web_builds](https://github.com/Timshel/oidc_web_builds/releases).
-
-Otherwise you'll need to reveal the SSO login button using the debug console (F12)
-
- ```js
- document.querySelector('a[routerlink="/sso"]').style.setProperty("display", "inline-block", "important");
- ```
+When running with a local OIDCWarden, you will need to use one of the prebuilt front-end from [timshel/oidc_web_vault](https://github.com/Timshel/oidc_web_vault/releases).
 
 ## Rebuilding the OIDCWarden
 

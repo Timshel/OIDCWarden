@@ -295,19 +295,8 @@ pub async fn _register(data: Json<RegisterData>, email_verification: bool, mut c
     user.set_password(&data.master_password_hash, Some(data.key), true, None);
     user.password_hint = password_hint;
 
-    let verification_name = match data.email_verification_token {
-        None => None,
-        Some(token) => {
-            let claims = crate::auth::decode_register_verify(&token)?;
-            if claims.sub != data.email {
-                err!("Email verification token does not match email");
-            }
-            claims.name
-        }
-    };
-
     // Add extra fields if present
-    if let Some(name) = data.name.or(verification_name) {
+    if let Some(name) = data.name {
         user.name = name;
     }
 

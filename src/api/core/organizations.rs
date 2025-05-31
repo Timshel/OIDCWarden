@@ -1566,6 +1566,14 @@ async fn edit_member(
         err!("Invalid type")
     };
 
+    // HACK: This converts the Custom role which has the `Manage all collections` box checked into an access_all flag
+    // Since the parent checkbox is not sent to the server we need to check and verify the child checkboxes
+    // If the box is not checked, the user will still be a manager, but not with the access_all permission
+    let custom_access_all = raw_type.eq("4")
+        && data.permissions.get("editAnyCollection") == Some(&json!(true))
+        && data.permissions.get("deleteAnyCollection") == Some(&json!(true))
+        && data.permissions.get("createNewCollections") == Some(&json!(true));
+
     let mut member_to_edit = match Membership::find_by_uuid_and_org(&member_id, &org_id, &mut conn).await {
         Some(member) => member,
         None => err!("The specified user isn't member of the organization"),
@@ -1581,14 +1589,6 @@ async fn edit_member(
     if member_to_edit.atype == MembershipType::Owner && headers.membership_type != MembershipType::Owner {
         err!("Only Owners can edit Owner users")
     }
-
-    // HACK: This converts the Custom role which has the `Manage all collections` box checked into an access_all flag
-    // Since the parent checkbox is not sent to the server we need to check and verify the child checkboxes
-    // If the box is not checked, the user will still be a manager, but not with the access_all permission
-    let custom_access_all = raw_type.eq("4")
-        && data.permissions.get("editAnyCollection") == Some(&json!(true))
-        && data.permissions.get("deleteAnyCollection") == Some(&json!(true))
-        && data.permissions.get("createNewCollections") == Some(&json!(true));
 
     organization_logic::set_membership_type(
         &headers.user.uuid,
