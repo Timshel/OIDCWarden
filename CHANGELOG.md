@@ -1,5 +1,10 @@
 # Changelog
 
+# v2025.5.1-2
+
+- Fix enforcing of organization master password policies.
+- Deprecation from `v2025.5.0-1` are still pending (Will wait at least one more week).
+
 # v2025.5.1-1
 
 - Integrate change from `Vaultwarden` [1.34.1](https://github.com/dani-garcia/vaultwarden/tree/1.34.1)
