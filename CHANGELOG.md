@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.5.1-3
+
+- Fix invalid organization sync query with `postgres` and `mysql`
+
 # v2025.5.1-2
 
 - Fix enforcing of organization master password policies.
