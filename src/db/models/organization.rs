@@ -463,35 +463,69 @@ impl Organization {
         }}
     }
 
+    fn prepared_query(count: usize, is_postgres: bool) -> String {
+        let (escaped_group_table, values) = if is_postgres {
+            (
+                "groups",
+                (0..count)
+                    .map(|index| format!("SELECT ${}, ${}", 1 + 2 * index, 2 + 2 * index))
+                    .collect::<Vec<String>>()
+                    .join(" UNION ALL "),
+            )
+        } else {
+            ("`groups`", std::iter::repeat_n("SELECT ?, ?", count).collect::<Vec<&str>>().join(" UNION ALL "))
+        };
+
+        let query = format!(
+            r#"
+            WITH ident(ogs_name_id, ogs_group) AS ( {} )
+            SELECT ident.ogs_name_id, ident.ogs_group, organizations.*, groups.uuid AS ogs_group_uuid
+                FROM ident
+                LEFT JOIN organizations ON TRUE
+                LEFT JOIN {} ON groups.organizations_uuid = organizations.uuid  AND ( groups.name = ident.ogs_group OR groups.external_id = ident.ogs_name_id )
+                WHERE ( organizations.name = ident.ogs_name_id AND groups.name = ident.ogs_group)
+                    OR ((organizations.name = ident.ogs_name_id OR organizations.external_id = ident.ogs_name_id) AND groups.uuid is null AND ident.ogs_group is null )
+                    OR (groups.external_id = ident.ogs_name_id AND ident.ogs_group is null);
+        "#,
+            values, escaped_group_table
+        );
+
+        debug!("find_mapped_orgs_and_groups query {:?}", query);
+
+        query
+    }
+
     pub async fn find_mapped_orgs_and_groups(
         params: Vec<(String, Option<String>)>,
         conn: &mut DbConn,
     ) -> Vec<(String, Option<String>, Self, Option<GroupId>)> {
         if !params.is_empty() {
-            db_run! { conn: {
-                let values = std::iter::repeat_n("(?, ?)", params.len()).collect::<Vec<&str>>().join(",");
-
-                let mut query = sql_query(format!(r#"
-                    select keys.column1 AS ogs_name_id, keys.column2 AS ogs_group, organizations.*, groups.uuid AS ogs_group_uuid
-                        from ( VALUES {} ) AS keys
-                        left join organizations
-                        left join groups on groups.organizations_uuid = organizations.uuid  AND ( groups.name = keys.column2 or groups.external_id = keys.column1 )
-                        where ( organizations.name = keys.column1 AND groups.name = keys.column2)
-                            OR ((organizations.name = keys.column1 OR organizations.external_id = keys.column1) AND groups.uuid is null AND keys.column2 is null )
-                            OR (groups.external_id = keys.column1 AND keys.column2 is null);
-                "#, values)).into_boxed();
-
-                for (id, group) in params {
-                    query = query.bind::<Text, _>(id).bind::<Nullable<Text>, _>(group);
+            db_run! { conn:
+                sqlite, mysql {
+                    let mut query = sql_query(Self::prepared_query(params.len(), false)).into_boxed();
+                    for (id, group) in params {
+                        query = query.bind::<Text, _>(id).bind::<Nullable<Text>, _>(group);
+                    }
+                    query
+                        .load::<(OrgGroupSearch, OrganizationDb)>(conn)
+                        .expect("Error loading orgs and groups")
+                        .into_iter()
+                        .map(|(ogs, org)| (ogs.ogs_name_id, ogs.ogs_group, org.from_db(), ogs.ogs_group_uuid) )
+                        .collect()
                 }
-
-                query
-                    .load::<(OrgGroupSearch, OrganizationDb)>(conn)
-                    .expect("Error testing raw query")
-                    .into_iter()
-                    .map(|(ogs, org)| (ogs.ogs_name_id, ogs.ogs_group, org.from_db(), ogs.ogs_group_uuid) )
-                    .collect()
-            }}
+                postgresql {
+                    let mut query = sql_query(Self::prepared_query(params.len(), true)).into_boxed();
+                    for (id, group) in params {
+                        query = query.bind::<Text, _>(id).bind::<Nullable<Text>, _>(group);
+                    }
+                    query
+                        .load::<(OrgGroupSearch, OrganizationDb)>(conn)
+                        .expect("Error loading orgs and groups")
+                        .into_iter()
+                        .map(|(ogs, org)| (ogs.ogs_name_id, ogs.ogs_group, org.from_db(), ogs.ogs_group_uuid) )
+                        .collect()
+                }
+            }
         } else {
             Vec::new()
         }
