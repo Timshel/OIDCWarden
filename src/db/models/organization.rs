@@ -463,48 +463,48 @@ impl Organization {
         }}
     }
 
+    // Issues with different databases:
+    //  - Postgres placeholder is $n instead of ?
+    //  - Mysql VALUES expect ROW(?, ?) instead of (?, ?) -> force us to use SELECT/UNION
+    //  - Mariadb binding of Nullable appears to fail -> force us to bind ""
     fn prepared_query(count: usize, is_postgres: bool) -> String {
         let (escaped_group_table, values) = if is_postgres {
-            (
-                "groups",
-                (0..count)
-                    .map(|index| format!("SELECT ${}, ${}", 1 + 2 * index, 2 + 2 * index))
-                    .collect::<Vec<String>>()
-                    .join(" UNION ALL "),
-            )
+            ("groups", (0..count).map(|i| format!("SELECT ${}, ${}", 1 + 2 * i, 2 + 2 * i)).collect())
         } else {
-            ("`groups`", std::iter::repeat_n("SELECT ?, ?", count).collect::<Vec<&str>>().join(" UNION ALL "))
+            ("`groups`", std::iter::repeat_n("SELECT ?, ?".to_string(), count).collect::<Vec<String>>())
         };
 
         let query = format!(
             r#"
-            WITH ident(ogs_name_id, ogs_group) AS ( {} )
+            WITH raw(ogs_name_id, ogs_group) AS ( {} ),
+            ident(ogs_name_id, ogs_group) AS ( SELECT ogs_name_id, CASE when LENGTH(ogs_group) = 0 THEN null ELSE ogs_group END FROM raw)
             SELECT ident.ogs_name_id, ident.ogs_group, organizations.*, groups.uuid AS ogs_group_uuid
                 FROM ident
                 LEFT JOIN organizations ON TRUE
                 LEFT JOIN {} ON groups.organizations_uuid = organizations.uuid  AND ( groups.name = ident.ogs_group OR groups.external_id = ident.ogs_name_id )
                 WHERE ( organizations.name = ident.ogs_name_id AND groups.name = ident.ogs_group)
                     OR ((organizations.name = ident.ogs_name_id OR organizations.external_id = ident.ogs_name_id) AND groups.uuid is null AND ident.ogs_group is null )
-                    OR (groups.external_id = ident.ogs_name_id AND ident.ogs_group is null);
-        "#,
-            values, escaped_group_table
+                    OR (groups.external_id = ident.ogs_name_id AND ident.ogs_group is null);"#,
+            values.join(" UNION ALL "),
+            escaped_group_table
         );
 
-        debug!("find_mapped_orgs_and_groups query {:?}", query);
+        debug!("find_mapped_orgs_and_groups query: {:?}", query);
 
         query
     }
 
     pub async fn find_mapped_orgs_and_groups(
         params: Vec<(String, Option<String>)>,
-        conn: &mut DbConn,
+        conn: &DbConn,
     ) -> Vec<(String, Option<String>, Self, Option<GroupId>)> {
+        debug!("find_mapped_orgs_and_groups({:?})", params);
         if !params.is_empty() {
             db_run! { conn:
                 sqlite, mysql {
                     let mut query = sql_query(Self::prepared_query(params.len(), false)).into_boxed();
                     for (id, group) in params {
-                        query = query.bind::<Text, _>(id).bind::<Nullable<Text>, _>(group);
+                        query = query.bind::<Text, _>(id).bind::<Text, _>(group.unwrap_or(String::new()));
                     }
                     query
                         .load::<(OrgGroupSearch, OrganizationDb)>(conn)

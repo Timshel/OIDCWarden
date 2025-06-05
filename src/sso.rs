@@ -1018,9 +1018,9 @@ async fn sync_org_groups(
     conn: &mut DbConn,
 ) -> ApiResult<()> {
     for gu in GroupUser::find_by_member(&member.uuid, conn).await {
-        debug!("Removing user {} from organization {} group {}", user.email, member.org_uuid, &gu.groups_uuid);
-
         if !groups.remove(&gu.groups_uuid) && allow_revoking {
+            debug!("Removing user {} from organization {} group {}", user.email, member.org_uuid, &gu.groups_uuid);
+
             organization_logic::delete_group_user(
                 acting_user,
                 device,
