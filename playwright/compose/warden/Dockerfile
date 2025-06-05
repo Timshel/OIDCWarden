@@ -5,7 +5,7 @@ FROM node:18-bookworm AS build
 ARG REPO_URL
 ARG COMMIT_HASH
 
-ENV REPO_URL=${REPO_URL:-https://github.com/Timshel/oidc_web_builds}
+ENV REPO_URL=${REPO_URL:-https://github.com/Timshel/oidc_web_vault}
 ENV COMMIT_HASH=$COMMIT_HASH
 
 COPY --from=prebuilt /web-vault_button /web-vault_button
