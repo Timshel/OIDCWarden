@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.5.1-4
+
+- Fix organization group sync when using `Mariadb`
+
 # v2025.5.1-3
 
 - Fix invalid organization sync query with `postgres` and `mysql`
