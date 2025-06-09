@@ -39,7 +39,7 @@ test('User auto invite', async ({ context, page }) => {
         await orgs.create(test, page, '/Test');
         await test.step('Log user2 and receive invite', async () => {
             await logNewUser(test, page, users.user2, { mailBuffer: mail2Buffer });
-            await expect(mail2Buffer.next((m) => m.subject === "Join /Test")).resolves.toBeDefined();
+            await mail2Buffer.expect((m) => m.subject === "Join /Test");
         });
     } finally {
         mail2Buffer.close();
@@ -66,8 +66,8 @@ test('Org invite auto accept', async ({ context, page }, testInfo: TestInfo) => 
         await test.step('Invite user2', async () => {
             await logNewUser(test, page, users.user2, { mailBuffer: mail2Buffer, override: true });
 
-            await expect(mail2Buffer.next((m) => m.subject === "Enrolled in /Test")).resolves.toBeDefined();
-            await expect(mail1Buffer.next((m) => m.subject === "Invitation to /Test accepted")).resolves.toBeDefined();
+            await mail2Buffer.expect((m) => m.subject === "Enrolled in /Test");
+            await mail1Buffer.expect((m) => m.subject === "Invitation to /Test accepted");
         });
     } finally {
         mail1Buffer.close();
