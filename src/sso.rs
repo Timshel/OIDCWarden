@@ -609,14 +609,12 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
                 }
             };
 
-            let email = match id_claims.email() {
-                Some(email) => email.to_string(),
-                None => match user_info.email() {
-                    None => err!("Neither id token nor userinfo contained an email"),
-                    Some(email) => email.to_owned().to_string(),
-                },
-            }
-            .to_lowercase();
+            let email = match id_claims.email().or(user_info.email()) {
+                None => err!("Neither id token nor userinfo contained an email"),
+                Some(e) => e.to_string().to_lowercase(),
+            };
+            let email_verified = id_claims.email_verified().or(user_info.email_verified());
+
             let user_name = id_claims.preferred_username().map(|un| un.to_string());
 
             let additional_claims = additional_claims(&email, &id_token.to_string())?;
@@ -644,7 +642,7 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
                 expires_in: token_response.expires_in(),
                 identifier: identifier.clone(),
                 email: email.clone(),
-                email_verified: id_claims.email_verified(),
+                email_verified,
                 user_name: user_name.clone(),
                 role: additional_claims.role,
                 org_role: additional_claims.org_role,
@@ -659,7 +657,7 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
                 state,
                 identifier,
                 email,
-                email_verified: id_claims.email_verified(),
+                email_verified,
                 user_name,
             })
         }
