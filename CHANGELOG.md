@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.5.1-5
+
+- Check `email_verified` in id_token and user_info
+
 # v2025.5.1-4
 
 - Fix organization group sync when using `Mariadb`
