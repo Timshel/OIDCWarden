@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.6.0-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.6.0-1`
+
 # v2025.5.1-5
 
 - Check `email_verified` in id_token and user_info
