@@ -226,7 +226,7 @@ fn launch_info() {
     println!(
         "\
         /--------------------------------------------------------------------\\\n\
-        |                        Starting Vaultwarden                        |"
+        |                        Starting OIDCWarden                        |"
     );
 
     if let Some(version) = VERSION {
@@ -239,10 +239,9 @@ fn launch_info() {
         | This is an *unofficial* Bitwarden implementation, DO NOT use the   |\n\
         | official channels to report bugs/features, regardless of client.   |\n\
         | Send usage/configuration questions or feature requests to:         |\n\
-        |   https://github.com/dani-garcia/vaultwarden/discussions or        |\n\
-        |   https://vaultwarden.discourse.group/                             |\n\
+        |   https://github.com/timshel/OIDCWarden/discussions or             |\n\
         | Report suspected bugs/issues in the software itself at:            |\n\
-        |   https://github.com/dani-garcia/vaultwarden/issues/new            |\n\
+        |   https://github.com/timshel/OIDCWarden/issues                     |\n\
         \\--------------------------------------------------------------------/\n"
     );
 }
