@@ -140,6 +140,14 @@ To use your computer external ip (for example when testing with a phone) you wil
 
 You can switch between both [version](https://github.com/Timshel/oidc_web_vault) of the front-end using the env variable `SSO_FRONTEND` with `button` or `override` (default is `button`).
 
+## Testing Organization and group sync
+
+The default config activate role, organization and groups mappings.
+Default users are configured with vairous role, organization and groups visible in [setup.sh](https://github.com/Timshel/oidcwarden/blob/main/playwright/compose/keycloak/setup.sh) or the via the admin console.
+
+But as an example logged as the user `test/test` create the Organization `Test` with a group `Group1`.
+Then when `test2/test2` login it will be added to the org and groups with the `Owner` role (still need to be confirmed by `test`).
+
 ## Running only Keycloak
 
 You can run just `Keycloak` with `--profile keycloak`:
