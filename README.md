@@ -131,6 +131,7 @@ The groups will need to be created first. Then if present in the token user can 
 This feature is controlled with the following conf:
 
 - `ORG_GROUPS_ENABLED`: Need to be activated.
+- `SSO_ORGANIZATIONS_GROUPS_ENABLED`: Need to be activated, It's here to prevent old setups to suddendly try to sync groups, will be considered as always activated soon and removed.
 
 #### Organization and Group mapping
 
