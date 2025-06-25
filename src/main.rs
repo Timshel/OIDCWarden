@@ -58,6 +58,7 @@ mod http_client;
 mod mail;
 mod ratelimit;
 mod sso;
+mod sso_client;
 mod util;
 
 use crate::api::core::two_factor::duo_oidc::purge_duo_contexts;
