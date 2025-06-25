@@ -53,6 +53,11 @@ See details in [SSO.md](SSO.md).
 
 ## Features
 
+Role and Organization mapping can be read from the id token or the user info endpoint.
+Sync is done by default at login and optionnaly on token refresh (this can be expensive since the client can span the endpoint).
+
+- `SSO_SYNC_ON_REFRESH`: Enable to refresh role, orgs and groups on refresh_token.
+
 ### Role mapping
 
 Allow to map roles from the Access token to users to grant access to `VaultWarden` `admin` console.
@@ -62,7 +67,7 @@ This feature is controlled by the following conf:
 
 - `SSO_ROLES_ENABLED`: control if the mapping is done, default is `false`
 - `SSO_ROLES_DEFAULT_TO_USER`: do not block login in case of missing or invalid roles, default is `true`.
-- `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the Access token (used by organization membership role too).
+- `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the id token or user info (used by organization membership role too).
 
 ### Organization sync
 
@@ -91,7 +96,7 @@ This feature is controlled with the following configuration:
 
 - `SSO_SCOPES`: Optional scope override if additionnal scopes are needed, default is `"email profile"`
 - `SSO_ORGANIZATIONS_ENABLED`: control if the mapping is done, default is `false`
-- `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read organization and groups in the Access token, default is `/groups`
+- `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read organization and groups in the id token or user info, default is `/groups`
 
 #### Organization revocation
 

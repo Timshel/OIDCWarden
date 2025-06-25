@@ -19,11 +19,11 @@ use crate::{
     db::{
         models::{
             Device, EventType, GroupId, GroupUser, Membership, MembershipType, Organization, OrganizationId, SsoNonce,
-            User, UserId,
+            SsoUser, User, UserId,
         },
         DbConn,
     },
-    sso_client::Client,
+    sso_client::{AllAdditionalClaims, Client},
     CONFIG,
 };
 
@@ -205,7 +205,13 @@ pub async fn authorize_url(
 struct AdditionnalClaims {
     role: Option<UserRole>,
     org_role: Option<UserOrgRole>,
-    groups: Vec<String>,
+    groups: Option<Vec<String>>,
+}
+
+impl AdditionnalClaims {
+    pub fn is_admin(&self) -> bool {
+        self.role.as_ref().is_some_and(|x| x == &UserRole::Admin)
+    }
 }
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
@@ -277,7 +283,7 @@ pub struct AuthenticatedUser {
     pub user_name: Option<String>,
     pub role: Option<UserRole>,
     org_role: Option<UserOrgRole>,
-    groups: Vec<String>,
+    groups: Option<Vec<String>>,
 }
 
 impl AuthenticatedUser {
@@ -295,85 +301,65 @@ pub struct UserInformation {
     pub user_name: Option<String>,
 }
 
+// Errors are logged but will return None
 // Return the top most defined Role (https://doc.rust-lang.org/std/cmp/trait.PartialOrd.html#derivable)
-fn deserialize_top_role<T: DeserializeOwned + Ord>(
-    deserialize: bool,
-    email: &str,
-    json_roles: &serde_json::Value,
-) -> Option<T> {
+fn role_claim<T: DeserializeOwned + Ord>(email: &str, token: &serde_json::Value, source: &str) -> Option<T> {
     use crate::serde::Deserialize;
-
-    if deserialize {
+    if let Some(json_roles) = token.pointer(&CONFIG.sso_roles_token_path()) {
         match UserRoles::<T>::deserialize(json_roles) {
             Ok(UserRoles(mut roles)) => {
                 roles.sort();
                 roles.into_iter().find(|r| r.is_some()).flatten()
             }
             Err(err) => {
-                debug!("Failed to parse user ({email}) roles: {err}");
+                debug!("Failed to parse {email} roles from {source}: {err}");
                 None
             }
         }
     } else {
+        debug!("No roles in {email} {source} at {}", &CONFIG.sso_roles_token_path());
         None
     }
 }
 
-// Errors are logged but will return None
-fn roles_claim(email: &str, token: &serde_json::Value) -> (Option<UserRole>, Option<UserOrgRole>) {
-    if let Some(json_roles) = token.pointer(&CONFIG.sso_roles_token_path()) {
-        (
-            deserialize_top_role(CONFIG.sso_roles_enabled(), email, json_roles),
-            deserialize_top_role(
-                CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled(),
-                email,
-                json_roles,
-            ),
-        )
-    } else {
-        debug!("No roles in {email} id_token at {}", &CONFIG.sso_roles_token_path());
-        (None, None)
-    }
-}
-
 // Errors are logged but will return an empty Vec
-fn groups_claim(email: &str, token: &serde_json::Value) -> Vec<String> {
+fn groups_claim(email: &str, token: &serde_json::Value, source: &str) -> Option<Vec<String>> {
     if let Some(json_groups) = token.pointer(&CONFIG.sso_organizations_token_path()) {
         match serde_json::from_value::<Vec<String>>(json_groups.clone()) {
-            Ok(groups) => groups,
+            Ok(groups) => Some(groups),
             Err(err) => {
-                error!("Failed to parse user ({email}) groups: {err}");
-                Vec::new()
+                error!("Failed to parse ({email}) groups from {source}: {err}");
+                None
             }
         }
     } else {
-        debug!("No groups in {email} id_token at {}", &CONFIG.sso_organizations_token_path());
-        Vec::new()
+        debug!("No groups in {email} {source} at {}", &CONFIG.sso_organizations_token_path());
+        None
     }
 }
 
-// Trying to conditionnally read additionnal configurable claims using openidconnect appear nightmarish
-// So we just decode the token again as a JsValue
-fn additional_claims(email: &str, token: &str) -> ApiResult<AdditionnalClaims> {
-    let mut roles = (None, None);
-    let mut groups = Vec::new();
+// All claims are read as Value.
+fn additional_claims(email: &str, sources: Vec<(&AllAdditionalClaims, &str)>) -> ApiResult<AdditionnalClaims> {
+    let mut role: Option<UserRole> = None;
+    let mut org_role: Option<UserOrgRole> = None;
+    let mut groups = None;
 
     if CONFIG.sso_roles_enabled() || CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() {
-        match insecure_decode::<serde_json::Value>("id_token", token) {
-            Err(err) => err!(format!("Could not decode access token: {:?}", err)),
-            Ok(claims) => {
-                roles = roles_claim(email, &claims);
+        for (ac, source) in sources {
+            if CONFIG.sso_roles_enabled() {
+                role = role.or_else(|| role_claim(email, &ac.claims, source))
+            }
 
-                if CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() {
-                    groups = groups_claim(email, &claims);
-                }
+            if CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() {
+                org_role = org_role.or_else(|| role_claim(email, &ac.claims, source));
+                groups = groups.or_else(|| groups_claim(email, &ac.claims, source));
             }
         }
     }
 
     Ok(AdditionnalClaims {
-        role: roles.0,
-        org_role: roles.1,
+        role,
+        org_role,
         groups,
     })
 }
@@ -433,7 +419,7 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
     };
 
     let client = Client::cached().await?;
-    let (token_response, id_token, id_claims) = client.exchange_code(code, nonce).await?;
+    let (token_response, id_claims) = client.exchange_code(code, nonce).await?;
 
     let user_info = client.user_info(token_response.access_token().to_owned()).await?;
 
@@ -446,7 +432,10 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
 
     let user_name = id_claims.preferred_username().map(|un| un.to_string());
 
-    let additional_claims = additional_claims(&email, &id_token)?;
+    let additional_claims = additional_claims(
+        &email,
+        vec![(id_claims.additional_claims(), "id_token"), (user_info.additional_claims(), "user_info")],
+    )?;
 
     if CONFIG.sso_roles_enabled() && !CONFIG.sso_roles_default_to_user() && additional_claims.role.is_none() {
         info!("User {email} failed to login due to missing/invalid role");
@@ -492,17 +481,48 @@ pub async fn exchange_code(wrapped_code: &str, conn: &mut DbConn) -> ApiResult<U
 }
 
 // User has passed 2FA flow we can delete `nonce` and clear the cache.
-pub async fn redeem(state: &OIDCState, conn: &mut DbConn) -> ApiResult<AuthenticatedUser> {
+pub async fn redeem(
+    user: &User,
+    device: &Device,
+    ip: &ClientIp,
+    client_id: Option<String>,
+    sso_user: Option<SsoUser>,
+    state: &OIDCState,
+    conn: &mut DbConn,
+) -> ApiResult<AuthTokens> {
     if let Err(err) = SsoNonce::delete(state, conn).await {
         error!("Failed to delete database sso_nonce using {state}: {err}")
     }
 
-    if let Some(au) = AC_CACHE.get(state) {
+    let auth_user = if let Some(au) = AC_CACHE.get(state) {
         AC_CACHE.invalidate(state);
-        Ok(au)
+        au
     } else {
         err!("Failed to retrieve user info from sso cache")
+    };
+
+    if sso_user.is_none() {
+        let user_sso = SsoUser {
+            user_uuid: user.uuid.clone(),
+            identifier: auth_user.identifier.clone(),
+        };
+        user_sso.save(conn).await?;
     }
+
+    if let Err(err) = sync_organizations(user, device, ip, &auth_user.org_role, &auth_user.groups, conn).await {
+        error!("Failure during sso organization sync: {err}");
+    }
+
+    let is_admin = auth_user.is_admin();
+    create_auth_tokens(
+        device,
+        user,
+        client_id,
+        auth_user.refresh_token,
+        auth_user.access_token,
+        auth_user.expires_in,
+        is_admin,
+    )
 }
 
 // We always return a refresh_token (with no refresh_token some secrets are not displayed in the web front).
@@ -514,6 +534,7 @@ pub fn create_auth_tokens(
     refresh_token: Option<String>,
     access_token: String,
     expires_in: Option<Duration>,
+    is_admin: bool,
 ) -> ApiResult<AuthTokens> {
     if !CONFIG.sso_auth_only_not_session() {
         let now = Utc::now();
@@ -527,7 +548,7 @@ pub fn create_auth_tokens(
         let access_claims =
             auth::LoginJwtClaims::new(device, user, ap_nbf, ap_exp, AuthMethod::Sso.scope_vec(), client_id, now);
 
-        _create_auth_tokens(device, refresh_token, access_claims, access_token)
+        _create_auth_tokens(device, refresh_token, access_claims, access_token, is_admin)
     } else {
         Ok(AuthTokens::new(device, user, AuthMethod::Sso, client_id))
     }
@@ -538,6 +559,7 @@ fn _create_auth_tokens(
     refresh_token: Option<String>,
     access_claims: auth::LoginJwtClaims,
     access_token: String,
+    is_admin: bool,
 ) -> ApiResult<AuthTokens> {
     let (nbf, exp, token) = if let Some(rt) = refresh_token {
         match insecure_decode::<BasicTokenClaims>("refresh_token", &rt) {
@@ -569,6 +591,7 @@ fn _create_auth_tokens(
     Ok(AuthTokens {
         refresh_claims,
         access_claims,
+        is_admin,
     })
 }
 
@@ -576,25 +599,44 @@ fn _create_auth_tokens(
 //  - the session is close to expiration we will try to extend it
 //  - the user is going to make an action and we check that the session is still valid
 pub async fn exchange_refresh_token(
-    device: &Device,
     user: &User,
+    device: &Device,
+    ip: &ClientIp,
     client_id: Option<String>,
     refresh_claims: auth::RefreshJwtClaims,
+    conn: &mut DbConn,
 ) -> ApiResult<AuthTokens> {
     let exp = refresh_claims.exp;
     match refresh_claims.token {
         Some(TokenWrapper::Refresh(refresh_token)) => {
+            let client = Client::cached().await?;
+            let mut is_admin = false;
+
             // Use new refresh_token if returned
             let (new_refresh_token, access_token, expires_in) =
-                Client::exchange_refresh_token(refresh_token.clone()).await?;
+                client.exchange_refresh_token(refresh_token.clone()).await?;
+
+            if CONFIG.sso_sync_on_refresh()
+                && (CONFIG.sso_roles_enabled()
+                    || CONFIG.sso_organizations_invite()
+                    || CONFIG.sso_organizations_enabled())
+            {
+                let user_info = client.user_info(access_token.to_owned()).await?;
+                let ac = additional_claims(&user.email, vec![(user_info.additional_claims(), "user_info")])?;
+                is_admin = CONFIG.sso_roles_enabled() && ac.is_admin();
+                if CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() {
+                    sync_organizations(user, device, ip, &ac.org_role, &ac.groups, conn).await?;
+                }
+            }
 
             create_auth_tokens(
                 device,
                 user,
                 client_id,
                 new_refresh_token.or(Some(refresh_token)),
-                access_token,
+                access_token.secret().clone(),
                 expires_in,
+                is_admin,
             )
         }
         Some(TokenWrapper::Access(access_token)) => {
@@ -617,90 +659,90 @@ pub async fn exchange_refresh_token(
                 now,
             );
 
-            _create_auth_tokens(device, None, access_claims, access_token)
+            _create_auth_tokens(device, None, access_claims, access_token, false)
         }
         None => err!("No token present while in SSO"),
     }
 }
 
-pub async fn sync_organizations(
+async fn sync_organizations(
     user: &User,
-    sso_user: &AuthenticatedUser,
     device: &Device,
     ip: &ClientIp,
+    org_role: &Option<UserOrgRole>,
+    user_groups: &Option<Vec<String>>,
     conn: &mut DbConn,
 ) -> ApiResult<()> {
-    if (CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled())
-        && sso_user.org_role != Some(UserOrgRole::OrgNoSync)
-    {
-        let id_mapping = CONFIG.sso_organizations_id_mapping_map();
-        let user_groups = &sso_user.groups;
+    let groups = match (org_role, user_groups) {
+        (Some(UserOrgRole::OrgNoSync), _) => return Ok(()),
+        (_, Some(g)) if CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() => g,
+        _ => return Ok(()),
+    };
 
-        debug!("Organization and groups sync for user {:} with {:?}", user.email, user_groups);
+    let id_mapping = CONFIG.sso_organizations_id_mapping_map();
 
-        let mut allow_revoking = CONFIG.sso_organizations_revocation();
+    debug!("Organization and groups sync for user {:} with {:?}", user.email, groups);
 
-        let orgs = if id_mapping.is_empty() {
-            let identifiers = if CONFIG.org_groups_enabled() && CONFIG.sso_organizations_groups_enabled() {
-                parse_user_groups(user_groups)
-            } else {
-                user_groups.iter().map(|g| (g.clone(), None)).collect()
-            };
+    let mut allow_revoking = CONFIG.sso_organizations_revocation();
 
-            let org_groups = Organization::find_mapped_orgs_and_groups(identifiers.clone(), conn)
-                .await
-                .into_iter()
-                .filter(|(_, _, _, group_id)| {
-                    !group_id.is_some() || (CONFIG.org_groups_enabled() && CONFIG.sso_organizations_groups_enabled())
-                })
-                .collect::<Vec<(String, Option<String>, Organization, Option<GroupId>)>>();
-
-            allow_revoking = check_orgs_groups(&identifiers, &org_groups)? && allow_revoking;
-
-            let mut res: HashMap<OrganizationId, (Organization, HashSet<GroupId>)> = HashMap::new();
-            for (_, _, org, group_id) in org_groups {
-                let entry = res.entry(org.uuid.clone()).or_insert_with(|| (org, HashSet::new()));
-                if let Some(gi) = group_id {
-                    entry.1.insert(gi);
-                }
-            }
-            res
+    let orgs = if id_mapping.is_empty() {
+        let identifiers = if CONFIG.org_groups_enabled() && CONFIG.sso_organizations_groups_enabled() {
+            parse_user_groups(groups)
         } else {
-            warn!("Using deprecated SSO_ORGANIZATIONS_ID_MAPPING, will be removed in next release");
-            use itertools::Itertools; // TODO: Remove from cargo.toml
-
-            let (names, uuids) = user_groups
-                .iter()
-                .flat_map(|group| match id_mapping.get(group) {
-                    Some(e) => Some(e.clone()),
-                    None => {
-                        warn!("Missing organization mapping for {group}");
-                        None
-                    }
-                })
-                .partition_map(std::convert::identity);
-
-            let orgs = Organization::find_by_uuids_or_names(&uuids, &names, conn).await;
-
-            if user_groups.len() != orgs.len() {
-                let org_names: Vec<&String> = orgs.iter().map(|o| &o.name).collect();
-                warn!(
-                    "Failed to match all groups ({:?}) to organizations ({:?}) with mapping ({:?}), will not revoke",
-                    user_groups, org_names, id_mapping
-                );
-
-                allow_revoking = false
-            }
-
-            orgs.into_iter()
-                .map(|o| (o.uuid.clone(), (o, HashSet::new())))
-                .collect::<HashMap<OrganizationId, (Organization, HashSet<GroupId>)>>()
+            groups.iter().map(|g| (g.clone(), None)).collect()
         };
 
-        sync_orgs_and_role(user, sso_user, device, ip, orgs, allow_revoking, conn).await?;
-    }
+        let org_groups = Organization::find_mapped_orgs_and_groups(identifiers.clone(), conn)
+            .await
+            .into_iter()
+            .filter(|(_, _, _, group_id)| {
+                !group_id.is_some() || (CONFIG.org_groups_enabled() && CONFIG.sso_organizations_groups_enabled())
+            })
+            .collect::<Vec<(String, Option<String>, Organization, Option<GroupId>)>>();
 
-    Ok(())
+        allow_revoking = check_orgs_groups(&identifiers, &org_groups)? && allow_revoking;
+
+        let mut res: HashMap<OrganizationId, (Organization, HashSet<GroupId>)> = HashMap::new();
+        for (_, _, org, group_id) in org_groups {
+            let entry = res.entry(org.uuid.clone()).or_insert_with(|| (org, HashSet::new()));
+            if let Some(gi) = group_id {
+                entry.1.insert(gi);
+            }
+        }
+        res
+    } else {
+        warn!("Using deprecated SSO_ORGANIZATIONS_ID_MAPPING, will be removed in next release");
+        use itertools::Itertools; // TODO: Remove from cargo.toml
+
+        let (names, uuids) = groups
+            .iter()
+            .flat_map(|group| match id_mapping.get(group) {
+                Some(e) => Some(e.clone()),
+                None => {
+                    warn!("Missing organization mapping for {group}");
+                    None
+                }
+            })
+            .partition_map(std::convert::identity);
+
+        let orgs = Organization::find_by_uuids_or_names(&uuids, &names, conn).await;
+
+        if groups.len() != orgs.len() {
+            let org_names: Vec<&String> = orgs.iter().map(|o| &o.name).collect();
+            warn!(
+                "Failed to match all groups ({:?}) to organizations ({:?}) with mapping ({:?}), will not revoke",
+                groups, org_names, id_mapping
+            );
+
+            allow_revoking = false
+        }
+
+        orgs.into_iter()
+            .map(|o| (o.uuid.clone(), (o, HashSet::new())))
+            .collect::<HashMap<OrganizationId, (Organization, HashSet<GroupId>)>>()
+    };
+
+    sync_orgs_and_role(user, device, ip, org_role, orgs, allow_revoking, conn).await
 }
 
 fn check_orgs_groups(
@@ -736,15 +778,15 @@ fn check_orgs_groups(
 
 async fn sync_orgs_and_role(
     user: &User,
-    sso_user: &AuthenticatedUser,
     device: &Device,
     ip: &ClientIp,
+    org_role: &Option<UserOrgRole>,
     mut orgs: HashMap<OrganizationId, (Organization, HashSet<GroupId>)>,
     allow_revoking: bool,
     conn: &mut DbConn,
 ) -> ApiResult<()> {
     let acting_user: UserId = ACTING_AUTO_ENROLL_USER.into();
-    let provider_role = sso_user.org_role.as_ref().map(|or| or.membership_type());
+    let provider_role = org_role.as_ref().map(|or| or.membership_type());
     let org_collections: Vec<CollectionData> = vec![];
     let user_org_groups: Vec<GroupId> = vec![];
 
@@ -769,13 +811,13 @@ async fn sync_orgs_and_role(
                     .await;
 
                     if let Err(e) = er {
-                        error!("Failed to set_membership_type {}: {}", sso_user.email, e);
+                        error!("Failed to set_membership_type {}: {}", user.email, e);
                     }
                 }
                 if mbs.is_revoked() {
                     if let Err(er) = organization_logic::restore_member(&acting_user, device, ip, &mut mbs, conn).await
                     {
-                        error!("Failed to restore_member {}: {}", sso_user.email, er);
+                        error!("Failed to restore_member {}: {}", user.email, er);
                     }
                 }
 
@@ -783,7 +825,7 @@ async fn sync_orgs_and_role(
             }
             None if allow_revoking => {
                 if let Err(er) = organization_logic::revoke_member(&acting_user, device, ip, mbs, conn).await {
-                    error!("Failed to restore_member {}: {}", sso_user.email, er);
+                    error!("Failed to restore_member {}: {}", user.email, er);
                 }
             }
             None => {}

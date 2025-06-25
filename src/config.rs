@@ -693,6 +693,8 @@ make_config! {
         sso_master_password_policy:     String, true,  option;
         /// Use sso only for auth not the session lifecycle |> Use default Vaultwarden session lifecycle (Idle refresh token valid for 30days)
         sso_auth_only_not_session:      bool,   true,   def,    false;
+        /// Refresh role, orgs and groups on refresh_token |> Will call `user_info`, can be expensive since the client cam spam the refresh_token endpoint
+        sso_sync_on_refresh:            bool,   true,   def,    false;
         /// Roles mapping |> Enable the mapping of roles (user/admin) from the access_token
         sso_roles_enabled:              bool,   false,   def,    false;
         /// Missing/Invalid roles default to user

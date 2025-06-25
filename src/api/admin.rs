@@ -177,17 +177,22 @@ struct LoginForm {
     redirect: Option<String>,
 }
 
-pub fn create_admin_cookie<'a>() -> Cookie<'a> {
+pub fn add_admin_cookie(cookies: &CookieJar<'_>) {
     let claims = generate_admin_claims();
     let jwt = encode_jwt(&claims);
 
-    Cookie::build((COOKIE_NAME, jwt))
+    let cookie = Cookie::build((COOKIE_NAME, jwt))
         .path(admin_path())
         .max_age(time::Duration::minutes(CONFIG.admin_session_lifetime()))
         .same_site(SameSite::Strict)
         .http_only(true)
-        .secure(CONFIG.is_https())
-        .into()
+        .secure(CONFIG.is_https());
+
+    cookies.add(cookie);
+}
+
+pub fn remove_admin_cookie(cookies: &CookieJar<'_>) {
+    cookies.remove(COOKIE_NAME);
 }
 
 #[post("/", format = "application/x-www-form-urlencoded", data = "<data>")]
@@ -208,7 +213,7 @@ fn post_admin_login(data: Form<LoginForm>, cookies: &CookieJar<'_>, ip: ClientIp
         Err(AdminResponse::Unauthorized(render_admin_login(Some("Invalid admin token, please try again."), redirect)))
     } else {
         // If the token received is valid, generate JWT and save it as a cookie
-        cookies.add(create_admin_cookie());
+        add_admin_cookie(cookies);
         if let Some(redirect) = redirect {
             Ok(Redirect::to(format!("{}{redirect}", admin_path())))
         } else {
