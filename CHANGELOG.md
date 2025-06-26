@@ -3,6 +3,9 @@
 # v2025.6.1-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.6.1-1`
+- Provider role and groups are now read from `user_info` endpoint too.
+- `SSO_SYNC_ON_REFRESH` allow to trigger role and orgs sync on token refresh.
+  This can be expensive since the client can span the endpoint
 
 # v2025.6.0-2
 
