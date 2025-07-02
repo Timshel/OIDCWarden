@@ -470,7 +470,7 @@ async fn authenticated_response(
     // Save to update `device.updated_at` to track usage and toggle new status
     device.save(conn).await?;
 
-    let mp_policy = master_password_policy(user, conn).await;
+    let master_password_policy = master_password_policy(user, conn).await;
 
     let mut result = json!({
         "access_token": auth_tokens.access_token(),
@@ -484,7 +484,7 @@ async fn authenticated_response(
         "KdfParallelism": user.client_kdf_parallelism,
         "ResetMasterPassword": false, // TODO: Same as above
         "ForcePasswordReset": false,
-        "MasterPasswordPolicy": mp_policy,
+        "MasterPasswordPolicy": master_password_policy,
         "scope": auth_tokens.scope(),
         "UserDecryptionOptions": {
             "HasMasterPassword": !user.password_hash.is_empty(),
@@ -894,7 +894,10 @@ async fn register_verification_email(
 ) -> ApiResult<RegisterVerificationResponse> {
     let data = data.into_inner();
 
-    if !CONFIG.is_signup_allowed(&data.email) {
+    // the registration can only continue if signup is allowed or there exists an invitation
+    if !(CONFIG.is_signup_allowed(&data.email)
+        || (!CONFIG.mail_enabled() && Invitation::find_by_mail(&data.email, &mut conn).await.is_some()))
+    {
         err!("Registration not allowed or user already exists")
     }
 

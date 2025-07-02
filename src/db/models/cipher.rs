@@ -141,18 +141,28 @@ impl Cipher {
         cipher_sync_data: Option<&CipherSyncData>,
         sync_type: CipherSyncType,
         conn: &mut DbConn,
-    ) -> Value {
+    ) -> Result<Value, crate::Error> {
         use crate::util::{format_date, validate_and_format_date};
 
         let mut attachments_json: Value = Value::Null;
         if let Some(cipher_sync_data) = cipher_sync_data {
             if let Some(attachments) = cipher_sync_data.cipher_attachments.get(&self.uuid) {
-                attachments_json = attachments.iter().map(|c| c.to_json(host)).collect();
+                if !attachments.is_empty() {
+                    let mut attachments_json_vec = vec![];
+                    for attachment in attachments {
+                        attachments_json_vec.push(attachment.to_json(host).await?);
+                    }
+                    attachments_json = Value::Array(attachments_json_vec);
+                }
             }
         } else {
             let attachments = Attachment::find_by_cipher(&self.uuid, conn).await;
             if !attachments.is_empty() {
-                attachments_json = attachments.iter().map(|c| c.to_json(host)).collect()
+                let mut attachments_json_vec = vec![];
+                for attachment in attachments {
+                    attachments_json_vec.push(attachment.to_json(host).await?);
+                }
+                attachments_json = Value::Array(attachments_json_vec);
             }
         }
 
@@ -372,6 +382,11 @@ impl Cipher {
             // the "Read Only" or "Hide Passwords" restrictions for the user.
             json_object["edit"] = json!(!read_only);
             json_object["viewPassword"] = json!(!hide_passwords);
+            // The new key used by clients since v2025.6.0
+            json_object["permissions"] = json!({
+                "delete": !read_only,
+                "restore": !read_only,
+            });
         }
 
         let key = match self.atype {
@@ -384,7 +399,7 @@ impl Cipher {
         };
 
         json_object[key] = type_data_json;
-        json_object
+        Ok(json_object)
     }
 
     pub async fn update_users_revision(&self, conn: &mut DbConn) -> Vec<UserId> {

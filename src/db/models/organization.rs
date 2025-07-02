@@ -506,7 +506,7 @@ impl Organization {
             escaped_group_table
         );
 
-        debug!("find_mapped_orgs_and_groups query: {:?}", query);
+        debug!("find_mapped_orgs_and_groups query: {query:?}");
 
         query
     }
@@ -515,7 +515,7 @@ impl Organization {
         params: Vec<(String, Option<String>)>,
         conn: &DbConn,
     ) -> Vec<(String, Option<String>, Self, Option<GroupId>)> {
-        debug!("find_mapped_orgs_and_groups({:?})", params);
+        debug!("find_mapped_orgs_and_groups({params:?})");
         if !params.is_empty() {
             db_run! { conn:
                 sqlite, mysql {
