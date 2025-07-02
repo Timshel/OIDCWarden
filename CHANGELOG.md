@@ -2,7 +2,7 @@
 
 # v2025.6.1-2
 
-- Integrate latest change from `Vaultwarden` up to [3b48e6e](https://github.com/dani-garcia/vaultwarden/commit/e7c796a6)
+- Integrate latest change from `Vaultwarden` up to [3b48e6e](https://github.com/dani-garcia/vaultwarden/commit/3b48e6e)
   Should fix inability to delete secrets.
 
 # v2025.6.1-1
