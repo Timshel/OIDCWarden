@@ -1,5 +1,10 @@
 # Changelog
 
+# v2025.6.1-2
+
+- Integrate latest change from `Vaultwarden` up to [3b48e6e](https://github.com/dani-garcia/vaultwarden/commit/e7c796a6)
+  Should fix inability to delete secrets.
+
 # v2025.6.1-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.6.1-1`
