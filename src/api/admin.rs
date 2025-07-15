@@ -19,6 +19,7 @@ use crate::{
         unregister_push_device, ApiResult, EmptyResult, JsonResult, Notify,
     },
     auth::{decode_admin, encode_jwt, generate_admin_claims, ClientIp},
+    business::organization_logic::admin_check,
     config::ConfigBuilder,
     db::{backup_database, get_sql_server_version, models::*, DbConn, DbConnType},
     error::{Error, MapResult},
@@ -556,19 +557,7 @@ async fn update_membership_type(data: Json<MembershipTypeData>, token: AdminToke
     // This check is also done at api::organizations::{accept_invite, _confirm_invite, _activate_member, edit_member}, update_membership_type
     // It returns different error messages per function.
     if new_type < MembershipType::Admin {
-        match OrgPolicy::is_user_allowed(&member_to_edit.user_uuid, &member_to_edit.org_uuid, true, &mut conn).await {
-            Ok(_) => {}
-            Err(OrgPolicyErr::TwoFactorMissing) => {
-                if CONFIG.email_2fa_auto_fallback() {
-                    two_factor::email::find_and_activate_email_2fa(&member_to_edit.user_uuid, &mut conn).await?;
-                } else {
-                    err!("You cannot modify this user to this type because they have not setup 2FA");
-                }
-            }
-            Err(OrgPolicyErr::SingleOrgEnforced) => {
-                err!("You cannot modify this user to this type because it is a member of an organization which forbids it");
-            }
-        }
+        admin_check(&member_to_edit, "modify this user to this type", true, &mut conn).await?;
     }
 
     log_event(

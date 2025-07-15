@@ -134,21 +134,23 @@ pub async fn revoke_member(
 
 // This check is done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
 // It returns different error messages per function.
-pub async fn admin_check(member: &Membership, action: &str, conn: &mut DbConn) -> EmptyResult {
-    match OrgPolicy::is_user_allowed(&member.user_uuid, &member.org_uuid, false, conn).await {
+pub async fn admin_check(
+    member: &Membership,
+    action: &str,
+    exclude_current_org: bool,
+    conn: &mut DbConn,
+) -> EmptyResult {
+    match OrgPolicy::is_user_allowed(&member.user_uuid, &member.org_uuid, exclude_current_org, conn).await {
         Ok(_) => Ok(()),
         Err(OrgPolicyErr::TwoFactorMissing) => {
             if CONFIG.email_2fa_auto_fallback() {
                 two_factor::email::find_and_activate_email_2fa(&member.user_uuid, conn).await
             } else {
-                err!(format!("Cannot {} because they have not setup 2FA (membership {})", action, member.uuid));
+                err!(format!("Cannot {} because 2FA is required (membership {})", action, member.uuid));
             }
         }
         Err(OrgPolicyErr::SingleOrgEnforced) => {
-            err!(format!(
-                "Cannot {} because they are a member of an organization which forbids it (membership {})",
-                action, member.uuid
-            ));
+            err!(format!("Cannot {} because an organization policy forbids it (membership {})", action, member.uuid));
         }
     }
 }
@@ -161,7 +163,7 @@ pub async fn restore_member(
     conn: &mut DbConn,
 ) -> EmptyResult {
     if member.atype < MembershipType::Admin {
-        admin_check(member, "restore this user", conn).await?;
+        admin_check(member, "restore this user", true, conn).await?;
     }
 
     member.restore();
@@ -203,7 +205,7 @@ pub async fn set_membership_type(
     // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
     // It returns different error messages per function.
     if new_type < MembershipType::Admin {
-        admin_check(member, "modify this user to this type", conn).await?;
+        admin_check(member, "modify this user to this type", true, conn).await?;
     }
 
     member.access_all = new_type >= MembershipType::Admin || (new_type == MembershipType::Manager && custom_access_all);

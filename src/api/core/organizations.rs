@@ -1464,19 +1464,7 @@ async fn _confirm_invite(
     // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
     // It returns different error messages per function.
     if member_to_confirm.atype < MembershipType::Admin {
-        match OrgPolicy::is_user_allowed(&member_to_confirm.user_uuid, org_id, true, conn).await {
-            Ok(_) => {}
-            Err(OrgPolicyErr::TwoFactorMissing) => {
-                if CONFIG.email_2fa_auto_fallback() {
-                    two_factor::email::find_and_activate_email_2fa(&member_to_confirm.user_uuid, conn).await?;
-                } else {
-                    err!("You cannot confirm this user because they have not setup 2FA");
-                }
-            }
-            Err(OrgPolicyErr::SingleOrgEnforced) => {
-                err!("You cannot confirm this user because they are a member of an organization which forbids it");
-            }
-        }
+        organization_logic::admin_check(&member_to_confirm, "confirm", true, conn).await?;
     }
 
     member_to_confirm.status = MembershipStatus::Confirmed as i32;

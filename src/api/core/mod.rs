@@ -15,6 +15,8 @@ pub use events::{event_cleanup_job, log_event, log_user_event};
 use reqwest::Method;
 pub use sends::purge_sends;
 
+use crate::business::organization_logic::admin_check;
+
 pub fn routes() -> Vec<Route> {
     let mut eq_domains_routes = routes![get_eq_domains, post_eq_domains, put_eq_domains];
     let mut hibp_routes = routes![hibp_breach];
@@ -282,19 +284,7 @@ async fn accept_org_invite(
     // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
     // It returns different error messages per function.
     if member.atype < MembershipType::Admin {
-        match OrgPolicy::is_user_allowed(&member.user_uuid, &member.org_uuid, false, conn).await {
-            Ok(_) => {}
-            Err(OrgPolicyErr::TwoFactorMissing) => {
-                if crate::CONFIG.email_2fa_auto_fallback() {
-                    two_factor::email::activate_email_2fa(user, conn).await?;
-                } else {
-                    err!("You cannot join this organization until you enable two-step login on your user account");
-                }
-            }
-            Err(OrgPolicyErr::SingleOrgEnforced) => {
-                err!("You cannot join this organization because you are a member of an organization which forbids it");
-            }
-        }
+        admin_check(&member, "join this organization", false, conn).await?;
     }
 
     member.status = MembershipStatus::Accepted as i32;
