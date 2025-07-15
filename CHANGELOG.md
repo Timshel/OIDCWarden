@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.6.1-3
+
+- Fix single org policy check regression
+
 # v2025.6.1-2
 
 - Integrate latest change from `Vaultwarden` up to [3b48e6e](https://github.com/dani-garcia/vaultwarden/commit/3b48e6e)
