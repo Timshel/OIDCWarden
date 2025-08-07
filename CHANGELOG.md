@@ -1,5 +1,10 @@
 # Changelog
 
+# v2025.7.2-1
+
+- Integrate latest change from `Vaultwarden`/`SSO PR` up to [a71da2d](https://github.com/dani-garcia/vaultwarden/commit/a71da2d0a4e93034397134b17078a27829264043)
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.7.2-1`
+
 # v2025.6.2-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.6.2-1`
