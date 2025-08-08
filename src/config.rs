@@ -736,7 +736,7 @@ make_config! {
         sso_organizations_id_mapping:   String, true,   def,    String::new();
         /// Emable organization group mapping |> Deprecated, More details [README.md](https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation)
         sso_organizations_groups_enabled: bool, false, def, false;
-        /// Grant acceess to all collections
+        /// On invitation, grant acceess to all existing collections |> Does not grant access to collections created afterwards.
         sso_organizations_all_collections: bool, true,  def,   true;
         /// Client cache for discovery endpoint. |> Duration in seconds (0 or less to disable). More details: https://github.com/timshel/OIDCWarden/blob/main/SSO.md#client-cache
         sso_client_cache_expiration:    u64,    true,   def,    0;

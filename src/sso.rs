@@ -18,8 +18,8 @@ use crate::{
     business::organization_logic,
     db::{
         models::{
-            Device, EventType, GroupId, GroupUser, Membership, MembershipType, Organization, OrganizationId, SsoNonce,
-            SsoUser, User, UserId,
+            Collection, Device, EventType, GroupId, GroupUser, Membership, MembershipType, Organization,
+            OrganizationId, SsoNonce, SsoUser, User, UserId,
         },
         DbConn,
     },
@@ -786,7 +786,6 @@ async fn sync_orgs_and_role(
 ) -> ApiResult<()> {
     let acting_user: UserId = ACTING_AUTO_ENROLL_USER.into();
     let provider_role = org_role.as_ref().map(|or| or.membership_type());
-    let org_collections: Vec<CollectionData> = vec![];
     let user_org_groups: Vec<GroupId> = vec![];
 
     debug!(
@@ -833,6 +832,22 @@ async fn sync_orgs_and_role(
 
     let new_user_role = provider_role.unwrap_or(MembershipType::User);
     for (org, groups) in orgs.into_values() {
+        let org_collections: Vec<CollectionData> =
+            if new_user_role == MembershipType::User && CONFIG.sso_organizations_all_collections() {
+                Collection::find_by_organization(&org.uuid, conn)
+                    .await
+                    .into_iter()
+                    .map(|col| CollectionData {
+                        id: col.uuid,
+                        read_only: true,
+                        hide_passwords: false,
+                        manage: false,
+                    })
+                    .collect()
+            } else {
+                vec![]
+            };
+
         info!("Invitation to {} organization sent to {}", org.name, user.email);
         let mbs = organization_logic::invite(
             &acting_user,
@@ -842,7 +857,7 @@ async fn sync_orgs_and_role(
             user,
             new_user_role,
             &user_org_groups,
-            new_user_role > MembershipType::User || CONFIG.sso_organizations_all_collections(),
+            new_user_role > MembershipType::User,
             &org_collections,
             org.billing_email.clone(),
             true,

@@ -35,7 +35,7 @@ The following configurations are available
 - `SSO_ORGANIZATIONS_REVOCATION`: control if membership can be revoked, default is `false`
 - `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read groups/organization in the Id token
 - `SSO_ORGANIZATIONS_GROUPS_ENABLED`: Present only with initial release to force opt-in (still dependant on `ORG_GROUPS_ENABLED`). Will be removed with next release.
-- `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: `User` are granted access to all collections, default is `true`
+- `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: On invitation, grant read acceess to all existing collections, default is `true`. Does not grant access to collections created afterwards.
 - `ORGANIZATION_INVITE_AUTO_ACCEPT`: Bypass the invitation logic and as users as `Accepted` (Apply to non SSO logic too)
 - `SSO_CLIENT_CACHE_EXPIRATION`: Cache calls to the discovery endpoint, duration in seconds, `0` to disable (default `0`);
 - `SSO_DEBUG_TOKENS`: Log all tokens for easier debugging (default `false`, `LOG_LEVEL=debug` or `LOG_LEVEL=info,oidcwarden::sso=debug` need to be set)
