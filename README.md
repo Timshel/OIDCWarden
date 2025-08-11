@@ -136,7 +136,6 @@ The groups will need to be created first. Then if present in the token user can 
 This feature is controlled with the following conf:
 
 - `ORG_GROUPS_ENABLED`: Need to be activated.
-- `SSO_ORGANIZATIONS_GROUPS_ENABLED`: Need to be activated, It's here to prevent old setups to suddendly try to sync groups, will be considered as always activated soon and removed.
 
 #### Organization and Group mapping
 
@@ -153,13 +152,6 @@ Depending on the format of the provider value different logic will be used:
 
 Only the `path` style allows to match a group using its name. A simple value can match multiple Organization/Group, this will generate an error and disable sync.
 When matching a group then the user will be considered part of the parent Organization even if it's not listed in the provider groups.
-
-#### Deprecations
-
-- `SSO_ORGANIZATIONS_INVITE`: Will be removed with the next release. replaced with `SSO_ORGANIZATIONS_ENABLED`.
-- `SSO_ORGANIZATIONS_ID_MAPPING` Will be removed with the next release. For now if present is still used, only Organization and User role mapping is done.
-- `SSO_ORGANIZATIONS_GROUPS_ENABLED`: Will be removed with next release. Allow to keep group mapping deactivated (still dependant on `ORG_GROUPS_ENABLED`).
-  False initially to force opt-in to the feature.
 
 ## Docker
 

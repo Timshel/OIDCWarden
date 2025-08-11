@@ -311,7 +311,7 @@ async fn post_organization(
     org.billing_email = data.billing_email.to_lowercase();
 
     // External Id field is active only when SSO and Org mapping are enabled
-    if CONFIG.sso_enabled() && (CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled()) {
+    if CONFIG.sso_enabled() && CONFIG.sso_organizations_enabled() {
         org.external_id = data.external_id;
     } else {
         org.external_id = None;
@@ -2609,10 +2609,7 @@ impl GroupRequest {
         // By default Group Updates do not support changing the external_id
         // These input fields are in a disabled state, and can only be updated/added via ldap_import
         // But we reuse the field for SSO organization mapping.
-        if CONFIG.sso_enabled()
-            && (CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled())
-            && CONFIG.org_groups_enabled()
-        {
+        if CONFIG.sso_enabled() && CONFIG.sso_organizations_enabled() && CONFIG.org_groups_enabled() {
             group.external_id = self.external_id.clone();
         }
 

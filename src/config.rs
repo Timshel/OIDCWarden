@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     env::consts::EXE_SUFFIX,
     process::exit,
     sync::{
@@ -8,14 +7,11 @@ use std::{
     },
 };
 
-use itertools::Either;
 use job_scheduler_ng::Schedule;
 use once_cell::sync::Lazy;
 use reqwest::Url;
-use uuid::Uuid;
 
 use crate::{
-    db::models::OrganizationId,
     db::DbConnType,
     error::Error,
     util::{get_env, get_env_bool, get_web_vault_version, is_valid_email, parse_experimental_client_feature_flags},
@@ -724,18 +720,12 @@ make_config! {
         sso_roles_default_to_user:      bool,   false,   def,    true;
         /// Id token path to read roles
         sso_roles_token_path:           String, false,  auto,   |c| format!("/resource_access/{}/roles", c.sso_client_id);
-        /// Invite users to Organizations |> Deprecated, More details [README.md](https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation)
-        sso_organizations_invite:       bool,   false,   def,    false;
         /// Organizations mapping |> Enable the mapping of organization, membership role and groups.
         sso_organizations_enabled:      bool,   false,   def,    false;
         /// Process revocation
         sso_organizations_revocation:   bool,   false,   def,    false;
         /// Id token path to read Organization/Groups
         sso_organizations_token_path:   String, false,   def,    "/groups".to_string();
-        /// Organization Id mapping |> Deprecated. More details [README.md](https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation)
-        sso_organizations_id_mapping:   String, true,   def,    String::new();
-        /// Emable organization group mapping |> Deprecated, More details [README.md](https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation)
-        sso_organizations_groups_enabled: bool, false, def, false;
         /// On invitation, grant acceess to all existing collections |> Does not grant access to collections created afterwards.
         sso_organizations_all_collections: bool, true,  def,   true;
         /// Client cache for discovery endpoint. |> Duration in seconds (0 or less to disable). More details: https://github.com/timshel/OIDCWarden/blob/main/SSO.md#client-cache
@@ -744,6 +734,13 @@ make_config! {
         sso_debug_tokens:               bool,   true,   def,    false;
         /// Force fail auth code exchange |> Allow to log and return the code used in `authorization_code` flow without consuming it (SSO login will become impossilbe).
         sso_debug_force_fail_auth_code: bool,   true,   def,    false;
+
+        /// Invite users to Organizations |> Deprecated, More details [README.md](https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation)
+        sso_organizations_invite:       bool,   false,   def,    false;
+        /// Organization Id mapping |> Deprecated. More details [README.md](https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation)
+        sso_organizations_id_mapping:   String, false,   def,    String::new();
+        /// Emable organization group mapping |> Deprecated, More details [README.md](https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation)
+        sso_organizations_groups_enabled: bool, false, def, true;
     },
 
     /// Yubikey settings
@@ -990,17 +987,9 @@ fn validate_config(cfg: &ConfigItems) -> Result<(), Error> {
         validate_internal_sso_redirect_url(&cfg.sso_callback_path)?;
         check_master_password_policy(&cfg.sso_master_password_policy)?;
 
-        if cfg.sso_organizations_invite && !cfg.sso_organizations_enabled {
-            warn!("SSO_ORGANIZATIONS_INVITE is DEPRECATED, replaced by SSO_ORGANIZATIONS_ENABLED");
-        }
-
-        if !cfg.sso_organizations_id_mapping.is_empty() {
-            warn!("SSO_ORGANIZATIONS_ID_MAPPING is now DEPRECATED, More details: https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation");
-        }
-
-        if cfg.org_groups_enabled && !cfg.sso_organizations_groups_enabled {
-            warn!("SSO_ORGANIZATIONS_GROUPS_ENABLED is DEPRECATED, More details: https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecation");
-        }
+        assert!(!cfg.sso_organizations_invite || cfg.sso_organizations_enabled, "SSO_ORGANIZATIONS_INVITE is now REMOVED, replaced with SSO_ORGANIZATIONS_ENABLED");
+        assert!(cfg.sso_organizations_id_mapping.is_empty(), "SSO_ORGANIZATIONS_ID_MAPPING is now REMOVED, More details: https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecations");
+        assert!(!cfg.org_groups_enabled || cfg.sso_organizations_groups_enabled, "SSO_ORGANIZATIONS_GROUPS_ENABLED is now REMOVED, and considered always on.");
     }
 
     if cfg._enable_yubico {
@@ -1277,24 +1266,6 @@ fn smtp_convert_deprecated_ssl_options(smtp_ssl: Option<bool>, smtp_explicit_tls
     }
     // Return the default `starttls` in all other cases
     "starttls".to_string()
-}
-
-fn parse_as_hashmap<V, F: Fn(String) -> V>(config: String, f: F) -> HashMap<String, V> {
-    config
-        .split(';')
-        .map(|l| l.trim())
-        .filter(|l| !l.is_empty())
-        .filter_map(|l| {
-            let split = l.split(':').collect::<Vec<&str>>();
-            match &split[..] {
-                [key, value] => Some(((*key).to_string(), f((*value).to_string()))),
-                _ => {
-                    println!("[WARNING] Failed to parse ({l}). Expected key:value;");
-                    None
-                }
-            }
-        })
-        .collect()
 }
 
 fn opendal_operator_for_path(path: &str) -> Result<opendal::Operator, Error> {
@@ -1633,13 +1604,6 @@ impl Config {
 
     pub fn sso_authorize_extra_params_vec(&self) -> Vec<(String, String)> {
         url::form_urlencoded::parse(self.sso_authorize_extra_params().as_bytes()).into_owned().collect()
-    }
-
-    pub fn sso_organizations_id_mapping_map(&self) -> HashMap<String, Either<String, OrganizationId>> {
-        parse_as_hashmap(self.sso_organizations_id_mapping(), |str| match Uuid::parse_str(&str) {
-            Ok(_) => Either::Right(str.into()),
-            Err(_) => Either::Left(str),
-        })
     }
 }
 

@@ -6,6 +6,10 @@
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.7.2-1`
 - Change to `SSO_ORGANIZATIONS_ALL_COLLECTIONS` to stop using a hidden field.
   On user invitation will now add read only access to all available collection (Does not grant access to collections created afterwards.).
+- Remove deprecated configurations:
+  - `SSO_ORGANIZATIONS_GROUPS_ENABLED` is now considered on by default, check your setup/mappings (`ORG_GROUPS_ENABLED` still need to be activated for sync to occur, will panic if disabled with groups enabled).
+  - `SSO_ORGANIZATIONS_INVITE` renamed to `SSO_ORGANIZATIONS_ENABLED` (will panic if present and enabled but `SSO_ORGANIZATIONS_ENABLED` is not enabled).
+  - `SSO_ORGANIZATIONS_ID_MAPPING` removed, use the new mapping system (will panic if non empty).
 
 # v2025.6.2-1
 

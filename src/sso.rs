@@ -344,13 +344,13 @@ fn additional_claims(email: &str, sources: Vec<(&AllAdditionalClaims, &str)>) ->
     let mut org_role: Option<UserOrgRole> = None;
     let mut groups = None;
 
-    if CONFIG.sso_roles_enabled() || CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() {
+    if CONFIG.sso_roles_enabled() || CONFIG.sso_organizations_enabled() {
         for (ac, source) in sources {
             if CONFIG.sso_roles_enabled() {
                 role = role.or_else(|| role_claim(email, &ac.claims, source))
             }
 
-            if CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() {
+            if CONFIG.sso_organizations_enabled() {
                 org_role = org_role.or_else(|| role_claim(email, &ac.claims, source));
                 groups = groups.or_else(|| groups_claim(email, &ac.claims, source));
             }
@@ -616,15 +616,11 @@ pub async fn exchange_refresh_token(
             let (new_refresh_token, access_token, expires_in) =
                 client.exchange_refresh_token(refresh_token.clone()).await?;
 
-            if CONFIG.sso_sync_on_refresh()
-                && (CONFIG.sso_roles_enabled()
-                    || CONFIG.sso_organizations_invite()
-                    || CONFIG.sso_organizations_enabled())
-            {
+            if CONFIG.sso_sync_on_refresh() && (CONFIG.sso_roles_enabled() || CONFIG.sso_organizations_enabled()) {
                 let user_info = client.user_info(access_token.to_owned()).await?;
                 let ac = additional_claims(&user.email, vec![(user_info.additional_claims(), "user_info")])?;
                 is_admin = CONFIG.sso_roles_enabled() && ac.is_admin();
-                if CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() {
+                if CONFIG.sso_organizations_enabled() {
                     sync_organizations(user, device, ip, &ac.org_role, &ac.groups, conn).await?;
                 }
             }
@@ -675,71 +671,35 @@ async fn sync_organizations(
 ) -> ApiResult<()> {
     let groups = match (org_role, user_groups) {
         (Some(UserOrgRole::OrgNoSync), _) => return Ok(()),
-        (_, Some(g)) if CONFIG.sso_organizations_invite() || CONFIG.sso_organizations_enabled() => g,
+        (_, Some(g)) if CONFIG.sso_organizations_enabled() => g,
         _ => return Ok(()),
     };
-
-    let id_mapping = CONFIG.sso_organizations_id_mapping_map();
 
     debug!("Organization and groups sync for user {:} with {:?}", user.email, groups);
 
     let mut allow_revoking = CONFIG.sso_organizations_revocation();
 
-    let orgs = if id_mapping.is_empty() {
-        let identifiers = if CONFIG.org_groups_enabled() && CONFIG.sso_organizations_groups_enabled() {
-            parse_user_groups(groups)
-        } else {
-            groups.iter().map(|g| (g.clone(), None)).collect()
-        };
-
-        let org_groups = Organization::find_mapped_orgs_and_groups(identifiers.clone(), conn)
-            .await
-            .into_iter()
-            .filter(|(_, _, _, group_id)| {
-                !group_id.is_some() || (CONFIG.org_groups_enabled() && CONFIG.sso_organizations_groups_enabled())
-            })
-            .collect::<Vec<(String, Option<String>, Organization, Option<GroupId>)>>();
-
-        allow_revoking = check_orgs_groups(&identifiers, &org_groups)? && allow_revoking;
-
-        let mut res: HashMap<OrganizationId, (Organization, HashSet<GroupId>)> = HashMap::new();
-        for (_, _, org, group_id) in org_groups {
-            let entry = res.entry(org.uuid.clone()).or_insert_with(|| (org, HashSet::new()));
-            if let Some(gi) = group_id {
-                entry.1.insert(gi);
-            }
-        }
-        res
+    let identifiers = if CONFIG.org_groups_enabled() {
+        parse_user_groups(groups)
     } else {
-        warn!("Using deprecated SSO_ORGANIZATIONS_ID_MAPPING, will be removed in next release");
-        use itertools::Itertools; // TODO: Remove from cargo.toml
-
-        let (names, uuids) = groups
-            .iter()
-            .flat_map(|group| match id_mapping.get(group) {
-                Some(e) => Some(e.clone()),
-                None => {
-                    warn!("Missing organization mapping for {group}");
-                    None
-                }
-            })
-            .partition_map(std::convert::identity);
-
-        let orgs = Organization::find_by_uuids_or_names(&uuids, &names, conn).await;
-
-        if groups.len() != orgs.len() {
-            let org_names: Vec<&String> = orgs.iter().map(|o| &o.name).collect();
-            warn!(
-                "Failed to match all groups ({groups:?}) to organizations ({org_names:?}) with mapping ({id_mapping:?}), will not revoke"
-            );
-
-            allow_revoking = false
-        }
-
-        orgs.into_iter()
-            .map(|o| (o.uuid.clone(), (o, HashSet::new())))
-            .collect::<HashMap<OrganizationId, (Organization, HashSet<GroupId>)>>()
+        groups.iter().map(|g| (g.clone(), None)).collect()
     };
+
+    let org_groups = Organization::find_mapped_orgs_and_groups(identifiers.clone(), conn)
+        .await
+        .into_iter()
+        .filter(|(_, _, _, group_id)| !group_id.is_some() || (CONFIG.org_groups_enabled()))
+        .collect::<Vec<(String, Option<String>, Organization, Option<GroupId>)>>();
+
+    allow_revoking = check_orgs_groups(&identifiers, &org_groups)? && allow_revoking;
+
+    let mut orgs: HashMap<OrganizationId, (Organization, HashSet<GroupId>)> = HashMap::new();
+    for (_, _, org, group_id) in org_groups {
+        let entry = orgs.entry(org.uuid.clone()).or_insert_with(|| (org, HashSet::new()));
+        if let Some(gi) = group_id {
+            entry.1.insert(gi);
+        }
+    }
 
     sync_orgs_and_role(user, device, ip, org_role, orgs, allow_revoking, conn).await
 }

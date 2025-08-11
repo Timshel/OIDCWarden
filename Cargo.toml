@@ -169,7 +169,6 @@ governor = "0.10.0"
 # OIDC for SSO
 openidconnect = { version = "4.0.1", features = ["reqwest", "native-tls"] }
 mini-moka = "0.10.2"
-itertools = "0.14.0"
 
 # Check client versions for specific features.
 semver = "1.0.26"
