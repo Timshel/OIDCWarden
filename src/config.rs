@@ -987,9 +987,15 @@ fn validate_config(cfg: &ConfigItems) -> Result<(), Error> {
         validate_internal_sso_redirect_url(&cfg.sso_callback_path)?;
         check_master_password_policy(&cfg.sso_master_password_policy)?;
 
-        assert!(!cfg.sso_organizations_invite || cfg.sso_organizations_enabled, "SSO_ORGANIZATIONS_INVITE is now REMOVED, replaced with SSO_ORGANIZATIONS_ENABLED");
+        assert!(
+            !cfg.sso_organizations_invite || cfg.sso_organizations_enabled,
+            "SSO_ORGANIZATIONS_INVITE is now REMOVED, replaced with SSO_ORGANIZATIONS_ENABLED"
+        );
         assert!(cfg.sso_organizations_id_mapping.is_empty(), "SSO_ORGANIZATIONS_ID_MAPPING is now REMOVED, More details: https://github.com/timshel/OIDCWarden/blob/v2025.5.0-1/README.md#deprecations");
-        assert!(!cfg.org_groups_enabled || cfg.sso_organizations_groups_enabled, "SSO_ORGANIZATIONS_GROUPS_ENABLED is now REMOVED, and considered always on.");
+        assert!(
+            !cfg.org_groups_enabled || cfg.sso_organizations_groups_enabled,
+            "SSO_ORGANIZATIONS_GROUPS_ENABLED is now REMOVED, and considered always on."
+        );
     }
 
     if cfg._enable_yubico {
