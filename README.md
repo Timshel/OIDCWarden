@@ -181,7 +181,7 @@ Ex to build with latest: `--build-arg OIDC_WEB_RELEASE="https://github.com/Timsh
 
 ## DB Migration
 
-ATM The migrations add two tables `sso_nonce`, `sso_users` and a column `invited_by_email` to `users_organizations`.
+ATM The migrations add two tables `sso_auth`, `sso_users` and a column `invited_by_email` to `users_organizations`.
 
 ### Revert to default VW
 
@@ -190,8 +190,8 @@ Reverting to the default VW DB state can easily be done manually (Make a backup 
 ```psql
 >BEGIN;
 BEGIN
->DELETE FROM __diesel_schema_migrations WHERE version in ('20230910133000', '20230914133000', '20240214170000', '20240226170000', '20240306170000', '20240313170000', '20250514120000');
->DROP TABLE sso_nonce;
+>DELETE FROM __diesel_schema_migrations WHERE version in ('20230910133000', '20230914133000', '20240214170000', '20240226170000', '20240306170000', '20240313170000', '20250514120000', '20250820120000');
+>DROP TABLE sso_auth;
 >DROP TABLE sso_users;
 >ALTER TABLE users_organizations DROP COLUMN invited_by_email;
 >DROP INDEX organizations_external_id; -- only sqlite
