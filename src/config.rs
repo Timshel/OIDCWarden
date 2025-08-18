@@ -543,7 +543,7 @@ make_config! {
         /// because this provides unauthenticated access to potentially sensitive data.
         show_password_hint:     bool,   true,   def,    false;
 
-        /// Organization invitation auto accept |> Activated if email is disabled
+        /// Bypass part of the invitation logic and set users as `Accepted` (Apply to non SSO logic too). |> Admin confirmation is still required.
         organization_invite_auto_accept: bool, true, def, false;
 
         /// Admin token/Argon2 PHC |> The plain text token or Argon2 PHC string used to authenticate in this very same page. Changing it here will not deauthorize the current session!
