@@ -169,7 +169,6 @@ impl SsoAuth {
         state: OIDCState,
         client_challenge: OIDCCodeChallenge,
         nonce: String,
-        verifier: Option<String>,
         redirect_uri: String,
     ) -> Self {
         let now = Utc::now().naive_utc();
@@ -178,7 +177,7 @@ impl SsoAuth {
             state,
             client_challenge,
             nonce,
-            verifier,
+            verifier: None,
             redirect_uri,
             created_at: now,
             updated_at: now,

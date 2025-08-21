@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.7.2-3
+
+- Pass the Bitwarden clients challenge to the porvider. If `SSO_PKCE` is disabled validate the challenge before exhchanging the `code`.
+
 # v2025.7.2-2
 
 - Improve SSO authorization flow
