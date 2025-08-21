@@ -1,8 +1,9 @@
 # Changelog
 
-# v2025.7.2-3
+# v2025.8.0-1
 
 - Pass the Bitwarden clients challenge to the porvider. If `SSO_PKCE` is disabled validate the challenge before exhchanging the `code`.
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.8.0-1`
 
 # v2025.7.2-2
 
