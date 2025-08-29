@@ -6,7 +6,7 @@ use crate::api::EmptyResult;
 use crate::db::DbConn;
 use crate::error::MapResult;
 
-use super::{Membership, MembershipId, MembershipStatus, MembershipType, OrganizationId, TwoFactor, UserId};
+use super::{Membership, MembershipId, MembershipStatus, MembershipType, OrganizationId, UserId};
 
 db_object! {
     #[derive(Identifiable, Queryable, Insertable, AsChangeset)]
@@ -55,14 +55,6 @@ pub struct SendOptionsPolicyData {
 pub struct ResetPasswordDataModel {
     #[serde(rename = "autoEnrollEnabled", alias = "AutoEnrollEnabled")]
     pub auto_enroll_enabled: bool,
-}
-
-pub type OrgPolicyResult = Result<(), OrgPolicyErr>;
-
-#[derive(Debug)]
-pub enum OrgPolicyErr {
-    TwoFactorMissing,
-    SingleOrgEnforced,
 }
 
 /// Local methods
@@ -283,36 +275,6 @@ impl OrgPolicy {
             }
         }
         false
-    }
-
-    pub async fn is_user_allowed(
-        user_uuid: &UserId,
-        org_uuid: &OrganizationId,
-        exclude_current_org: bool,
-        conn: &mut DbConn,
-    ) -> OrgPolicyResult {
-        // Enforce TwoFactor/TwoStep login
-        if TwoFactor::find_by_user(user_uuid, conn).await.is_empty() {
-            match Self::find_by_org_and_type(org_uuid, OrgPolicyType::TwoFactorAuthentication, conn).await {
-                Some(p) if p.enabled => {
-                    return Err(OrgPolicyErr::TwoFactorMissing);
-                }
-                _ => {}
-            };
-        }
-
-        // Enforce Single Organization Policy of other organizations user is a member of
-        // This check here needs to exclude this current org-id, else an accepted user can not be confirmed.
-        let exclude_org = if exclude_current_org {
-            Some(org_uuid)
-        } else {
-            None
-        };
-        if Self::is_applicable_to_user(user_uuid, OrgPolicyType::SingleOrg, exclude_org, conn).await {
-            return Err(OrgPolicyErr::SingleOrgEnforced);
-        }
-
-        Ok(())
     }
 
     pub async fn org_is_reset_password_auto_enroll(org_uuid: &OrganizationId, conn: &mut DbConn) -> bool {

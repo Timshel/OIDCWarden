@@ -19,7 +19,7 @@ use crate::{
         unregister_push_device, ApiResult, EmptyResult, JsonResult, Notify,
     },
     auth::{decode_admin, encode_jwt, generate_admin_claims, ClientIp},
-    business::organization_logic::admin_check,
+    business::organization_logic::policy_check,
     config::ConfigBuilder,
     db::{backup_database, get_sql_server_version, models::*, DbConn, DbConnType},
     error::{Error, MapResult},
@@ -554,11 +554,9 @@ async fn update_membership_type(data: Json<MembershipTypeData>, token: AdminToke
         }
     }
 
+    member_to_edit.atype = new_type;
     // This check is also done at api::organizations::{accept_invite, _confirm_invite, _activate_member, edit_member}, update_membership_type
-    // It returns different error messages per function.
-    if new_type < MembershipType::Admin {
-        admin_check(&member_to_edit, "modify this user to this type", true, &mut conn).await?;
-    }
+    policy_check(&member_to_edit, "modify this user to this type", &mut conn).await?;
 
     log_event(
         EventType::OrganizationUserUpdated as i32,
@@ -571,7 +569,6 @@ async fn update_membership_type(data: Json<MembershipTypeData>, token: AdminToke
     )
     .await;
 
-    member_to_edit.atype = new_type;
     member_to_edit.save(&mut conn).await
 }
 

@@ -15,7 +15,7 @@ pub use events::{event_cleanup_job, log_event, log_user_event};
 use reqwest::Method;
 pub use sends::purge_sends;
 
-use crate::business::organization_logic::admin_check;
+use crate::business::organization_logic::policy_check;
 
 pub fn routes() -> Vec<Route> {
     let mut eq_domains_routes = routes![get_eq_domains, post_eq_domains, put_eq_domains];
@@ -281,14 +281,13 @@ async fn accept_org_invite(
         err!("User already accepted the invitation");
     }
 
-    // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
-    // It returns different error messages per function.
-    if member.atype < MembershipType::Admin {
-        admin_check(&member, "join this organization", false, conn).await?;
-    }
-
     member.status = MembershipStatus::Accepted as i32;
     member.reset_password_key = reset_password_key;
+
+    // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
+    if member.atype < MembershipType::Admin {
+        policy_check(&member, "join this organization", conn).await?;
+    }
 
     member.save(conn).await?;
 

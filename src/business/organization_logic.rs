@@ -134,25 +134,35 @@ pub async fn revoke_member(
 
 // This check is done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
 // It returns different error messages per function.
-pub async fn admin_check(
-    member: &Membership,
-    action: &str,
-    exclude_current_org: bool,
-    conn: &mut DbConn,
-) -> EmptyResult {
-    match OrgPolicy::is_user_allowed(&member.user_uuid, &member.org_uuid, exclude_current_org, conn).await {
-        Ok(_) => Ok(()),
-        Err(OrgPolicyErr::TwoFactorMissing) => {
-            if CONFIG.email_2fa_auto_fallback() {
-                two_factor::email::find_and_activate_email_2fa(&member.user_uuid, conn).await
-            } else {
-                err!(format!("Cannot {} because 2FA is required (membership {})", action, member.uuid));
+pub async fn policy_check(m: &Membership, action: &str, conn: &mut DbConn) -> EmptyResult {
+    if m.atype < MembershipType::Admin && m.status > (MembershipStatus::Invited as i32) {
+        // Enforce TwoFactor/TwoStep login
+        if let Some(p) =
+            OrgPolicy::find_by_org_and_type(&m.org_uuid, OrgPolicyType::TwoFactorAuthentication, conn).await
+        {
+            if p.enabled && TwoFactor::find_by_user(&m.user_uuid, conn).await.is_empty() {
+                if CONFIG.email_2fa_auto_fallback() {
+                    two_factor::email::find_and_activate_email_2fa(&m.user_uuid, conn).await?;
+                } else {
+                    err!(format!("Cannot {} because 2FA is required (membership {})", action, m.uuid));
+                }
             }
         }
-        Err(OrgPolicyErr::SingleOrgEnforced) => {
-            err!(format!("Cannot {} because an organization policy forbids it (membership {})", action, member.uuid));
+
+        // Check if the user is part of another Orgnization with SingleOrg activated
+        if OrgPolicy::is_applicable_to_user(&m.user_uuid, OrgPolicyType::SingleOrg, Some(&m.org_uuid), conn).await {
+            err!(format!("Cannot {} because another organization policy forbids it (membership {})", action, m.uuid));
+        }
+
+        if let Some(p) = OrgPolicy::find_by_org_and_type(&m.org_uuid, OrgPolicyType::SingleOrg, conn).await {
+            if p.enabled && Membership::count_accepted_and_confirmed_by_user(&m.user_uuid, &m.org_uuid, conn).await > 0
+            {
+                err!(format!("Cannot {} because the organization policy forbids being part of other organization (membership {})", action, m.uuid));
+            }
         }
     }
+
+    Ok(())
 }
 
 pub async fn restore_member(
@@ -162,11 +172,8 @@ pub async fn restore_member(
     member: &mut Membership,
     conn: &mut DbConn,
 ) -> EmptyResult {
-    if member.atype < MembershipType::Admin {
-        admin_check(member, "restore this user", true, conn).await?;
-    }
-
     member.restore();
+    policy_check(member, "restore this user", conn).await?;
     member.save(conn).await?;
 
     log_event(
@@ -202,14 +209,11 @@ pub async fn set_membership_type(
         }
     }
 
-    // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
-    // It returns different error messages per function.
-    if new_type < MembershipType::Admin {
-        admin_check(member, "modify this user to this type", true, conn).await?;
-    }
-
     member.access_all = new_type >= MembershipType::Admin || (new_type == MembershipType::Manager && custom_access_all);
     member.atype = new_type as i32;
+
+    // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
+    policy_check(member, "modify this user to this type", conn).await?;
 
     log_event(
         EventType::OrganizationUserUpdated as i32,

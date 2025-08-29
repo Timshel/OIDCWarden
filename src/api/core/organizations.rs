@@ -1431,14 +1431,13 @@ async fn _confirm_invite(
         err!("User in invalid state")
     }
 
-    // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
-    // It returns different error messages per function.
-    if member_to_confirm.atype < MembershipType::Admin {
-        organization_logic::admin_check(&member_to_confirm, "confirm", true, conn).await?;
-    }
-
     member_to_confirm.status = MembershipStatus::Confirmed as i32;
     member_to_confirm.akey = key.to_string();
+
+    // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
+    if member_to_confirm.atype < MembershipType::Admin {
+        organization_logic::policy_check(&member_to_confirm, "confirm", conn).await?;
+    }
 
     log_event(
         EventType::OrganizationUserConfirmed as i32,
@@ -2091,7 +2090,9 @@ async fn put_policy(
             // We check if the count is larger then 1, because it includes this organization also.
             if member.atype < MembershipType::Admin
                 && member.status != MembershipStatus::Invited as i32
-                && Membership::count_accepted_and_confirmed_by_user(&member.user_uuid, &mut conn).await > 1
+                && Membership::count_accepted_and_confirmed_by_user(&member.user_uuid, &member.org_uuid, &mut conn)
+                    .await
+                    > 1
             {
                 if CONFIG.mail_enabled() {
                     let org = Organization::find_by_uuid(&member.org_uuid, &mut conn).await.unwrap();
