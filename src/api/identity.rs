@@ -284,7 +284,7 @@ async fn _sso_login(
         }
         Some((mut user, sso_user)) => {
             let mut device = get_device(&data, conn, &user).await?;
-            let twofactor_token = twofactor_auth(&user, &data, &mut device, ip, client_version, conn).await?;
+            let twofactor_token = twofactor_auth(&mut user, &data, &mut device, ip, client_version, conn).await?;
 
             if user.private_key.is_none() {
                 // User was invited a stub was created
@@ -436,7 +436,7 @@ async fn _password_login(
 
     let mut device = get_device(&data, conn, &user).await?;
 
-    let twofactor_token = twofactor_auth(&user, &data, &mut device, ip, client_version, conn).await?;
+    let twofactor_token = twofactor_auth(&mut user, &data, &mut device, ip, client_version, conn).await?;
 
     let auth_tokens = auth::AuthTokens::new(&device, &user, AuthMethod::Password, data.client_id);
 
@@ -664,7 +664,7 @@ async fn get_device(data: &ConnectData, conn: &mut DbConn, user: &User) -> ApiRe
 }
 
 async fn twofactor_auth(
-    user: &User,
+    user: &mut User,
     data: &ConnectData,
     device: &mut Device,
     ip: &ClientIp,
@@ -729,7 +729,6 @@ async fn twofactor_auth(
         Some(TwoFactorType::Email) => {
             email::validate_email_code_str(&user.uuid, twofactor_code, &selected_data?, &ip.ip, conn).await?
         }
-
         Some(TwoFactorType::Remember) => {
             match device.twofactor_remember {
                 Some(ref code) if !CONFIG.disable_2fa_remember() && ct_eq(code, twofactor_code) => {
@@ -742,6 +741,22 @@ async fn twofactor_auth(
                     )
                 }
             }
+        }
+        Some(TwoFactorType::RecoveryCode) => {
+            // Check if recovery code is correct
+            if !user.check_valid_recovery_code(twofactor_code) {
+                err!("Recovery code is incorrect. Try again.")
+            }
+
+            // Remove all twofactors from the user
+            TwoFactor::delete_all_by_user(&user.uuid, conn).await?;
+            enforce_2fa_policy(user, &user.uuid, device.atype, &ip.ip, conn).await?;
+
+            log_user_event(EventType::UserRecovered2fa as i32, &user.uuid, device.atype, &ip.ip, conn).await;
+
+            // Remove the recovery code, not needed without twofactors
+            user.totp_recover = None;
+            user.save(conn).await?;
         }
         _ => err!(
             "Invalid two factor provider",

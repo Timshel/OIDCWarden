@@ -90,6 +90,7 @@ When creating new scenario use the recorder to more easily identify elements (in
 This does not start the server, you will need to start it manually.
 
 ```bash
+DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env up OIDCWarden
 npx playwright codegen "http://127.0.0.1:8000"
 ```
 

@@ -1,6 +1,6 @@
 FROM playwright_oidc_warden_prebuilt AS prebuilt
 
-FROM node:18-bookworm AS build
+FROM node:20-trixie AS build
 
 ARG REPO_URL
 ARG COMMIT_HASH
@@ -15,7 +15,7 @@ COPY build.sh /build.sh
 RUN /build.sh
 
 ######################## RUNTIME IMAGE  ########################
-FROM docker.io/library/debian:bookworm-slim
+FROM docker.io/library/debian:trixie-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -25,7 +25,7 @@ RUN mkdir /data && \
         --no-install-recommends \
         ca-certificates \
         curl \
-        libmariadb-dev-compat \
+        libmariadb-dev \
         libpq5 \
         openssl && \
     rm -rf /var/lib/apt/lists/*

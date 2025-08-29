@@ -26,7 +26,6 @@ pub static BW_EXPIRATION: Lazy<TimeDelta> = Lazy::new(|| TimeDelta::try_minutes(
 
 pub static DEFAULT_REFRESH_VALIDITY: Lazy<TimeDelta> = Lazy::new(|| TimeDelta::try_days(30).unwrap());
 pub static MOBILE_REFRESH_VALIDITY: Lazy<TimeDelta> = Lazy::new(|| TimeDelta::try_days(90).unwrap());
-
 pub static DEFAULT_ACCESS_VALIDITY: Lazy<TimeDelta> = Lazy::new(|| TimeDelta::try_hours(2).unwrap());
 static JWT_HEADER: Lazy<Header> = Lazy::new(|| Header::new(JWT_ALGORITHM));
 
@@ -1147,7 +1146,7 @@ impl AuthTokens {
 
         let access_claims = LoginJwtClaims::default(device, user, &sub, client_id);
 
-        let validity = if DeviceType::is_mobile(&device.atype) {
+        let validity = if device.is_mobile() {
             *MOBILE_REFRESH_VALIDITY
         } else {
             *DEFAULT_REFRESH_VALIDITY

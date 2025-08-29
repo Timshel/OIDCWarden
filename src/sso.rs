@@ -378,7 +378,7 @@ pub async fn exchange_code(
     let client = Client::cached().await?;
     let (token_response, id_claims) = client.exchange_code(code, client_verifier, &sso_auth).await?;
 
-    let user_info = client.user_info(token_response.access_token().to_owned()).await?;
+    let user_info = client.user_info(token_response.access_token().clone()).await?;
 
     let email = match id_claims.email().or(user_info.email()) {
         None => err!("Neither id token nor userinfo contained an email"),
@@ -562,7 +562,7 @@ pub async fn exchange_refresh_token(
                 client.exchange_refresh_token(refresh_token.clone()).await?;
 
             if CONFIG.sso_sync_on_refresh() && (CONFIG.sso_roles_enabled() || CONFIG.sso_organizations_enabled()) {
-                let user_info = client.user_info(access_token.to_owned()).await?;
+                let user_info = client.user_info(access_token.clone()).await?;
                 let ac = additional_claims(&user.email, vec![(user_info.additional_claims(), "user_info")])?;
                 is_admin = CONFIG.sso_roles_enabled() && ac.is_admin();
                 if CONFIG.sso_organizations_enabled() {
@@ -588,7 +588,7 @@ pub async fn exchange_refresh_token(
                 err_silent!("Access token is close to expiration but we have no refresh token")
             }
 
-            Client::check_validaty(access_token.clone()).await?;
+            Client::check_validity(access_token.clone()).await?;
 
             let access_claims = auth::LoginJwtClaims::new(
                 device,

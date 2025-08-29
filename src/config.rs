@@ -283,6 +283,9 @@ macro_rules! make_config {
                     "smtp_host",
                     "smtp_username",
                     "_smtp_img_src",
+                    "sso_client_id",
+                    "sso_authority",
+                    "sso_callback_path",
                 ];
 
                 let cfg = {
@@ -639,8 +642,14 @@ make_config! {
         /// Timeout when acquiring database connection
         database_timeout:       u64,    false,  def,    30;
 
-        /// Database connection pool size
+        /// Timeout in seconds before idle connections to the database are closed
+        database_idle_timeout:  u64,    false, def,     600;
+
+        /// Database connection max pool size
         database_max_conns:     u32,    false,  def,    10;
+
+        /// Database connection min pool size
+        database_min_conns:     u32,    false,  def,    2;
 
         /// Database connection init |> SQL statements to run when creating a new database connection, mainly useful for connection-scoped pragmas. If empty, a database-specific default is used.
         database_conn_init:     String, false,  def,    String::new();
@@ -691,7 +700,7 @@ make_config! {
         /// Allow email association |> Associate existing non-SSO user based on email
         sso_signups_match_email:        bool,   true,   def,    true;
         /// Allow unknown email verification status |> Allowing this with `SSO_SIGNUPS_MATCH_EMAIL=true` open potential account takeover.
-        sso_allow_unknown_email_verification: bool, false, def, false;
+        sso_allow_unknown_email_verification: bool, true, def, false;
         /// Client ID
         sso_client_id:                  String, true,   def,    String::new();
         /// Client Key
@@ -715,17 +724,17 @@ make_config! {
         /// Refresh role, orgs and groups on refresh_token |> Will call `user_info`, can be expensive since the client cam spam the refresh_token endpoint
         sso_sync_on_refresh:            bool,   true,   def,    false;
         /// Roles mapping |> Enable the mapping of roles (user/admin) from the access_token
-        sso_roles_enabled:              bool,   false,   def,    false;
+        sso_roles_enabled:              bool,   true,   def,    false;
         /// Missing/Invalid roles default to user
-        sso_roles_default_to_user:      bool,   false,   def,    true;
+        sso_roles_default_to_user:      bool,   true,   def,    true;
         /// Id token path to read roles
-        sso_roles_token_path:           String, false,  auto,   |c| format!("/resource_access/{}/roles", c.sso_client_id);
+        sso_roles_token_path:           String, true,  auto,   |c| format!("/resource_access/{}/roles", c.sso_client_id);
         /// Organizations mapping |> Enable the mapping of organization, membership role and groups.
-        sso_organizations_enabled:      bool,   false,   def,    false;
+        sso_organizations_enabled:      bool,   true,   def,    false;
         /// Process revocation
-        sso_organizations_revocation:   bool,   false,   def,    false;
+        sso_organizations_revocation:   bool,   true,   def,    false;
         /// Id token path to read Organization/Groups
-        sso_organizations_token_path:   String, false,   def,    "/groups".to_string();
+        sso_organizations_token_path:   String, true,   def,    "/groups".to_string();
         /// On invitation, grant acceess to all existing collections |> Does not grant access to collections created afterwards.
         sso_organizations_all_collections: bool, true,  def,   true;
         /// Client cache for discovery endpoint. |> Duration in seconds (0 or less to disable). More details: https://github.com/timshel/OIDCWarden/blob/main/SSO.md#client-cache
@@ -801,7 +810,7 @@ make_config! {
         smtp_auth_mechanism:           String, true,   option;
         /// SMTP connection timeout |> Number of seconds when to stop trying to connect to the SMTP server
         smtp_timeout:                  u64,    true,   def,     15;
-        /// Server name sent during HELO |> By default this value should be is on the machine's hostname, but might need to be changed in case it trips some anti-spam filters
+        /// Server name sent during HELO |> By default this value should be the machine's hostname, but might need to be changed in case it trips some anti-spam filters
         helo_name:                     String, true,   option;
         /// Embed images as email attachments.
         smtp_embed_images:             bool, true, def, true;
@@ -851,6 +860,14 @@ fn validate_config(cfg: &ConfigItems) -> Result<(), Error> {
     let limit = 256;
     if cfg.database_max_conns < 1 || cfg.database_max_conns > limit {
         err!(format!("`DATABASE_MAX_CONNS` contains an invalid value. Ensure it is between 1 and {limit}.",));
+    }
+
+    if cfg.database_min_conns < 1 || cfg.database_min_conns > limit {
+        err!(format!("`DATABASE_MIN_CONNS` contains an invalid value. Ensure it is between 1 and {limit}.",));
+    }
+
+    if cfg.database_min_conns > cfg.database_max_conns {
+        err!(format!("`DATABASE_MIN_CONNS` must be smaller than or equal to `DATABASE_MAX_CONNS`.",));
     }
 
     if let Some(log_file) = &cfg.log_file {
@@ -985,7 +1002,7 @@ fn validate_config(cfg: &ConfigItems) -> Result<(), Error> {
 
         validate_internal_sso_issuer_url(&cfg.sso_authority)?;
         validate_internal_sso_redirect_url(&cfg.sso_callback_path)?;
-        check_master_password_policy(&cfg.sso_master_password_policy)?;
+        validate_sso_master_password_policy(&cfg.sso_master_password_policy)?;
 
         assert!(
             !cfg.sso_organizations_invite || cfg.sso_organizations_enabled,
@@ -1177,7 +1194,7 @@ fn validate_config(cfg: &ConfigItems) -> Result<(), Error> {
 
 fn validate_internal_sso_issuer_url(sso_authority: &String) -> Result<openidconnect::IssuerUrl, Error> {
     match openidconnect::IssuerUrl::new(sso_authority.clone()) {
-        Err(err) => err!(format!("Invalid sso_authority UR ({sso_authority}): {err}")),
+        Err(err) => err!(format!("Invalid sso_authority URL ({sso_authority}): {err}")),
         Ok(issuer_url) => Ok(issuer_url),
     }
 }
@@ -1189,12 +1206,19 @@ fn validate_internal_sso_redirect_url(sso_callback_path: &String) -> Result<open
     }
 }
 
-fn check_master_password_policy(sso_master_password_policy: &Option<String>) -> Result<(), Error> {
+fn validate_sso_master_password_policy(
+    sso_master_password_policy: &Option<String>,
+) -> Result<Option<serde_json::Value>, Error> {
     let policy = sso_master_password_policy.as_ref().map(|mpp| serde_json::from_str::<serde_json::Value>(mpp));
-    if let Some(Err(error)) = policy {
-        err!(format!("Invalid sso_master_password_policy ({error}), Ensure that it's correctly escaped with ''"))
+
+    match policy {
+        None => Ok(None),
+        Some(Ok(jsobject @ serde_json::Value::Object(_))) => Ok(Some(jsobject)),
+        Some(Ok(_)) => err!("Invalid sso_master_password_policy: parsed value is not a JSON object"),
+        Some(Err(error)) => {
+            err!(format!("Invalid sso_master_password_policy ({error}), Ensure that it's correctly escaped with ''"))
+        }
     }
-    Ok(())
 }
 
 /// Extracts an RFC 6454 web origin from a URL.
@@ -1539,6 +1563,10 @@ impl Config {
         }
     }
 
+    pub fn is_webauthn_2fa_supported(&self) -> bool {
+        Url::parse(&self.domain()).expect("DOMAIN not a valid URL").domain().is_some()
+    }
+
     /// Tests whether the admin token is set to a non-empty value.
     pub fn is_admin_token_set(&self) -> bool {
         let token = self.admin_token();
@@ -1602,6 +1630,10 @@ impl Config {
 
     pub fn sso_redirect_url(&self) -> Result<openidconnect::RedirectUrl, Error> {
         validate_internal_sso_redirect_url(&self.sso_callback_path())
+    }
+
+    pub fn sso_master_password_policy_value(&self) -> Option<serde_json::Value> {
+        validate_sso_master_password_policy(&self.sso_master_password_policy()).ok().flatten()
     }
 
     pub fn sso_scopes_vec(&self) -> Vec<String> {
