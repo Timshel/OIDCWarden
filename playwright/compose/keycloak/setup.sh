@@ -1,7 +1,6 @@
 #!/bin/bash
 
-export PATH=/opt/keycloak/bin:/opt/openjdk/jdk-${JAVA_VERSION}/bin:$PATH
-export JAVA_HOME=/opt/openjdk/jdk-${JAVA_VERSION}
+export PATH=/opt/keycloak/bin:$PATH
 
 STATUS_CODE=0
 while [[ "$STATUS_CODE" != "404" ]] ; do
