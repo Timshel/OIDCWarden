@@ -1,5 +1,11 @@
 # Changelog
 
+# v2025.8.1-1
+
+- Integrate latest change from `Vaultwarden` up to [a2ad1dc7](https://github.com/dani-garcia/vaultwarden/commit/a2ad1dc7c3d28834749d4b14206838d795236c27)
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.8.1-1`
+- Fix around singleorg policy
+
 # v2025.8.0-1
 
 - Pass the Bitwarden clients challenge to the porvider. If `SSO_PKCE` is disabled validate the challenge before exhchanging the `code`.
