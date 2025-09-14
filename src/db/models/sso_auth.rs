@@ -98,7 +98,7 @@ impl SsoAuth {
                     .execute(conn)
                     .map_res("Error saving SSO auth")
             }
-            postgresql, sqlite {
+            postgresql, sqlite, cockroachdb {
                 diesel::insert_into(sso_auth::table)
                     .values(self)
                     .on_conflict(sso_auth::state)
