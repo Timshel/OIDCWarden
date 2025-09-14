@@ -383,7 +383,7 @@ impl Organization {
                 }.map_res("Error saving organization")
 
             }
-            postgresql {
+            postgresql, cockroachdb {
                 diesel::insert_into(organizations::table)
                     .values(self)
                     .on_conflict(organizations::uuid)
@@ -520,7 +520,7 @@ impl Organization {
                         .map(|(ogs, org)| (ogs.ogs_name_id, ogs.ogs_group, org, ogs.ogs_group_uuid) )
                         .collect()
                 }
-                postgresql {
+                postgresql, cockroachdb {
                     let mut query = sql_query(Self::prepared_query(params.len(), true)).into_boxed();
                     for (id, group) in params {
                         query = query.bind::<Text, _>(id).bind::<Nullable<Text>, _>(group);
@@ -856,7 +856,7 @@ impl Membership {
                     Err(e) => Err(e.into()),
                 }.map_res("Error adding user to organization")
             }
-            postgresql {
+            postgresql, cockroachdb {
                 diesel::insert_into(users_organizations::table)
                     .values(self)
                     .on_conflict(users_organizations::uuid)
@@ -1265,7 +1265,7 @@ impl OrganizationApiKey {
                 }.map_res("Error saving organization")
 
             }
-            postgresql {
+            postgresql, cockroachdb {
                 diesel::insert_into(organization_api_key::table)
                     .values(self)
                     .on_conflict((organization_api_key::uuid, organization_api_key::org_uuid))

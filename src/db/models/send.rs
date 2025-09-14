@@ -209,7 +209,7 @@ impl Send {
                     Err(e) => Err(e.into()),
                 }.map_res("Error saving send")
             }
-            postgresql {
+            postgresql, cockroachdb {
                 diesel::insert_into(sends::table)
                     .values(&*self)
                     .on_conflict(sends::uuid)

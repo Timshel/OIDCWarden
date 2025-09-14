@@ -695,6 +695,28 @@ where
     }
 }
 
+#[allow(dead_code)]
+pub fn retry_when<F, T, E, R>(mut func: F, max_tries: u32, retry: R) -> Result<T, E>
+where
+    F: FnMut() -> Result<T, E>,
+    R: Fn(&E) -> bool,
+{
+    let mut tries = 0;
+
+    loop {
+        match func() {
+            ok @ Ok(_) => return ok,
+            Err(e) => {
+                tries += 1;
+
+                if !retry(&e) || tries >= max_tries {
+                    return Err(e);
+                }
+            }
+        }
+    }
+}
+
 pub async fn retry_db<F, T, E>(mut func: F, max_tries: u32) -> Result<T, E>
 where
     F: FnMut() -> Result<T, E>,

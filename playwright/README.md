@@ -6,8 +6,8 @@ It usse its own [test.env](/test/scenarios/test.env) with different ports to not
 
 ## Install
 
-This rely on `docker` and the `compose` [plugin](https://docs.docker.com/compose/install/).
-Databases (`Mariadb`, `Mysql` and `Postgres`) and `Playwright` will run in containers.
+This relies on `docker` and the `compose` [plugin](https://docs.docker.com/compose/install/).
+Databases (`Mariadb`, `Mysql`, `Postgres` and `Cockroach`) and `Playwright` will run in containers.
 
 ### Running Playwright outside docker
 
@@ -29,6 +29,7 @@ DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env run Pl
 ```
 
 To force a rebuild of the Playwright image:
+
 ```bash
 DOCKER_BUILDKIT=1 docker compose --env-file test.env build Playwright
 ```
@@ -49,6 +50,7 @@ You can use:
 DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env run Playwright test --project=mariadb
 DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env run Playwright test --project=mysql
 DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env run Playwright test --project=postgres
+DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env run Playwright test --project=cockroach
 DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env run Playwright test --project=sqlite
 ```
 

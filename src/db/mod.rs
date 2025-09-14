@@ -46,6 +46,8 @@ where
 // This is used to generate the main DbConn and DbPool enums, which contain one variant for each database supported
 #[derive(diesel::MultiConnection)]
 pub enum DbConnInner {
+    #[cfg(cockroachdb)]
+    Cockroachdb(diesel::pg::PgConnection),
     #[cfg(mysql)]
     Mysql(diesel::mysql::MysqlConnection),
     #[cfg(postgresql)]
@@ -66,8 +68,18 @@ impl DbConnManager {
         }
     }
 
+    #[cfg(cockroachdb)]
+    fn cockroach_connection(database_url: &str) -> Result<diesel::pg::PgConnection, diesel::ConnectionError> {
+        diesel::pg::PgConnection::establish(&database_url.replace("cockroachdb://", "postgresql://"))
+    }
+
     fn establish_connection(&self) -> Result<DbConnInner, diesel::r2d2::Error> {
         match DbConnType::from_url(&self.database_url) {
+            #[cfg(cockroachdb)]
+            Ok(DbConnType::Cockroachdb) => {
+                let conn = Self::cockroach_connection(&self.database_url)?;
+                Ok(DbConnInner::Cockroachdb(conn))
+            }
             #[cfg(mysql)]
             Ok(DbConnType::Mysql) => {
                 let conn = diesel::mysql::MysqlConnection::establish(&self.database_url)?;
@@ -112,6 +124,8 @@ impl diesel::r2d2::ManageConnection for DbConnManager {
 
 #[derive(Eq, PartialEq)]
 pub enum DbConnType {
+    #[cfg(cockroachdb)]
+    Cockroachdb,
     #[cfg(mysql)]
     Mysql,
     #[cfg(postgresql)]
@@ -195,6 +209,10 @@ impl DbPool {
         }
 
         match conn_type {
+            #[cfg(cockroachdb)]
+            DbConnType::Cockroachdb => {
+                cockroachdb_migrations::run_migrations(&db_url)?;
+            }
             #[cfg(mysql)]
             DbConnType::Mysql => {
                 mysql_migrations::run_migrations(&db_url)?;
@@ -272,6 +290,14 @@ impl DbConnType {
             #[cfg(not(postgresql))]
             err!("`DATABASE_URL` is a PostgreSQL URL, but the 'postgresql' feature is not enabled")
 
+        // Cockroachdb
+        } else if url.len() > 12 && &url[..12] == "cockroachdb:" {
+            #[cfg(cockroachdb)]
+            return Ok(DbConnType::Cockroachdb);
+
+            #[cfg(not(cockroachdb))]
+            err!("`DATABASE_URL` is a cockroachdb URL, but the 'cockroachdb' feature is not enabled")
+
         //Sqlite
         } else {
             #[cfg(sqlite)]
@@ -293,6 +319,8 @@ impl DbConnType {
 
     pub fn default_init_stmts(&self) -> String {
         match self {
+            #[cfg(cockroachdb)]
+            Self::Cockroachdb => String::new(),
             #[cfg(mysql)]
             Self::Mysql => String::new(),
             #[cfg(postgresql)]
@@ -350,7 +378,7 @@ macro_rules! impl_FromToSqlText {
             }
         }
 
-        #[cfg(postgresql)]
+        #[cfg(any(postgresql, cockroachdb))]
         impl ToSql<Text, diesel::pg::Pg> for $name {
             fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> diesel::serialize::Result {
                 serde_json::to_writer(out, self).map(|_| diesel::serialize::IsNull::No).map_err(Into::into)
@@ -424,7 +452,7 @@ pub fn backup_sqlite() -> Result<String, Error> {
 /// Get the SQL Server version
 pub async fn get_sql_server_version(conn: &DbConn) -> String {
     db_run! { conn:
-        postgresql,mysql {
+        postgresql,mysql,cockroachdb {
             diesel::select(diesel::dsl::sql::<diesel::sql_types::Text>("version();"))
             .get_result::<String>(conn)
             .unwrap_or_else(|_| "Unknown".to_string())
@@ -518,6 +546,30 @@ mod postgresql_migrations {
         let mut connection = diesel::pg::PgConnection::establish(db_url)?;
 
         connection.run_pending_migrations(MIGRATIONS).expect("Error running migrations");
+        Ok(())
+    }
+}
+
+#[cfg(cockroachdb)]
+mod cockroachdb_migrations {
+    use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
+    pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/cockroachdb");
+
+    pub fn run_migrations(db_url: &str) -> Result<(), super::Error> {
+        // Make sure the database is up to date (create if it doesn't exist, or run the migrations)
+        let mut connection = crate::db::DbConnManager::cockroach_connection(db_url)?;
+
+        crate::util::retry_when(
+            || connection.run_pending_migrations(MIGRATIONS).map(|v| v.len()),
+            20,
+            |err| {
+                (*err)
+                    .downcast_ref::<diesel::result::Error>()
+                    .is_some_and(|e| matches!(*e, diesel::result::Error::NotInTransaction))
+            },
+        )
+        .expect("Error running migrations");
+
         Ok(())
     }
 }

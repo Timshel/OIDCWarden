@@ -201,7 +201,7 @@ impl Event {
                 .execute(conn)
                 .map_res("Error saving event")
             }
-            postgresql {
+            postgresql, cockroachdb {
                 diesel::insert_into(event::table)
                 .values(self)
                 .on_conflict(event::uuid)
@@ -237,7 +237,7 @@ impl Event {
                 .unwrap_or_default();
                 Ok(())
             }
-            postgresql {
+            postgresql, cockroachdb {
                 diesel::insert_into(event::table)
                 .values(&events)
                 .on_conflict_do_nothing()
