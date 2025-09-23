@@ -27,8 +27,8 @@ RUN apt-get update \
 RUN mkdir /playwright
 WORKDIR /playwright
 
-COPY package.json .
-RUN npm install && npx playwright install-deps && npx playwright install firefox
+COPY package.json package-lock.json .
+RUN npm ci --ignore-scripts && npx playwright install-deps && npx playwright install firefox
 
 COPY docker-compose.yml test.env ./
 COPY compose ./compose
