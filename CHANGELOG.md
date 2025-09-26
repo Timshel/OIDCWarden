@@ -1,5 +1,10 @@
 # Changelog
 
+# v2025.9.0-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.9.0-2`
+- Improve User.save upsert
+
 # v2025.8.1-1
 
 - Integrate latest change from `Vaultwarden` up to [a2ad1dc7](https://github.com/dani-garcia/vaultwarden/commit/a2ad1dc7c3d28834749d4b14206838d795236c27)
