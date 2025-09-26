@@ -231,9 +231,8 @@ export async function restartVault(page: Page, testInfo: TestInfo, env, resetDB:
 }
 
 export async function checkNotification(page: Page, hasText: string) {
-    await expect(page.locator('bit-toast').filter({ hasText })).toBeVisible();
-    await page.locator('bit-toast').filter({ hasText }).getByRole('button').click();
-    await expect(page.locator('bit-toast').filter({ hasText })).toHaveCount(0);
+    await page.locator('bit-toast', { hasText }).getByRole('button', { name: 'Close' }).click({force: true});
+    await expect(page.locator('bit-toast', { hasText })).toHaveCount(0);
 }
 
 export async function cleanLanding(page: Page) {

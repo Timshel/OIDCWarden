@@ -31,6 +31,7 @@ services:
       - SMTP_HOST
       - SMTP_FROM
       - SMTP_DEBUG
+      - SSO_AUTH_ONLY_NOT_SESSION
       - SSO_DEBUG_TOKENS
       - SSO_ENABLED
       - SSO_FRONTEND

@@ -23,6 +23,7 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
         SMTP_HOST: process.env.MAILDEV_HOST,
         SSO_ENABLED: true,
         SSO_ONLY: true,
+        SSO_AUTH_ONLY_NOT_SESSION: true,
         SSO_ORGANIZATIONS_ENABLED: true,
         SSO_ORGANIZATIONS_REVOCATION: true,
         SSO_SCOPES: "email profile groups",
@@ -59,7 +60,7 @@ test('Org setup', async ({ context, page }, testInfo: TestInfo) => {
     await orgs.invite(test, page, '/All', users.user3.email);
     await orgs.revoke(test, page, '/All', users.user3.email);
 
-    // We create test too otherwise revokation is disabled.
+    // We create other orgs too otherwise revokation is disabled.
     await orgs.create(test, page, '/Test');
     await orgs.create(test, page, '/Test/Group1');
     await orgs.create(test, page, '/All/Group1');
