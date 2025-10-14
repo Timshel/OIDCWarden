@@ -24,7 +24,7 @@ ARG TARGETARCH
 ARG TARGETVARIANT
 ARG TARGETPLATFORM
 
-ARG OIDC_WEB_RELEASE="https://github.com/Timshel/oidc_web_vault/releases/download/v2025.9.0-2"
+ARG OIDC_WEB_RELEASE="https://github.com/Timshel/oidc_web_vault/releases/download/v2025.9.1-1"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
