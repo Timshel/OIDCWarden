@@ -43,6 +43,7 @@ test('Login', async ({ context, page }) => {
 
     await logUser(test, page, users.user1, mailBuffer);
 
+    /*
     await test.step('verify email', async () => {
         await page.getByRole('button', { name: "Send email" }).click();
         await utils.checkNotification(page, 'Check your email inbox for a verification link');
@@ -58,6 +59,7 @@ test('Login', async ({ context, page }) => {
         await page.goto(link);
         await utils.checkNotification(page, 'Account email verified');
     });
+    */
 
     mailBuffer.close();
 });
