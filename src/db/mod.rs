@@ -364,6 +364,64 @@ macro_rules! db_object {
     };
 }
 
+// Store a whole object as Json in database.
+// Depending on the engine will either use Json or Text.
+#[macro_export]
+macro_rules! impl_FromToSqlJson {
+    ($name:ty) => {
+        #[cfg(sqlite)]
+        impl ToSql<Text, diesel::sqlite::Sqlite> for $name {
+            fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::sqlite::Sqlite>) -> diesel::serialize::Result {
+                serde_json::to_string(self)
+                    .map(|str| {
+                        out.set_value(str);
+                        diesel::serialize::IsNull::No
+                    })
+                    .map_err(Into::into)
+            }
+        }
+
+        #[cfg(sqlite)]
+        impl<B: diesel::backend::Backend> FromSql<Text, B> for $name
+        where
+            String: FromSql<Text, B>,
+        {
+            fn from_sql(bytes: B::RawValue<'_>) -> diesel::deserialize::Result<Self> {
+                <String as FromSql<Text, B>>::from_sql(bytes)
+                    .and_then(|str| serde_json::from_str(&str).map_err(Into::into))
+            }
+        }
+
+        #[cfg(postgresql)]
+        impl FromSql<Json, diesel::pg::Pg> for $name {
+            fn from_sql(value: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
+                serde_json::from_slice(value.as_bytes()).map_err(|_| "Invalid Json".into())
+            }
+        }
+
+        #[cfg(postgresql)]
+        impl ToSql<Json, diesel::pg::Pg> for $name {
+            fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> diesel::serialize::Result {
+                serde_json::to_writer(out, self).map(|_| diesel::serialize::IsNull::No).map_err(Into::into)
+            }
+        }
+
+        #[cfg(mysql)]
+        impl FromSql<Json, diesel::mysql::Mysql> for $name {
+            fn from_sql(value: diesel::mysql::MysqlValue<'_>) -> diesel::deserialize::Result<Self> {
+                serde_json::from_slice(value.as_bytes()).map_err(|_| "Invalid Json".into())
+            }
+        }
+
+        #[cfg(mysql)]
+        impl ToSql<Json, diesel::mysql::Mysql> for $name {
+            fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::mysql::Mysql>) -> diesel::serialize::Result {
+                serde_json::to_writer(out, self).map(|_| diesel::serialize::IsNull::No).map_err(Into::into)
+            }
+        }
+    };
+}
+
 // Reexport the models, needs to be after the macros are defined so it can access them
 pub mod models;
 

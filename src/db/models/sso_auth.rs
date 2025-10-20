@@ -24,55 +24,7 @@ pub enum OIDCCodeWrapper {
     },
 }
 
-#[cfg(sqlite)]
-impl ToSql<Text, diesel::sqlite::Sqlite> for OIDCCodeWrapper {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::sqlite::Sqlite>) -> diesel::serialize::Result {
-        serde_json::to_string(self)
-            .map(|str| {
-                out.set_value(str);
-                diesel::serialize::IsNull::No
-            })
-            .map_err(Into::into)
-    }
-}
-
-#[cfg(sqlite)]
-impl<B: diesel::backend::Backend> FromSql<Text, B> for OIDCCodeWrapper
-where
-    String: FromSql<Text, B>,
-{
-    fn from_sql(bytes: B::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        <String as FromSql<Text, B>>::from_sql(bytes).and_then(|str| serde_json::from_str(&str).map_err(Into::into))
-    }
-}
-
-#[cfg(postgresql)]
-impl FromSql<Json, diesel::pg::Pg> for OIDCCodeWrapper {
-    fn from_sql(value: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
-        serde_json::from_slice(value.as_bytes()).map_err(|_| "Invalid Json".into())
-    }
-}
-
-#[cfg(postgresql)]
-impl ToSql<Json, diesel::pg::Pg> for OIDCCodeWrapper {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> diesel::serialize::Result {
-        serde_json::to_writer(out, self).map(|_| diesel::serialize::IsNull::No).map_err(Into::into)
-    }
-}
-
-#[cfg(mysql)]
-impl FromSql<Json, diesel::mysql::Mysql> for OIDCCodeWrapper {
-    fn from_sql(value: diesel::mysql::MysqlValue<'_>) -> diesel::deserialize::Result<Self> {
-        serde_json::from_slice(value.as_bytes()).map_err(|_| "Invalid Json".into())
-    }
-}
-
-#[cfg(mysql)]
-impl ToSql<Json, diesel::mysql::Mysql> for OIDCCodeWrapper {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::mysql::Mysql>) -> diesel::serialize::Result {
-        serde_json::to_writer(out, self).map(|_| diesel::serialize::IsNull::No).map_err(Into::into)
-    }
-}
+impl_FromToSqlJson!(OIDCCodeWrapper);
 
 #[derive(AsExpression, Clone, Debug, Serialize, Deserialize, FromSqlRow)]
 #[diesel(sql_type = Text)]
@@ -96,55 +48,7 @@ impl OIDCAuthenticatedUser {
     }
 }
 
-#[cfg(sqlite)]
-impl ToSql<Text, diesel::sqlite::Sqlite> for OIDCAuthenticatedUser {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::sqlite::Sqlite>) -> diesel::serialize::Result {
-        serde_json::to_string(self)
-            .map(|str| {
-                out.set_value(str);
-                diesel::serialize::IsNull::No
-            })
-            .map_err(Into::into)
-    }
-}
-
-#[cfg(sqlite)]
-impl<B: diesel::backend::Backend> FromSql<Text, B> for OIDCAuthenticatedUser
-where
-    String: FromSql<Text, B>,
-{
-    fn from_sql(bytes: B::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        <String as FromSql<Text, B>>::from_sql(bytes).and_then(|str| serde_json::from_str(&str).map_err(Into::into))
-    }
-}
-
-#[cfg(postgresql)]
-impl FromSql<Json, diesel::pg::Pg> for OIDCAuthenticatedUser {
-    fn from_sql(value: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
-        serde_json::from_slice(value.as_bytes()).map_err(|_| "Invalid Json".into())
-    }
-}
-
-#[cfg(postgresql)]
-impl ToSql<Json, diesel::pg::Pg> for OIDCAuthenticatedUser {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> diesel::serialize::Result {
-        serde_json::to_writer(out, self).map(|_| diesel::serialize::IsNull::No).map_err(Into::into)
-    }
-}
-
-#[cfg(mysql)]
-impl FromSql<Json, diesel::mysql::Mysql> for OIDCAuthenticatedUser {
-    fn from_sql(value: diesel::mysql::MysqlValue<'_>) -> diesel::deserialize::Result<Self> {
-        serde_json::from_slice(value.as_bytes()).map_err(|_| "Invalid Json".into())
-    }
-}
-
-#[cfg(mysql)]
-impl ToSql<Json, diesel::mysql::Mysql> for OIDCAuthenticatedUser {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::mysql::Mysql>) -> diesel::serialize::Result {
-        serde_json::to_writer(out, self).map(|_| diesel::serialize::IsNull::No).map_err(Into::into)
-    }
-}
+impl_FromToSqlJson!(OIDCAuthenticatedUser);
 
 db_object! {
     #[derive(Identifiable, Queryable, Insertable, AsChangeset)]
@@ -186,13 +90,17 @@ impl SsoAuth {
 impl SsoAuth {
     pub async fn save(&self, conn: &mut DbConn) -> EmptyResult {
         db_run! { conn:
-            sqlite, mysql {
-                diesel::replace_into(sso_auth::table)
-                    .values(SsoAuthDb::to_db(self))
+            mysql {
+                let value = SsoAuthDb::to_db(self);
+                diesel::insert_into(sso_auth::table)
+                    .values(&value)
+                    .on_conflict(diesel::dsl::DuplicatedKeys)
+                    .do_update()
+                    .set(&value)
                     .execute(conn)
                     .map_res("Error saving SSO auth")
             }
-            postgresql {
+            postgresql, sqlite {
                 let value = SsoAuthDb::to_db(self);
                 diesel::insert_into(sso_auth::table)
                     .values(&value)
