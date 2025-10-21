@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.10.0-2
+
+- Fix an overzealous seat limits which caused issues with Android application
+
 # v2025.10.0-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.10.0-1`
