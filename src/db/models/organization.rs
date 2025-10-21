@@ -190,7 +190,7 @@ impl Organization {
         json!({
             "id": self.uuid,
             "name": self.name,
-            "seats": u32::MAX,
+            "seats": null,
             "maxCollections": null,
             "maxStorageGb": i16::MAX, // The value doesn't matter, we don't check server-side
             "use2fa": true,
@@ -566,7 +566,7 @@ impl Membership {
             "id": self.org_uuid,
             "identifier": null, // Not supported
             "name": org.name,
-            "seats": u32::MAX,
+            "seats": 20, // hardcoded maxEmailsCount in the web-vault
             "maxCollections": null,
             "usersGetPremium": true,
             "use2fa": true,
