@@ -2,18 +2,19 @@ use chrono::{NaiveDateTime, Utc};
 use std::time::Duration;
 
 use crate::api::EmptyResult;
+use crate::db::schema::sso_auth;
 use crate::db::{DbConn, DbPool};
 use crate::error::MapResult;
 use crate::sso::{OIDCCode, OIDCCodeChallenge, OIDCIdentifier, OIDCState, UserOrgRole, UserRole, SSO_AUTH_EXPIRATION};
 
 use diesel::deserialize::FromSql;
 use diesel::expression::AsExpression;
+use diesel::prelude::*;
 use diesel::serialize::{Output, ToSql};
-use diesel::sql_types::{Json, Text};
+use diesel::sql_types::Text;
 
 #[derive(AsExpression, Clone, Debug, Serialize, Deserialize, FromSqlRow)]
 #[diesel(sql_type = Text)]
-#[diesel(sql_type = Json)]
 pub enum OIDCCodeWrapper {
     Ok {
         code: OIDCCode,
@@ -24,11 +25,10 @@ pub enum OIDCCodeWrapper {
     },
 }
 
-impl_FromToSqlJson!(OIDCCodeWrapper);
+impl_FromToSqlText!(OIDCCodeWrapper);
 
 #[derive(AsExpression, Clone, Debug, Serialize, Deserialize, FromSqlRow)]
 #[diesel(sql_type = Text)]
-#[diesel(sql_type = Json)]
 pub struct OIDCAuthenticatedUser {
     pub refresh_token: Option<String>,
     pub access_token: String,
@@ -48,23 +48,22 @@ impl OIDCAuthenticatedUser {
     }
 }
 
-impl_FromToSqlJson!(OIDCAuthenticatedUser);
+impl_FromToSqlText!(OIDCAuthenticatedUser);
 
-db_object! {
-    #[derive(Identifiable, Queryable, Insertable, AsChangeset)]
-    #[diesel(table_name = sso_auth)]
-    #[diesel(primary_key(state))]
-    pub struct SsoAuth {
-        pub state: OIDCState,
-        pub client_challenge: OIDCCodeChallenge,
-        pub nonce: String,
-        pub verifier: Option<String>,
-        pub redirect_uri: String,
-        pub code_response: Option<OIDCCodeWrapper>,
-        pub auth_response: Option<OIDCAuthenticatedUser>,
-        pub created_at: NaiveDateTime,
-        pub updated_at: NaiveDateTime,
-    }
+#[derive(Identifiable, Queryable, Insertable, AsChangeset, Selectable)]
+#[diesel(table_name = sso_auth)]
+#[diesel(treat_none_as_null = true)]
+#[diesel(primary_key(state))]
+pub struct SsoAuth {
+    pub state: OIDCState,
+    pub client_challenge: OIDCCodeChallenge,
+    pub nonce: String,
+    pub verifier: Option<String>,
+    pub redirect_uri: String,
+    pub code_response: Option<OIDCCodeWrapper>,
+    pub auth_response: Option<OIDCAuthenticatedUser>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 /// Local methods
@@ -88,25 +87,23 @@ impl SsoAuth {
 
 /// Database methods
 impl SsoAuth {
-    pub async fn save(&self, conn: &mut DbConn) -> EmptyResult {
+    pub async fn save(&self, conn: &DbConn) -> EmptyResult {
         db_run! { conn:
             mysql {
-                let value = SsoAuthDb::to_db(self);
                 diesel::insert_into(sso_auth::table)
-                    .values(&value)
+                    .values(self)
                     .on_conflict(diesel::dsl::DuplicatedKeys)
                     .do_update()
-                    .set(&value)
+                    .set(self)
                     .execute(conn)
                     .map_res("Error saving SSO auth")
             }
             postgresql, sqlite {
-                let value = SsoAuthDb::to_db(self);
                 diesel::insert_into(sso_auth::table)
-                    .values(&value)
+                    .values(self)
                     .on_conflict(sso_auth::state)
                     .do_update()
-                    .set(&value)
+                    .set(self)
                     .execute(conn)
                     .map_res("Error saving SSO auth")
             }
@@ -119,13 +116,12 @@ impl SsoAuth {
             sso_auth::table
                 .filter(sso_auth::state.eq(state))
                 .filter(sso_auth::created_at.ge(oldest))
-                .first::<SsoAuthDb>(conn)
+                .first::<Self>(conn)
                 .ok()
-                .from_db()
         }}
     }
 
-    pub async fn delete(self, conn: &mut DbConn) -> EmptyResult {
+    pub async fn delete(self, conn: &DbConn) -> EmptyResult {
         db_run! {conn: {
             diesel::delete(sso_auth::table.filter(sso_auth::state.eq(self.state)))
                 .execute(conn)

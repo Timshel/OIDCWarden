@@ -19,16 +19,16 @@ pub async fn invite(
     collections: &Vec<CollectionData>,
     invited_by_email: String,
     auto: bool,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> ApiResult<Membership> {
-    let mut membership_status = MembershipStatus::Invited;
-
     // automatically accept existing users if mail is disabled or config if set
-    if (!user.password_hash.is_empty() && !CONFIG.mail_enabled())
+    let membership_status = if (!user.password_hash.is_empty() && !CONFIG.mail_enabled())
         || (CONFIG.sso_enabled() && CONFIG.organization_invite_auto_accept())
     {
-        membership_status = MembershipStatus::Accepted;
-    }
+        MembershipStatus::Accepted
+    } else {
+        MembershipStatus::Invited
+    };
 
     let mut new_member = Membership::new(user.uuid.clone(), org.uuid.clone(), Some(invited_by_email.clone()));
     new_member.access_all = access_all;
@@ -107,7 +107,7 @@ pub async fn revoke_member(
     device: &Device,
     ip: &ClientIp,
     mut member: Membership,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> EmptyResult {
     if member.atype == MembershipType::Owner
         && Membership::count_confirmed_by_org_and_type(&member.org_uuid, MembershipType::Owner, conn).await <= 1
@@ -134,7 +134,7 @@ pub async fn revoke_member(
 
 // This check is done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
 // It returns different error messages per function.
-pub async fn policy_check(m: &Membership, action: &str, conn: &mut DbConn) -> EmptyResult {
+pub async fn policy_check(m: &Membership, action: &str, conn: &DbConn) -> EmptyResult {
     if m.atype < MembershipType::Admin && m.status > (MembershipStatus::Invited as i32) {
         // Enforce TwoFactor/TwoStep login
         if let Some(p) =
@@ -170,7 +170,7 @@ pub async fn restore_member(
     device: &Device,
     ip: &ClientIp,
     member: &mut Membership,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> EmptyResult {
     member.restore();
     policy_check(member, "restore this user", conn).await?;
@@ -197,7 +197,7 @@ pub async fn set_membership_type(
     member: &mut Membership,
     new_type: MembershipType,
     custom_access_all: bool,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> EmptyResult {
     if member.atype == MembershipType::Owner
         && new_type != MembershipType::Owner
@@ -236,7 +236,7 @@ pub async fn add_group_user(
     org_id: &OrganizationId,
     member_uuid: MembershipId,
     group_id: &GroupId,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> EmptyResult {
     let mut user_entry = GroupUser::new(group_id.clone(), member_uuid);
     user_entry.save(conn).await?;
@@ -262,7 +262,7 @@ pub async fn delete_group_user(
     org_id: &OrganizationId,
     member_uuid: &MembershipId,
     group_id: &GroupId,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> EmptyResult {
     GroupUser::delete_by_group_and_member(group_id, member_uuid, conn).await?;
 

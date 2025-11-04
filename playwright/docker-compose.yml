@@ -107,8 +107,8 @@ services:
 
   Keycloak:
     profiles: ["keycloak", "oidcwarden"]
-    container_name: keycloak-main-${ENV:-dev}
-    image: quay.io/keycloak/keycloak:25.0.4
+    container_name: keycloak-${ENV:-dev}
+    image: quay.io/keycloak/keycloak:26.3.4
     network_mode: "host"
     command:
       - start-dev
@@ -116,13 +116,13 @@ services:
 
   KeycloakSetup:
     profiles: ["keycloak", "oidcwarden"]
-    container_name: keycloakSetup-main-${ENV:-dev}
-    image: keycloak_setup-main-${ENV:-dev}
+    container_name: keycloakSetup-${ENV:-dev}
+    image: keycloak_setup-${ENV:-dev}
     build:
       context: compose/keycloak
       dockerfile: Dockerfile
       args:
-        KEYCLOAK_VERSION: 26.3.0
+        KEYCLOAK_VERSION: 26.3.4
     network_mode: "host"
     depends_on:
       - Keycloak

@@ -1,13 +1,12 @@
+use std::{sync::LazyLock, time::Duration};
+
 use chrono::Utc;
 use derive_more::{AsRef, Deref, Display, From, Into};
 use regex::Regex;
 use serde::de::DeserializeOwned;
 use serde_with::{serde_as, DefaultOnError};
 use std::collections::{HashMap, HashSet};
-use std::time::Duration;
 use url::Url;
-
-use once_cell::sync::Lazy;
 
 use crate::{
     api::core::organizations::CollectionData,
@@ -30,9 +29,10 @@ pub static FAKE_IDENTIFIER: &str = "VW_DUMMY_IDENTIFIER_FOR_OIDC";
 pub static OLD_FAKE_IDENTIFIER: &str = "OIDCWarden";
 pub const ACTING_AUTO_ENROLL_USER: &str = "oidcwarden-auto-00000-000000000000";
 
-static SSO_JWT_ISSUER: Lazy<String> = Lazy::new(|| format!("{}|sso", CONFIG.domain_origin()));
+static SSO_JWT_ISSUER: LazyLock<String> = LazyLock::new(|| format!("{}|sso", CONFIG.domain_origin()));
 
-pub static SSO_AUTH_EXPIRATION: Lazy<chrono::Duration> = Lazy::new(|| chrono::TimeDelta::try_minutes(10).unwrap());
+pub static SSO_AUTH_EXPIRATION: LazyLock<chrono::Duration> =
+    LazyLock::new(|| chrono::TimeDelta::try_minutes(10).unwrap());
 
 #[derive(
     Clone,
@@ -167,7 +167,7 @@ fn insecure_decode<T: DeserializeOwned>(token_name: &str, token: &str) -> ApiRes
     }
 }
 
-pub fn decode_state(base64_state: String) -> ApiResult<OIDCState> {
+pub fn decode_state(base64_state: &str) -> ApiResult<OIDCState> {
     let state = match data_encoding::BASE64.decode(base64_state.as_bytes()) {
         Ok(vec) => match String::from_utf8(vec) {
             Ok(valid) => OIDCState(valid),
@@ -185,7 +185,7 @@ pub async fn authorize_url(
     client_challenge: OIDCCodeChallenge,
     client_id: &str,
     raw_redirect_uri: &str,
-    mut conn: DbConn,
+    conn: DbConn,
 ) -> ApiResult<Url> {
     let redirect_uri = match client_id {
         "web" | "browser" => format!("{}/sso-connector.html", CONFIG.domain()),
@@ -201,7 +201,7 @@ pub async fn authorize_url(
     };
 
     let (auth_url, sso_auth) = Client::authorize_url(state, client_challenge, redirect_uri).await?;
-    sso_auth.save(&mut conn).await?;
+    sso_auth.save(&conn).await?;
     Ok(auth_url)
 }
 
@@ -341,12 +341,12 @@ fn additional_claims(email: &str, sources: Vec<(&AllAdditionalClaims, &str)>) ->
 
 // During the 2FA flow we will
 //  - retrieve the user information and then only discover he needs 2FA.
-//  - second time we will rely on the `AC_CACHE` since the `code` has already been exchanged.
+//  - second time we will rely on `SsoAuth.auth_response` since the `code` has already been exchanged.
 // The `SsoAuth` will ensure that the user is authorized only once.
 pub async fn exchange_code(
     state: &OIDCState,
     client_verifier: OIDCCodeVerifier,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> ApiResult<(SsoAuth, OIDCAuthenticatedUser)> {
     use openidconnect::OAuth2TokenResponse;
 
@@ -443,7 +443,7 @@ pub async fn redeem(
     sso_user: Option<SsoUser>,
     sso_auth: SsoAuth,
     auth_user: OIDCAuthenticatedUser,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> ApiResult<AuthTokens> {
     sso_auth.delete(conn).await?;
 
@@ -550,7 +550,7 @@ pub async fn exchange_refresh_token(
     ip: &ClientIp,
     client_id: Option<String>,
     refresh_claims: auth::RefreshJwtClaims,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> ApiResult<AuthTokens> {
     let exp = refresh_claims.exp;
     match refresh_claims.token {
@@ -613,7 +613,7 @@ async fn sync_organizations(
     ip: &ClientIp,
     org_role: &Option<UserOrgRole>,
     user_groups: &Option<Vec<String>>,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> ApiResult<()> {
     let groups = match (org_role, user_groups) {
         (Some(UserOrgRole::OrgNoSync), _) => return Ok(()),
@@ -688,7 +688,7 @@ async fn sync_orgs_and_role(
     org_role: &Option<UserOrgRole>,
     mut orgs: HashMap<OrganizationId, (Organization, HashSet<GroupId>)>,
     allow_revoking: bool,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> ApiResult<()> {
     let acting_user: UserId = ACTING_AUTO_ENROLL_USER.into();
     let provider_role = org_role.as_ref().map(|or| or.membership_type());
@@ -786,7 +786,7 @@ async fn sync_org_groups(
     member: &Membership,
     mut groups: HashSet<GroupId>,
     allow_revoking: bool,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> ApiResult<()> {
     for gu in GroupUser::find_by_member(&member.uuid, conn).await {
         if !groups.remove(&gu.groups_uuid) && allow_revoking {

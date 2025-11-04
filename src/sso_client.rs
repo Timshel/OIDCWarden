@@ -1,14 +1,10 @@
-use regex::Regex;
-use std::borrow::Cow;
-use std::time::Duration;
-use url::Url;
+use std::{borrow::Cow, sync::LazyLock, time::Duration};
 
 use mini_moka::sync::Cache;
-use once_cell::sync::Lazy;
-use openidconnect::core::*;
-use openidconnect::reqwest;
-use openidconnect::*;
+use openidconnect::{core::*, reqwest, *};
+use regex::Regex;
 use serde_json::Value;
+use url::Url;
 
 use crate::{
     api::{ApiResult, EmptyResult},
@@ -17,8 +13,8 @@ use crate::{
     CONFIG,
 };
 
-static CLIENT_CACHE_KEY: Lazy<String> = Lazy::new(|| "sso-client".to_string());
-static CLIENT_CACHE: Lazy<Cache<String, Client>> = Lazy::new(|| {
+static CLIENT_CACHE_KEY: LazyLock<String> = LazyLock::new(|| "sso-client".to_string());
+static CLIENT_CACHE: LazyLock<Cache<String, Client>> = LazyLock::new(|| {
     Cache::builder().max_capacity(1).time_to_live(Duration::from_secs(CONFIG.sso_client_cache_expiration())).build()
 });
 
