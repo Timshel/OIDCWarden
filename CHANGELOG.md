@@ -1,5 +1,14 @@
 # Changelog
 
+# v2025.10.1-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.10.1-1`
+- Integrate latest change from `Vaultwarden` up to [9017ca2](https://github.com/dani-garcia/vaultwarden/commit/9017ca265a28ff1370e6047b8e85c0a6c3327306)
+  \
+  :warning: Database migration for `postgres` / `mysql` (Due to the unification of the database model).
+  This is on the `sso_auth` table used to store authentication in progress (The table will be dropped, authentication in progress will fail).
+
+
 # v2025.10.0-2
 
 - Fix an overzealous seat limits which caused issues with Android application
