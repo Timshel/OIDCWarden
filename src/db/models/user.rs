@@ -292,7 +292,7 @@ impl User {
                     .execute(conn)
                     .map_res("Error saving user")
             }
-            postgresql, sqlite, cockroachdb {
+            postgresql, sqlite {
                 diesel::insert_into(users::table) // Insert or update
                     .values(&*self)
                     .on_conflict(users::uuid)
@@ -440,7 +440,7 @@ impl Invitation {
                     .execute(conn)
                     .map_res("Error saving invitation")
             }
-            postgresql, cockroachdb {
+            postgresql {
                 diesel::insert_into(invitations::table)
                     .values(self)
                     .on_conflict(invitations::email)
@@ -506,7 +506,7 @@ impl SsoUser {
                     .execute(conn)
                     .map_res("Error saving SSO user")
             }
-            postgresql, cockroachdb {
+            postgresql {
                 diesel::insert_into(sso_users::table)
                     .values(self)
                     .execute(conn)

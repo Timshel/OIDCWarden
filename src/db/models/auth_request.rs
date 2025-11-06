@@ -99,7 +99,7 @@ impl AuthRequest {
                     Err(e) => Err(e.into()),
                 }.map_res("Error auth_request")
             }
-            postgresql, cockroachdb {
+            postgresql {
                 diesel::insert_into(auth_requests::table)
                     .values(&*self)
                     .on_conflict(auth_requests::uuid)
