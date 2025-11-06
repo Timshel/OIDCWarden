@@ -146,7 +146,7 @@ impl Device {
                     10,
                 ).map_res("Error saving device")
             }
-            postgresql, cockroachdb {
+            postgresql {
                 crate::util::retry(||
                     diesel::insert_into(devices::table)
                         .values(self)

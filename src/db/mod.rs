@@ -46,11 +46,9 @@ where
 // This is used to generate the main DbConn and DbPool enums, which contain one variant for each database supported
 #[derive(diesel::MultiConnection)]
 pub enum DbConnInner {
-    #[cfg(cockroachdb)]
-    Cockroachdb(diesel::pg::PgConnection),
     #[cfg(mysql)]
     Mysql(diesel::mysql::MysqlConnection),
-    #[cfg(postgresql)]
+    #[cfg(any(postgresql, cockroachdb))]
     Postgresql(diesel::pg::PgConnection),
     #[cfg(sqlite)]
     Sqlite(diesel::sqlite::SqliteConnection),
@@ -78,7 +76,7 @@ impl DbConnManager {
             #[cfg(cockroachdb)]
             Ok(DbConnType::Cockroachdb) => {
                 let conn = Self::cockroach_connection(&self.database_url)?;
-                Ok(DbConnInner::Cockroachdb(conn))
+                Ok(DbConnInner::Postgresql(conn))
             }
             #[cfg(mysql)]
             Ok(DbConnType::Mysql) => {
@@ -452,7 +450,7 @@ pub fn backup_sqlite() -> Result<String, Error> {
 /// Get the SQL Server version
 pub async fn get_sql_server_version(conn: &DbConn) -> String {
     db_run! { conn:
-        postgresql,mysql,cockroachdb {
+        postgresql,mysql {
             diesel::select(diesel::dsl::sql::<diesel::sql_types::Text>("version();"))
             .get_result::<String>(conn)
             .unwrap_or_else(|_| "Unknown".to_string())

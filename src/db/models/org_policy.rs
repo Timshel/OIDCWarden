@@ -118,7 +118,7 @@ impl OrgPolicy {
                     Err(e) => Err(e.into()),
                 }.map_res("Error saving org_policy")
             }
-            postgresql, cockroachdb {
+            postgresql {
                 // We need to make sure we're not going to violate the unique constraint on org_uuid and atype.
                 // This happens automatically on other DBMS backends due to replace_into(). PostgreSQL does
                 // not support multiple constraints on ON CONFLICT clauses.

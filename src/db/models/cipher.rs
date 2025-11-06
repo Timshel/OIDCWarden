@@ -455,7 +455,7 @@ impl Cipher {
                     Err(e) => Err(e.into()),
                 }.map_res("Error saving cipher")
             }
-            postgresql, cockroachdb {
+            postgresql {
                 diesel::insert_into(ciphers::table)
                     .values(&*self)
                     .on_conflict(ciphers::uuid)
