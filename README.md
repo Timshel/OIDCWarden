@@ -11,7 +11,7 @@ Bitwarden [key connector](https://bitwarden.com/help/about-key-connector) is not
 
 ## Acknowledgement
 
-Project made possible with support from the [sponsors](https://github.com/sponsors/Timshel) and the [TU Bergakademie Freiberg](https://tu-freiberg.de/en).
+Project made possible with support from the [sponsors](https://github.com/sponsors/Timshel).
 \
 Would not be possible without the maintainers and contributors of the source project [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
 
@@ -20,17 +20,6 @@ Would not be possible without the maintainers and contributors of the source pro
 Tagged version are based on Bitwarden web client releases, Ex: `v2024.8.3-1` is the first release compatible with web client `v2024.8.3`.
 \
 See [changelog](CHANGELOG.md) for more details.
-
-## Differences with [timshel/vaultwarden](https://github.com/timshel/vaultwarden)
-
-This project was created in an effort to gain more support to maintain the [PR](https://github.com/dani-garcia/vaultwarden/pull/3899) adding OpenID Connect to Vaultwarden.
-
-Main differences now:
-
-- Renamed project / changed icons
-- Abitility to release `web-vault` independantly of the [bw_web_builds](https://github.com/dani-garcia/bw_web_builds), the [timshel/vaultwarden](https://github.com/timshel/vaultwarden) will stay in sync.
-
-In the long term distribution will focus on a better OpenID flow (`web-vault` `override` distribution).
 
 ## Testing
 
@@ -51,7 +40,7 @@ Goal will be to continue to increase the test coverage but I would recommand to 
 
 See details in [SSO.md](SSO.md).
 
-## Features
+## Additionnal Features
 
 Role and Organization mapping can be read from the id token or the user info endpoint.
 Sync is done by default at login and optionnaly on token refresh (this can be expensive since the client can span the endpoint).
