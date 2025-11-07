@@ -9,11 +9,15 @@ Bitwarden [key connector](https://bitwarden.com/help/about-key-connector) is not
 
 > 2.1 Commercial Module License. Subject to Your compliance with this Agreement, Bitwarden hereby grants to You a limited, non-exclusive, non-transferable, royalty-free license to use the Commercial Modules for the sole purposes of internal development and internal testing, and only in a non-production environment.
 
-## Acknowledgement
+## Sponsors
 
 Project made possible with support from the [sponsors](https://github.com/sponsors/Timshel).
 \
 Would not be possible without the maintainers and contributors of the source project [dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden).
+
+More sponsors are needed to ensure continued support, if possible please help :).
+
+It would make possible working on new features such as [Trusted device](https://bitwarden.com/help/about-trusted-devices/), Backchannel logout and adding more integration tests.
 
 ## Versions
 
