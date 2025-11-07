@@ -21,6 +21,8 @@ The following configurations are available
  	- $SSO_AUTHORITY/.well-known/openid-configuration should return the a json document: https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationResponse
 - `SSO_SCOPES` : Optional, allow to override scopes if needed (default `"email profile"`)
 - `SSO_AUTHORIZE_EXTRA_PARAMS` : Optional, allow to add extra parameter to the authorize redirection (default `""`)
+  \
+  For example can be used to set the `prompt` parameter: [openid-connect-core-1_0.html#AuthRequest](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest) (`SSO_AUTHORIZE_EXTRA_PARAMS="prompt=select_account"`).
 - `SSO_PKCE`: Activate PKCE for the Auth Code flow (default `true`). Cf [#on-sso_pkce](#on-sso_pkce).
 - `SSO_AUDIENCE_TRUSTED`: Optional, Regex to trust additional audience for the IdToken (`client_id` is always trusted). Use single quote when writing the regex: `'^$'`.
 - `SSO_CLIENT_ID` : Client Id
@@ -107,6 +109,12 @@ If you want to roll the used key, first add a new one but do not immediately sta
 Wait for the delay you configured in `SSO_CLIENT_CACHE_EXPIRATION` then you can start signing with it.
 
 As mentioned in the Google example setting too high of a value has diminishing return even if you do not plan to roll the keys.
+
+## Provider Logout
+
+At the moment it does not seem that the Bitwarden clients support Single Log Out (Only mention of it is in the SAML [doc](https://bitwarden.com/help/saml-keycloak/) and it's not supported).
+
+If the need is to allow to change user after logout then the `prompt` [parameter](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest) can be configured with `SSO_AUTHORIZE_EXTRA_PARAMS`.
 
 ## Keycloak
 
