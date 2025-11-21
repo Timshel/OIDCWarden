@@ -111,7 +111,7 @@ test('invited with existing account', async ({ page }) => {
 
     await test.step('Default vault page', async () => {
         await expect(page).toHaveTitle(/Vaults/);
-        await utils.checkNotification(page, 'Invitation accepted');
+        await utils.checkNotification(page, 'Successfully accepted your invitation');
     });
 
     await test.step('Check mails', async () => {

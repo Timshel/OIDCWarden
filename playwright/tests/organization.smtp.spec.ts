@@ -65,7 +65,7 @@ test('invited with new account', async ({ page }) => {
         // Redirected to the vault
         await expect(page).toHaveTitle('Vaults | OIDCWarden Web');
         // await utils.checkNotification(page, 'You have been logged in!');
-        await utils.checkNotification(page, 'Invitation accepted');
+        await utils.checkNotification(page, 'Successfully accepted your invitation');
     });
 
     await test.step('Check mails', async () => {
@@ -93,7 +93,7 @@ test('invited with existing account', async ({ page }) => {
 
     // We are now in the default vault page
     await expect(page).toHaveTitle('Vaults | OIDCWarden Web');
-    await utils.checkNotification(page, 'Invitation accepted');
+    await utils.checkNotification(page, 'Successfully accepted your invitation');
 
     await mail3Buffer.expect((m) => m.subject === 'New Device Logged In From Firefox');
     await mail1Buffer.expect((m) => m.subject.includes('Invitation to Test accepted'));
