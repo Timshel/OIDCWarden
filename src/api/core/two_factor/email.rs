@@ -1,6 +1,7 @@
 use chrono::{DateTime, TimeDelta, Utc};
 use rocket::serde::json::Json;
 use rocket::Route;
+use serde_with::{serde_as, NoneAsEmptyString};
 
 use crate::{
     api::{
@@ -21,18 +22,19 @@ pub fn routes() -> Vec<Route> {
     routes![get_email, send_email_login, send_email, email,]
 }
 
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SendEmailLoginData {
     #[serde(alias = "DeviceIdentifier")]
     device_identifier: DeviceId,
 
-    #[allow(unused)]
     #[serde(alias = "Email")]
+    #[serde_as(as = "NoneAsEmptyString")]
     email: Option<String>,
 
-    #[allow(unused)]
     #[serde(alias = "MasterPasswordHash")]
+    #[serde_as(as = "NoneAsEmptyString")]
     master_password_hash: Option<String>,
 }
 
@@ -45,12 +47,35 @@ async fn send_email_login(data: Json<SendEmailLoginData>, conn: DbConn) -> Empty
     use crate::db::models::User;
 
     // Get the user
-    let Some(user) = User::find_by_device_id(&data.device_identifier, &conn).await else {
-        err!("Cannot find user. Try again.")
+    let user = if let Some(email) = &data.email {
+        let Some(master_password_hash) = &data.master_password_hash else {
+            err!("No password hash has been submitted.")
+        };
+
+        let Some(user) = User::find_by_mail(email, &conn).await else {
+            err!("Username or password is incorrect. Try again.")
+        };
+
+        // Check password
+        if !user.check_valid_password(master_password_hash) {
+            err!("Username or password is incorrect. Try again.")
+        }
+
+        user
+    } else {
+        // SSO login only sends device id, so we get the user through the `twofactor_incomplete` table.
+        let Some(user) = User::find_by_incomplete2fa(&data.device_identifier, &conn).await else {
+            err!("Username or password is incorrect. Try again.")
+        };
+
+        user
     };
 
-    if !CONFIG._enable_email_2fa() {
-        err!("Email 2FA is disabled")
+    // Check password
+    match data.master_password_hash.as_ref() {
+        None if data.email.is_none() => (),
+        Some(mp) if user.check_valid_password(mp) => (),
+        _ => err!("Username or password is incorrect. Try again."),
     }
 
     send_token(&user.uuid, &conn).await?;

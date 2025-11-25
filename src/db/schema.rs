@@ -357,6 +357,7 @@ joinable!(org_policies -> organizations (org_uuid));
 joinable!(sends -> organizations (organization_uuid));
 joinable!(sends -> users (user_uuid));
 joinable!(twofactor -> users (user_uuid));
+joinable!(twofactor_incomplete -> users (user_uuid));
 joinable!(users_collections -> collections (collection_uuid));
 joinable!(users_collections -> users (user_uuid));
 joinable!(users_organizations -> organizations (org_uuid));
@@ -387,6 +388,7 @@ allow_tables_to_appear_in_same_query!(
     sends,
     sso_users,
     twofactor,
+    twofactor_incomplete,
     users,
     users_collections,
     users_organizations,

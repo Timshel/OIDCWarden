@@ -146,24 +146,37 @@ struct BasicTokenClaims {
     exp: i64,
 }
 
+#[derive(Deserialize)]
+struct BasicTokenClaimsValidation {
+    exp: u64,
+    iss: String,
+}
+
 impl BasicTokenClaims {
     fn nbf(&self) -> i64 {
         self.nbf.or(self.iat).unwrap_or_else(|| Utc::now().timestamp())
     }
 }
 
-// IdToken validation is handled by IdToken.claims
-// This is only used to retrive additionnal claims which are configurable
-// Or to try to parse access_token and refresh_tken as JWT to find exp
-fn insecure_decode<T: DeserializeOwned>(token_name: &str, token: &str) -> ApiResult<T> {
-    let mut validation = jsonwebtoken::Validation::default();
-    validation.set_issuer(&[CONFIG.sso_authority()]);
-    validation.insecure_disable_signature_validation();
-    validation.validate_aud = false;
+fn decode_token_claims(token_name: &str, token: &str) -> ApiResult<BasicTokenClaims> {
+    // We need to manually validate this token, since `insecure_decode` does not do this
+    match jsonwebtoken::dangerous::insecure_decode::<BasicTokenClaimsValidation>(token) {
+        Ok(btcv) => {
+            let now = jsonwebtoken::get_current_timestamp();
+            let validate_claim = btcv.claims;
+            // Validate the exp in the claim with a leeway of 60 seconds, same as jsonwebtoken does
+            if validate_claim.exp < now - 60 {
+                err_silent!(format!("Expired Signature for base token claim from {token_name}"))
+            }
+            if validate_claim.iss.ne(&CONFIG.sso_authority()) {
+                err_silent!(format!("Invalid Issuer for base token claim from {token_name}"))
+            }
 
-    match jsonwebtoken::decode::<T>(token, &jsonwebtoken::DecodingKey::from_secret(&[]), &validation) {
-        Ok(btc) => Ok(btc.claims),
-        Err(err) => err_silent!(format!("Failed to decode {token_name}: {err}")),
+            // All is validated and ok, lets decode again using the wanted struct
+            let btc = jsonwebtoken::dangerous::insecure_decode::<BasicTokenClaims>(token).unwrap();
+            Ok(btc.claims)
+        }
+        Err(err) => err_silent!(format!("Failed to decode basic token claims from {token_name}: {err}")),
     }
 }
 
@@ -485,7 +498,7 @@ pub fn create_auth_tokens(
     if !CONFIG.sso_auth_only_not_session() {
         let now = Utc::now();
 
-        let (ap_nbf, ap_exp) = match (insecure_decode::<BasicTokenClaims>("access_token", &access_token), expires_in) {
+        let (ap_nbf, ap_exp) = match (decode_token_claims("access_token", &access_token), expires_in) {
             (Ok(ap), _) => (ap.nbf(), ap.exp),
             (Err(_), Some(exp)) => (now.timestamp(), (now + exp).timestamp()),
             _ => err!("Non jwt access_token and empty expires_in"),
@@ -508,7 +521,7 @@ fn _create_auth_tokens(
     is_admin: bool,
 ) -> ApiResult<AuthTokens> {
     let (nbf, exp, token) = if let Some(rt) = refresh_token {
-        match insecure_decode::<BasicTokenClaims>("refresh_token", &rt) {
+        match decode_token_claims("refresh_token", &rt) {
             Err(_) => {
                 let time_now = Utc::now();
                 let exp = (time_now + *DEFAULT_REFRESH_VALIDITY).timestamp();

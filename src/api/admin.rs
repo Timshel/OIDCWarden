@@ -18,13 +18,12 @@ use crate::{
         unregister_push_device, ApiResult, EmptyResult, JsonResult, Notify,
     },
     auth::{decode_admin, encode_jwt, generate_admin_claims, ClientIp, Secure},
-    business::organization_logic::policy_check,
     config::ConfigBuilder,
     db::{
         backup_sqlite, get_sql_server_version,
         models::{
             Attachment, Cipher, Collection, Device, Event, EventType, Group, Invitation, Membership, MembershipId,
-            MembershipType, Organization, OrganizationId, SsoUser, TwoFactor, User, UserId,
+            MembershipType, OrgPolicy, Organization, OrganizationId, SsoUser, TwoFactor, User, UserId,
         },
         DbConn, DbConnType, ACTIVE_DB_TYPE,
     },
@@ -575,7 +574,7 @@ async fn update_membership_type(data: Json<MembershipTypeData>, token: AdminToke
 
     member_to_edit.atype = new_type;
     // This check is also done at api::organizations::{accept_invite, _confirm_invite, _activate_member, edit_member}, update_membership_type
-    policy_check(&member_to_edit, "modify this user to this type", &conn).await?;
+    OrgPolicy::check_user_allowed(&member_to_edit, "modify", &conn).await?;
 
     log_event(
         EventType::OrganizationUserUpdated as i32,

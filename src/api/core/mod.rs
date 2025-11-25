@@ -15,8 +15,6 @@ pub use events::{event_cleanup_job, log_event, log_user_event};
 use reqwest::Method;
 pub use sends::purge_sends;
 
-use crate::business::organization_logic::policy_check;
-
 pub fn routes() -> Vec<Route> {
     let mut eq_domains_routes = routes![get_eq_domains, post_eq_domains, put_eq_domains];
     let mut hibp_routes = routes![hibp_breach];
@@ -55,7 +53,7 @@ use crate::{
     api::{EmptyResult, JsonResult, Notify, UpdateType},
     auth::Headers,
     db::{
-        models::{Membership, MembershipStatus, MembershipType, Organization, User},
+        models::{Membership, MembershipStatus, OrgPolicy, Organization, User},
         DbConn,
     },
     error::Error,
@@ -283,9 +281,7 @@ async fn accept_org_invite(
     member.reset_password_key = reset_password_key;
 
     // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
-    if member.atype < MembershipType::Admin {
-        policy_check(&member, "join this organization", conn).await?;
-    }
+    OrgPolicy::check_user_allowed(&member, "join", conn).await?;
 
     member.save(conn).await?;
 

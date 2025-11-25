@@ -1432,9 +1432,7 @@ async fn _confirm_invite(
     member_to_confirm.akey = key.to_string();
 
     // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
-    if member_to_confirm.atype < MembershipType::Admin {
-        organization_logic::policy_check(&member_to_confirm, "confirm", conn).await?;
-    }
+    OrgPolicy::check_user_allowed(&member_to_confirm, "confirm", conn).await?;
 
     log_event(
         EventType::OrganizationUserConfirmed as i32,
@@ -2074,15 +2072,14 @@ async fn put_policy(
 
     // When enabling the SingleOrg policy, remove this org's members that are members of other orgs
     if pol_type_enum == OrgPolicyType::SingleOrg && data.enabled {
-        for member in Membership::find_by_org(&org_id, &conn).await.into_iter() {
+        for mut member in Membership::find_by_org(&org_id, &conn).await.into_iter() {
             // Policy only applies to non-Owner/non-Admin members who have accepted joining the org
             // Exclude invited and revoked users when checking for this policy.
             // Those users will not be allowed to accept or be activated because of the policy checks done there.
-            // We check if the count is larger then 1, because it includes this organization also.
             if member.atype < MembershipType::Admin
                 && member.status != MembershipStatus::Invited as i32
                 && Membership::count_accepted_and_confirmed_by_user(&member.user_uuid, &member.org_uuid, &conn).await
-                    > 1
+                    > 0
             {
                 if CONFIG.mail_enabled() {
                     let org = Organization::find_by_uuid(&member.org_uuid, &conn).await.unwrap();
@@ -2102,7 +2099,8 @@ async fn put_policy(
                 )
                 .await;
 
-                member.delete(&conn).await?;
+                member.revoke();
+                member.save(&conn).await?;
             }
         }
     }
