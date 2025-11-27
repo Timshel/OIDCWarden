@@ -26,7 +26,6 @@ use crate::{
 };
 
 pub static FAKE_IDENTIFIER: &str = "VW_DUMMY_IDENTIFIER_FOR_OIDC";
-pub static OLD_FAKE_IDENTIFIER: &str = "OIDCWarden";
 pub const ACTING_AUTO_ENROLL_USER: &str = "oidcwarden-auto-00000-000000000000";
 
 static SSO_JWT_ISSUER: LazyLock<String> = LazyLock::new(|| format!("{}|sso", CONFIG.domain_origin()));

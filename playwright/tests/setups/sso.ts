@@ -72,6 +72,7 @@ export async function logUser(
         override?: boolean,
         totp?: OTPAuth.TOTP,
         mail2fa?: boolean,
+        notNewDevice?: boolean,
     } = {}
 ) {
     let mailBuffer = options.mailBuffer;
@@ -129,7 +130,7 @@ export async function logUser(
             await expect(page.getByTitle('All vaults', { exact: true })).toBeVisible();
         });
 
-        if( mailBuffer ){
+        if( mailBuffer && !options.notNewDevice ){
             await test.step('Check email', async () => {
                 await mailBuffer.expect((m) => m.subject.includes("New Device Logged"));
             });

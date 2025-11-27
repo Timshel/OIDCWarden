@@ -359,7 +359,7 @@ async fn get_user_collections(headers: Headers, conn: DbConn) -> Json<Value> {
 // The `identifier` should be the value returned by `get_org_domain_sso_verified`
 #[get("/organizations/<identifier>/auto-enroll-status")]
 async fn get_auto_enroll_status(identifier: &str, headers: Headers, conn: DbConn) -> JsonResult {
-    let org = if identifier == crate::sso::FAKE_IDENTIFIER || identifier == crate::sso::OLD_FAKE_IDENTIFIER {
+    let org = if identifier == crate::sso::FAKE_IDENTIFIER {
         match Membership::find_main_user_org(&headers.user.uuid, &conn).await {
             Some(member) => Organization::find_by_uuid(&member.org_uuid, &conn).await,
             None => None,
