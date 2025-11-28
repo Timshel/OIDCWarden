@@ -215,3 +215,17 @@ function flatRoles(ctx, api) {
   api.v1.claims.setClaim('my:zitadel:grants', grants)
 }
 ```
+
+## Experimental
+
+### Cockroachdb db support
+
+Initial work done by @haras-unicorn for `Vaultwarden`. Integrated here to see if there is any interest in the feature.
+
+Support is present by default in the docker image (When compiling ensure to activcate the `cockroachdb` feature).
+\
+You can then configure the database url with:
+
+```env
+DATABASE_URL=cockroachdb://user:password@host[:port]/database_name
+```

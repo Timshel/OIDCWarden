@@ -1,5 +1,11 @@
 # Changelog
 
+# v2025.10.3-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.10.3-1`
+- Integrate latest change from `Vaultwarden` up to [7c7f4f5d](https://github.com/dani-garcia/vaultwarden/commit/7c7f4f5d)
+- Add experimental cockroachdb db support (thx @haras-unicorn).
+
 # v2025.10.1-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.10.1-1`
