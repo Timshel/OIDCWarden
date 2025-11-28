@@ -82,7 +82,7 @@ async function generateSupportString(event, dj) {
 
     let supportString = "### Your environment (Generated via diagnostics page)\n\n";
 
-    supportString += `* Vaultwarden version: v${dj.current_release}\n`;
+    supportString += `* OIDCWarden version: v${dj.current_release}\n`;
     supportString += `* Web-vault version: v${dj.web_vault_version}\n`;
     supportString += `* OS/Arch: ${dj.host_os}/${dj.host_arch}\n`;
     supportString += `* Running within a container: ${dj.running_within_container} (Base: ${dj.container_base_image})\n`;

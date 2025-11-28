@@ -904,7 +904,7 @@ make_config! {
         /// From Address
         smtp_from:                     String, true,   def,     String::new();
         /// From Name
-        smtp_from_name:                String, true,   def,     "Vaultwarden".to_string();
+        smtp_from_name:                String, true,   def,     "OIDCWarden".to_string();
         /// Username
         smtp_username:                 String, true,   option;
         /// Password

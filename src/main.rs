@@ -78,7 +78,7 @@ async fn main() -> Result<(), Error> {
 
     check_data_folder().await;
     auth::initialize_keys().await.unwrap_or_else(|e| {
-        error!("Error creating private key '{}'\n{e:?}\nExiting Vaultwarden!", CONFIG.private_rsa_key());
+        error!("Error creating private key '{}'\n{e:?}\nExiting OIDCWarden!", CONFIG.private_rsa_key());
         exit(1);
     });
     check_web_vault();
@@ -122,13 +122,13 @@ fn parse_args() {
     let version = VERSION.unwrap_or("(Version info from Git not present)");
 
     if pargs.contains(["-h", "--help"]) {
-        println!("Vaultwarden {version}");
+        println!("OIDCWarden {version}");
         print!("{HELP}");
         exit(0);
     } else if pargs.contains(["-v", "--version"]) {
         config::SKIP_CONFIG_VALIDATION.store(true, Ordering::Relaxed);
         let web_vault_version = util::get_web_vault_version();
-        println!("Vaultwarden {version}");
+        println!("OIDCWarden {version}");
         println!("Web-Vault {web_vault_version}");
         exit(0);
     }
@@ -591,7 +591,7 @@ async fn launch_rocket(pool: db::DbPool, extra_debug: bool) -> Result<(), Error>
 
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.expect("Error setting Ctrl-C handler");
-        info!("Exiting Vaultwarden!");
+        info!("Exiting OIDCWarden!");
         CONFIG.shutdown();
     });
 
@@ -617,7 +617,7 @@ async fn launch_rocket(pool: db::DbPool, extra_debug: bool) -> Result<(), Error>
 
     instance.launch().await?;
 
-    info!("Vaultwarden process exited!");
+    info!("OIDCWarden process exited!");
     Ok(())
 }
 
