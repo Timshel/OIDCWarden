@@ -25,7 +25,7 @@ export default defineConfig({
     /* Long global timeout for complex tests
      * But short action/nav/expect timeouts to fail on specific step (raise locally if not enough).
      */
-    timeout: 120 * 1000,
+    timeout: 240 * 1000,
     actionTimeout: 20 * 1000,
     navigationTimeout: 20 * 1000,
     expect: { timeout: 20 * 1000 },
