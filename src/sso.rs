@@ -218,13 +218,13 @@ pub async fn authorize_url(
 }
 
 #[derive(Debug)]
-struct AdditionnalClaims {
+struct AdditionalClaims {
     role: Option<UserRole>,
     org_role: Option<UserOrgRole>,
     groups: Option<Vec<String>>,
 }
 
-impl AdditionnalClaims {
+impl AdditionalClaims {
     pub fn is_admin(&self) -> bool {
         self.role.as_ref().is_some_and(|x| x == &UserRole::Admin)
     }
@@ -326,7 +326,7 @@ fn groups_claim(email: &str, token: &serde_json::Value, source: &str) -> Option<
 }
 
 // All claims are read as Value.
-fn additional_claims(email: &str, sources: Vec<(&AllAdditionalClaims, &str)>) -> ApiResult<AdditionnalClaims> {
+fn additional_claims(email: &str, sources: Vec<(&AllAdditionalClaims, &str)>) -> ApiResult<AdditionalClaims> {
     let mut role: Option<UserRole> = None;
     let mut org_role: Option<UserOrgRole> = None;
     let mut groups = None;
@@ -344,7 +344,7 @@ fn additional_claims(email: &str, sources: Vec<(&AllAdditionalClaims, &str)>) ->
         }
     }
 
-    Ok(AdditionnalClaims {
+    Ok(AdditionalClaims {
         role,
         org_role,
         groups,

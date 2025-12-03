@@ -31,23 +31,23 @@ New release are tested using Playwright integration tests. Currenttly tested flo
 
 - Login flow using Master password and/or SSO
 - 2FA using email and TOTP (with/without SSO)
-- Role mapping (acces to admin console)
+- Role mapping (access to admin console)
 - Organization and collection creation
 - Organization invitation using Master password and SSO
 - Organization auto-invitation
 - Organization membership role sync (Owner, admin ...)
 - Organization membership revocation
 
-Goal will be to continue to increase the test coverage but I would recommand to always deploy a specific version and always backup/test before deploying a new release.
+Goal will be to continue to increase the test coverage but I would recommend to always deploy a specific version and always backup/test before deploying a new release.
 
 ## Configuration
 
 See details in [SSO.md](SSO.md).
 
-## Additionnal Features
+## Additional Features
 
 Role and Organization mapping can be read from the id token or the user info endpoint.
-Sync is done by default at login and optionnaly on token refresh (this can be expensive since the client can span the endpoint).
+Sync is done by default at login and optionally on token refresh (this can be expensive since the client can span the endpoint).
 
 - `SSO_SYNC_ON_REFRESH`: Enable to refresh role, orgs and groups on refresh_token.
 
