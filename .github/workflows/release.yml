@@ -291,6 +291,7 @@ jobs:
   merge-manifests:
     name: Merge manifests
     runs-on: ubuntu-latest
+    environment: main
     needs: docker-build
 
     env:
