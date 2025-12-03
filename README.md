@@ -87,7 +87,7 @@ If a user is part of two organizations then it will order them using the role of
 
 This feature is controlled with the following configuration:
 
-- `SSO_SCOPES`: Optional scope override if additionnal scopes are needed, default is `"email profile"`
+- `SSO_SCOPES`: Optional scope override if additional scopes are needed, default is `"email profile"`
 - `SSO_ORGANIZATIONS_ENABLED`: control if the mapping is done, default is `false`
 - `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read organization and groups in the id token or user info, default is `/groups`
 
@@ -152,7 +152,7 @@ Change the docker files to package both front-end from [Timshel/oidc_web_vault](
 \
 By default it will use the release which only make the `sso` button visible.
 
-If you want to use the version with the additional features mentionned, default redirection to `/sso` and fix organization invitation.
+If you want to use the version with the additional features mentioned, default redirection to `/sso` and fix organization invitation.
 You need to pass an env variable: `-e SSO_FRONTEND='override'` (cf [start.sh](docker/start.sh)).
 
 Docker images available at:
@@ -164,7 +164,7 @@ Docker images available at:
 
 By default front-end version is fixed to prevent regression (check [CHANGELOG.md](CHANGELOG.md)).
 \
-When building the docker image it can be overrided by passing the `OIDC_WEB_RELEASE` arg.
+When building the docker image it can be overriden by passing the `OIDC_WEB_RELEASE` arg.
 \
 Ex to build with latest: `--build-arg OIDC_WEB_RELEASE="https://github.com/Timshel/oidc_web_vault/releases/latest/download"`
 
@@ -197,7 +197,7 @@ BEGIN
 ### Zitadel
 
 To use the role mapping feature you will need to define a custom mapping to return a simple list of role.
-More details in Zitadel [documentation](https://zitadel.com/docs/guides/integrate/retrieve-user-roles#customize-roles-using-actions); the cutomization will look something like this:
+More details in Zitadel [documentation](https://zitadel.com/docs/guides/integrate/retrieve-user-roles#customize-roles-using-actions); the customization will look something like this:
 
 ```javascript
 function flatRoles(ctx, api) {

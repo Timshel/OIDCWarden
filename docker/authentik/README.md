@@ -6,7 +6,7 @@ This `docker-compose` template allow to run locally a `OIDCWarden` and [`Authent
 
 This rely on `docker` and the `compose` [plugin](https://docs.docker.com/compose/install/).
 
-First create a copy of `.env.template` as `.env` (This is done to prevent commiting your custom settings, Ex `SMTP_`).
+First create a copy of `.env.template` as `.env` (This is done to prevent committing your custom settings, Ex `SMTP_`).
 
 Then start the stack (the `profile` is required to run `OIDCWarden`).
 
