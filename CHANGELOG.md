@@ -1,5 +1,10 @@
 # Changelog
 
+
+# v2025.12.0-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.12.0-1`
+
 # v2025.11.4-2
 
 - Fix merge error in removed from org mail template
