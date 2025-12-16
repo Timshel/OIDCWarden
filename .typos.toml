@@ -1,6 +1,7 @@
 [files]
 extend-exclude = [
     ".git/",
+    "docker/authentik",
     "playwright/",
     "*.js", # Ignore all JavaScript files
     "!admin*.js", # Except our own JavaScript files

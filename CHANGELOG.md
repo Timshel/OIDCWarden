@@ -49,7 +49,7 @@
 
 # v2025.8.0-1
 
-- Pass the Bitwarden clients challenge to the porvider. If `SSO_PKCE` is disabled validate the challenge before exhchanging the `code`.
+- Pass the Bitwarden clients challenge to the provider. If `SSO_PKCE` is disabled validate the challenge before exhchanging the `code`.
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.8.0-1`
 
 # v2025.7.2-2
@@ -125,8 +125,8 @@
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.5.0-1`
 - :warning: Rework of the organization sync, see [README.md#organization_sync](README.md#organization_sync) :warning:
-- Add support for oganization groups sync
-  - Initially the feature will be avaible only if `ORG_GROUPS_ENABLED` and `SSO_ORGANIZATIONS_GROUPS_ENABLED` are activated
+- Add support for organization groups sync
+  - Initially the feature will be available only if `ORG_GROUPS_ENABLED` and `SSO_ORGANIZATIONS_GROUPS_ENABLED` are activated
   - `SSO_ORGANIZATIONS_GROUPS_ENABLED` will be removed in subsequent release (feature will be active if `ORG_GROUPS_ENABLED` is enabled).
 - :warning: multiple deprecations
   - `SSO_ORGANIZATIONS_INVITE`: Will be removed with the next release. replaced with `SSO_ORGANIZATIONS_ENABLED`.
@@ -221,7 +221,7 @@
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.1.0-1`
   Add dynamic CSS support
 - Integrate latest change from `Vaultwarden` up to [ef2695d](https://github.com/dani-garcia/vaultwarden/commit/ef2695de0cb81feaa5cab8045f0bff71ab3e8c71)
-- Allow set-password only if account is unitialized
+- Allow set-password only if account is uninitialized
 - Disable signups if SSO_ONLY is activated
 
 # v2024.12.1-2

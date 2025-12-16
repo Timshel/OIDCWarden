@@ -164,7 +164,7 @@ Docker images available at:
 
 By default front-end version is fixed to prevent regression (check [CHANGELOG.md](CHANGELOG.md)).
 \
-When building the docker image it can be overriden by passing the `OIDC_WEB_RELEASE` arg.
+When building the docker image it can be overridden by passing the `OIDC_WEB_RELEASE` arg.
 \
 Ex to build with latest: `--build-arg OIDC_WEB_RELEASE="https://github.com/Timshel/oidc_web_vault/releases/latest/download"`
 

@@ -60,7 +60,7 @@ group "default" {
 function "labels" {
   params = []
   result = {
-    "org.opencontainers.image.description" = "OIDC implentation over VaultWarden"
+    "org.opencontainers.image.description" = "OIDC implementation over VaultWarden"
     "org.opencontainers.image.licenses" = "AGPL-3.0-only"
     "org.opencontainers.image.documentation" = "https://github.com/timshel/oidcwarden"
     "org.opencontainers.image.url" = "https://github.com/timshel/oidcwarden"
