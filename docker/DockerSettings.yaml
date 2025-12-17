@@ -6,7 +6,7 @@ xx_image_digest: "sha256:add602d55daca18914838a78221f6bbe4284114b452c86a48f96d59
 rust_version: 1.91.1 # Rust version to be used
 debian_version: trixie # Debian release name to be used
 alpine_version: "3.22" # Alpine version to be used
-oidc_web_release: https://github.com/Timshel/oidc_web_vault/releases/download/v2025.12.0-1
+oidc_web_release: https://github.com/Timshel/oidc_web_vault/releases/download/v2025.12.0-2
 # For which platforms/architectures will we try to build images
 platforms: ["linux/amd64", "linux/arm64", "linux/arm/v7", "linux/arm/v6"]
 # Determine the build images per OS/Arch
