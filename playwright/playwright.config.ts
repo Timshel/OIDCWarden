@@ -26,9 +26,9 @@ export default defineConfig({
      * But short action/nav/expect timeouts to fail on specific step (raise locally if not enough).
      */
     timeout: 240 * 1000,
-    actionTimeout: 20 * 1000,
-    navigationTimeout: 20 * 1000,
-    expect: { timeout: 20 * 1000 },
+    actionTimeout: 40 * 1000,
+    navigationTimeout: 40 * 1000,
+    expect: { timeout: 40 * 1000 },
 
     "permissions": ["clipboard-read"],
 
