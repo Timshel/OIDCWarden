@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.12.2-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.12.2-1`
+
 # v2025.12.1-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.12.1-2`
