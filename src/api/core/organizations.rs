@@ -197,8 +197,7 @@ async fn create_organization(headers: Headers, data: Json<OrgData>, conn: DbConn
     }
 
     let data: OrgData = data.into_inner();
-    let (private_key, public_key) = if data.keys.is_some() {
-        let keys: OrgKeyData = data.keys.unwrap();
+    let (private_key, public_key) = if let Some(keys) = data.keys {
         (Some(keys.encrypted_private_key), Some(keys.public_key))
     } else {
         (None, None)
@@ -3120,7 +3119,7 @@ async fn put_reset_password(
 
     // Sending email before resetting password to ensure working email configuration and the resulting
     // user notification. Also this might add some protection against security flaws and misuse
-    if let Err(e) = mail::send_admin_reset_password(&user.email, &user.name, &org.name).await {
+    if let Err(e) = mail::send_admin_reset_password(&user.email, user.display_name(), &org.name).await {
         err!(format!("Error sending user reset password email: {e:#?}"));
     }
 

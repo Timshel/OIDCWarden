@@ -1,12 +1,15 @@
 name: Security Analysis with zizmor
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
     branches: ["main"]
   pull_request:
     branches: ["**"]
-
-permissions: {}
 
 jobs:
   zizmor:
@@ -16,12 +19,12 @@ jobs:
       security-events: write # To write the security report
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 #v5.0.0
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 #v6.0.0
         with:
           persist-credentials: false
 
       - name: Run zizmor
-        uses: zizmorcore/zizmor-action@e673c3917a1aef3c65c972347ed84ccd013ecda4 # v0.2.0
+        uses: zizmorcore/zizmor-action@135698455da5c3b3e55f73f4419e481ab68cdd95 # v0.4.1
         with:
           # intentionally not scanning the entire repository,
           # since it contains integration tests.

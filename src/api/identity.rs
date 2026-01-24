@@ -1,4 +1,4 @@
-use chrono::{NaiveDateTime, Utc};
+use chrono::Utc;
 use num_traits::FromPrimitive;
 use rocket::{
     form::{Form, FromForm},
@@ -157,7 +157,7 @@ async fn _refresh_login(
         }
         Ok((user, mut device, auth_tokens)) => {
             // Save to update `device.updated_at` to track usage and toggle new status
-            device.save(conn).await?;
+            device.save(true, conn).await?;
 
             if auth_tokens.is_admin {
                 debug!("Refreshed {} admin cookie", user.email);
@@ -284,7 +284,7 @@ async fn _sso_login(
         Some((user, _)) if !user.enabled => {
             err!(
                 "This user has been disabled",
-                format!("IP: {}. Username: {}.", ip.ip, user.name),
+                format!("IP: {}. Username: {}.", ip.ip, user.display_name()),
                 ErrorEvent {
                     event: EventType::UserFailedLogIn
                 }
@@ -292,6 +292,7 @@ async fn _sso_login(
         }
         Some((mut user, sso_user)) => {
             let mut device = get_device(&data, conn, &user).await?;
+
             let twofactor_token = twofactor_auth(&mut user, &data, &mut device, ip, client_version, conn).await?;
 
             if user.private_key.is_none() {
@@ -326,7 +327,7 @@ async fn _sso_login(
         admin::add_admin_cookie(cookies, secure.https);
     }
 
-    authenticated_response(&user, &mut device, auth_tokens, twofactor_token, &now, conn, ip).await
+    authenticated_response(&user, &mut device, auth_tokens, twofactor_token, conn, ip).await
 }
 
 async fn _password_login(
@@ -448,7 +449,7 @@ async fn _password_login(
 
     let auth_tokens = auth::AuthTokens::new(&device, &user, AuthMethod::Password, data.client_id);
 
-    authenticated_response(&user, &mut device, auth_tokens, twofactor_token, &now, conn, ip).await
+    authenticated_response(&user, &mut device, auth_tokens, twofactor_token, conn, ip).await
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -457,12 +458,12 @@ async fn authenticated_response(
     device: &mut Device,
     auth_tokens: auth::AuthTokens,
     twofactor_token: Option<String>,
-    now: &NaiveDateTime,
     conn: &DbConn,
     ip: &ClientIp,
 ) -> JsonResult {
     if CONFIG.mail_enabled() && device.is_new() {
-        if let Err(e) = mail::send_new_device_logged_in(&user.email, &ip.ip.to_string(), now, device).await {
+        let now = Utc::now().naive_utc();
+        if let Err(e) = mail::send_new_device_logged_in(&user.email, &ip.ip.to_string(), &now, device).await {
             error!("Error sending new device email: {e:#?}");
 
             if CONFIG.require_device_email() {
@@ -482,9 +483,37 @@ async fn authenticated_response(
     }
 
     // Save to update `device.updated_at` to track usage and toggle new status
-    device.save(conn).await?;
+    device.save(true, conn).await?;
 
     let master_password_policy = master_password_policy(user, conn).await;
+
+    let has_master_password = !user.password_hash.is_empty();
+    let master_password_unlock = if has_master_password {
+        json!({
+            "Kdf": {
+                "KdfType": user.client_kdf_type,
+                "Iterations": user.client_kdf_iter,
+                "Memory": user.client_kdf_memory,
+                "Parallelism": user.client_kdf_parallelism
+            },
+            // This field is named inconsistently and will be removed and replaced by the "wrapped" variant in the apps.
+            // https://github.com/bitwarden/android/blob/release/2025.12-rc41/network/src/main/kotlin/com/bitwarden/network/model/MasterPasswordUnlockDataJson.kt#L22-L26
+            "MasterKeyEncryptedUserKey": user.akey,
+            "MasterKeyWrappedUserKey": user.akey,
+            "Salt": user.email
+        })
+    } else {
+        Value::Null
+    };
+
+    let account_keys = json!({
+        "publicKeyEncryptionKeyPair": {
+            "wrappedPrivateKey": user.private_key,
+            "publicKey": user.public_key,
+            "Object": "publicKeyEncryptionKeyPair"
+        },
+        "Object": "privateKeys"
+    });
 
     let mut result = json!({
         "access_token": auth_tokens.access_token(),
@@ -500,8 +529,10 @@ async fn authenticated_response(
         "ForcePasswordReset": false,
         "MasterPasswordPolicy": master_password_policy,
         "scope": auth_tokens.scope(),
+        "AccountKeys": account_keys,
         "UserDecryptionOptions": {
-            "HasMasterPassword": !user.password_hash.is_empty(),
+            "HasMasterPassword": has_master_password,
+            "MasterPasswordUnlock": master_password_unlock,
             "Object": "userDecryptionOptions"
         },
     });
@@ -514,7 +545,7 @@ async fn authenticated_response(
         result["TwoFactorToken"] = Value::String(token);
     }
 
-    info!("User {} logged in successfully. IP: {}", &user.name, ip.ip);
+    info!("User {} logged in successfully. IP: {}", user.display_name(), ip.ip);
     Ok(Json(result))
 }
 
@@ -599,9 +630,28 @@ async fn _user_api_key_login(
     let access_claims = auth::LoginJwtClaims::default(&device, &user, &AuthMethod::UserApiKey, data.client_id);
 
     // Save to update `device.updated_at` to track usage and toggle new status
-    device.save(conn).await?;
+    device.save(true, conn).await?;
 
     info!("User {} logged in successfully via API key. IP: {}", user.email, ip.ip);
+
+    let has_master_password = !user.password_hash.is_empty();
+    let master_password_unlock = if has_master_password {
+        json!({
+            "Kdf": {
+                "KdfType": user.client_kdf_type,
+                "Iterations": user.client_kdf_iter,
+                "Memory": user.client_kdf_memory,
+                "Parallelism": user.client_kdf_parallelism
+            },
+            // This field is named inconsistently and will be removed and replaced by the "wrapped" variant in the apps.
+            // https://github.com/bitwarden/android/blob/release/2025.12-rc41/network/src/main/kotlin/com/bitwarden/network/model/MasterPasswordUnlockDataJson.kt#L22-L26
+            "MasterKeyEncryptedUserKey": user.akey,
+            "MasterKeyWrappedUserKey": user.akey,
+            "Salt": user.email
+        })
+    } else {
+        Value::Null
+    };
 
     // Note: No refresh_token is returned. The CLI just repeats the
     // client_credentials login flow when the existing token expires.
@@ -618,6 +668,11 @@ async fn _user_api_key_login(
         "KdfParallelism": user.client_kdf_parallelism,
         "ResetMasterPassword": false, // TODO: according to official server seems something like: user.password_hash.is_empty(), but would need testing
         "scope": AuthMethod::UserApiKey.scope(),
+        "UserDecryptionOptions": {
+            "HasMasterPassword": has_master_password,
+            "MasterPasswordUnlock": master_password_unlock,
+            "Object": "userDecryptionOptions"
+        },
     });
 
     Ok(Json(result))
@@ -662,7 +717,12 @@ async fn get_device(data: &ConnectData, conn: &DbConn, user: &User) -> ApiResult
     // Find device or create new
     match Device::find_by_uuid_and_user(&device_id, &user.uuid, conn).await {
         Some(device) => Ok(device),
-        None => Device::new(device_id, user.uuid.clone(), device_name, device_type, conn).await,
+        None => {
+            let mut device = Device::new(device_id, user.uuid.clone(), device_name, device_type);
+            // save device without updating `device.updated_at`
+            device.save(false, conn).await?;
+            Ok(device)
+        }
     }
 }
 
@@ -907,6 +967,7 @@ struct RegisterVerificationData {
 
 #[derive(rocket::Responder)]
 enum RegisterVerificationResponse {
+    #[response(status = 204)]
     NoContent(()),
     Token(Json<String>),
 }

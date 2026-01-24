@@ -363,8 +363,6 @@ macro_rules! db_run {
     };
 }
 
-pub mod schema;
-
 // Write all ToSql<Text, DB> and FromSql<Text, DB> given a serializable/deserializable type.
 #[macro_export]
 macro_rules! impl_FromToSqlText {
@@ -404,6 +402,8 @@ macro_rules! impl_FromToSqlText {
         }
     };
 }
+
+pub mod schema;
 
 // Reexport the models, needs to be after the macros are defined so it can access them
 pub mod models;
