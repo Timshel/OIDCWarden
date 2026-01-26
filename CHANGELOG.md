@@ -1,5 +1,9 @@
 # Changelog
 
+# v2025.12.2-2
+
+- Integrate latest change from `Vaultwarden` up to [cc80f689](https://github.com/dani-garcia/vaultwarden/commit/cc80f689)
+
 # v2025.12.2-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2025.12.2-1`
