@@ -53,7 +53,7 @@ export async function members(test, page: Page, name: string) {
         await page.locator('org-switcher').getByLabel(/Toggle collapse/).click();
         await page.locator('org-switcher').getByRole('link', { name: `${name}` }).first().click();
         await expect(page.getByRole('heading', { name: `${name} collections` })).toBeVisible();
-        await page.locator('div').filter({ hasText: 'Members' }).nth(2).click();
+        await page.getByRole('link', { name: 'Members' }).click();
         await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
         await expect(page.getByRole('cell', { name: 'All' })).toBeVisible();
     });
@@ -134,7 +134,7 @@ export async function groups(test, page: Page, name: string) {
         await page.locator('org-switcher').getByLabel(/Toggle collapse/).click();
         await page.locator('org-switcher').getByRole('link', { name: `${name}` }).first().click();
         await expect(page.getByRole('heading', { name: `${name} collections` })).toBeVisible();
-        await page.locator('div').filter({ hasText: 'Groups' }).nth(2).click();
+        await page.getByRole('link', { name: 'Groups' }).click();
         await expect(page.getByRole('heading', { name: 'Groups' })).toBeVisible();
     });
 }
