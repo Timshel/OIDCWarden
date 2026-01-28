@@ -1,0 +1,1 @@
+ALTER TABLE sso_auth DROP COLUMN IF EXISTS verifier;
