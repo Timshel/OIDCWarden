@@ -1,5 +1,9 @@
 # Changelog
 
+# v2026.1.0-2
+
+- Fix `mysql` migration, `If EXISTS` not supported :(, switch to dropping the table and creating it again.
+
 # v2026.1.0-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.1.0-1`
