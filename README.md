@@ -175,13 +175,13 @@ Ex to build with latest: `--build-arg OIDC_WEB_RELEASE="https://github.com/Timsh
 ## Migration from Vaultwarden
 
 Only database difference is adding a column (`external_id`) on the `organizations` table the database.
-But due to the history of the project the `__diesel_schema_migrations` table will contain additionnal migrations (which can safely run on a Vaultwarden DB).
+But due to the history of the project the `__diesel_schema_migrations` table will contain additional migrations (which can safely run on a Vaultwarden DB).
 
 ### Revert database for Vaultwarden
 
 Vaultwarden can run directly on the OIIDCWarden database.
 \
-But when reverting longterm to Vaultwarden I would recommand to cleanup the DB.
+But when reverting longterm to Vaultwarden I would recommend to cleanup the DB.
 \
 It can easily be done manually (Make a backup :) :
 
