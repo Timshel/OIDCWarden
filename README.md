@@ -172,22 +172,23 @@ Ex to build with latest: `--build-arg OIDC_WEB_RELEASE="https://github.com/Timsh
 
 [Readme](docker/keycloak/README.md)
 
-## DB Migration
+## Migration from Vaultwarden
 
-ATM The migrations add two tables `sso_auth`, `sso_users` and a column `invited_by_email` to `users_organizations`.
+Only database difference is adding a column (`external_id`) on the `organizations` table the database.
+But due to the history of the project the `__diesel_schema_migrations` table will contain additionnal migrations (which can safely run on a Vaultwarden DB).
 
-### Revert to default VW
+### Revert database for Vaultwarden
 
-Reverting to the default VW DB state can easily be done manually (Make a backup :) :
+Vaultwarden can run directly on the OIIDCWarden database.
+\
+But when reverting longterm to Vaultwarden I would recommand to cleanup the DB.
+\
+It can easily be done manually (Make a backup :) :
 
 ```psql
 >BEGIN;
-BEGIN
->DELETE FROM __diesel_schema_migrations WHERE version in ('20230910133000', '20230914133000', '20240214170000', '20240226170000', '20240306170000', '20240313170000', '20250514120000', '20250820120000');
->DROP TABLE sso_auth;
->DROP TABLE sso_users;
->ALTER TABLE users_organizations DROP COLUMN invited_by_email;
->DROP INDEX organizations_external_id; -- only sqlite
+>DELETE FROM __diesel_schema_migrations WHERE version in ('20250514120000', '20251104120000', '20260128120000'); -- sqlite won't have the `20251104120000` migration
+>DROP INDEX IF EXISTS organizations_external_id; -- only sqlite
 >ALTER TABLE organizations DROP COLUMN external_id;
 > COMMIT / ROLLBACK;
 ```
