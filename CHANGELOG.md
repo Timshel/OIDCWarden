@@ -1,5 +1,11 @@
 # Changelog
 
+# v2026.1.0-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.1.0-1`
+- Remove unused `verifier` column on `sso_auth` table
+  :warning: with `sqlite` it will be done by dropping/recreating the table which will invalidate SSO auth in progress.
+
 # v2025.12.2-2
 
 - Integrate latest change from `Vaultwarden` up to [cc80f689](https://github.com/dani-garcia/vaultwarden/commit/cc80f689)
