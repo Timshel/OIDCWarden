@@ -3,7 +3,7 @@
 # We use the linux/amd64 platform shell scripts since there is no difference between the different platform scripts
 # https://github.com/tonistiigi/xx | https://hub.docker.com/r/tonistiigi/xx/tags
 xx_image_digest: "sha256:c64defb9ed5a91eacb37f96ccc3d4cd72521c4bd18d5442905b95e2226b0e707"
-rust_version: 1.92.0 # Rust version to be used
+rust_version: 1.93.0 # Rust version to be used
 debian_version: trixie # Debian release name to be used
 alpine_version: "3.23" # Alpine version to be used
 oidc_web_release: https://github.com/Timshel/oidc_web_vault/releases/download/v2026.1.0-1
