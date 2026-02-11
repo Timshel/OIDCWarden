@@ -1,5 +1,12 @@
 # Changelog
 
+# v2026.1.1-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.1.1-2`
+- Integrate latest change from `Vaultwarden` up to [1.35.3](https://github.com/dani-garcia/vaultwarden/releases/tag/1.35.3)
+  \
+  This release contains security fixes, update is strongly recommended (Publication in progress [GHSA-h265-g7rm-h337](https://github.com/dani-garcia/vaultwarden/security/advisories/GHSA-h265-g7rm-h337)).
+
 # v2026.1.0-2
 
 - Fix `mysql` migration, `If EXISTS` not supported :(, switch to dropping the table and creating it again.
