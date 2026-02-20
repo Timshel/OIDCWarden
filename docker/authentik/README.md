@@ -11,13 +11,20 @@ First create a copy of `.env.template` as `.env` (This is done to prevent commit
 Then start the stack (the `profile` is required to run `OIDCWarden`).
 
 ```bash
-> DOCKER_BUILDKIT=1 docker compose --profile warden up Warden
+> DOCKER_BUILDKIT=1 docker compose --profile warden up
 ```
 
 Then you can access :
 
  - `OIDCWarden` on http://127.0.0.1:8000 with the default user `test@yopmail.com/test`.
  - `Authentik` on http://127.0.0.1:9000/ with the default user `akadmin/admin`
+
+
+## Modifications
+
+The default email mapping was changed to always return `True`:
+/
+In `Admin interface` / `Customization` / `Property Mappings`, uncheck `Hide managed mappings`, then edit `authentik default OAuth Mapping: OpenID 'email'`.
 
 ## Switching front-end
 

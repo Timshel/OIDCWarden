@@ -1,17 +1,14 @@
 ---
 services:
   Warden:
-    image: warden
+    image: timshel/oidcwarden:v2026.2.0-1
     profiles: ["warden"]
     network_mode: "host"
-    build:
-      context: ../..
-      dockerfile: Dockerfile
     depends_on:
       - authentik-server
     env_file: .env
   postgresql:
-    image: postgres:16.3
+    image: postgres:17.7
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
       start_period: 20s
@@ -28,7 +25,7 @@ services:
       start_period: 20s
       interval: 30s
   authentik-server:
-    image: ghcr.io/goauthentik/server:2025.6.0
+    image: ghcr.io/goauthentik/server:2025.12.4
     command: server
     env_file:
       - .env
@@ -41,7 +38,7 @@ services:
       - postgresql
       - redis
   authentik-worker:
-    image: ghcr.io/goauthentik/server:2025.6.0
+    image: ghcr.io/goauthentik/server:2025.12.4
     command: worker
     env_file:
       - .env
