@@ -1,6 +1,5 @@
 use std::{borrow::Cow, sync::LazyLock, time::Duration};
 
-use mini_moka::sync::Cache;
 use openidconnect::{core::*, reqwest, *};
 use regex::Regex;
 use serde_json::Value;
@@ -14,9 +13,15 @@ use crate::{
 };
 
 static CLIENT_CACHE_KEY: LazyLock<String> = LazyLock::new(|| "sso-client".to_string());
-static CLIENT_CACHE: LazyLock<Cache<String, Client>> = LazyLock::new(|| {
-    Cache::builder().max_capacity(1).time_to_live(Duration::from_secs(CONFIG.sso_client_cache_expiration())).build()
+static CLIENT_CACHE: LazyLock<moka::sync::Cache<String, Client>> = LazyLock::new(|| {
+    moka::sync::Cache::builder()
+        .max_capacity(1)
+        .time_to_live(Duration::from_secs(CONFIG.sso_client_cache_expiration()))
+        .build()
 });
+
+static REFRESH_CACHE: LazyLock<moka::future::Cache<String, Result<RefreshTokenResponse, String>>> =
+    LazyLock::new(|| moka::future::Cache::builder().max_capacity(1000).time_to_live(Duration::from_secs(30)).build());
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 pub struct AllAdditionalClaims {
@@ -83,6 +88,8 @@ pub type CustomClient = openidconnect::Client<
     EndpointSet,
     EndpointSet,
 >;
+
+pub type RefreshTokenResponse = (Option<String>, AccessToken, Option<Duration>);
 
 #[derive(Clone)]
 pub struct Client {
@@ -279,22 +286,27 @@ impl Client {
         verifier
     }
 
-    pub async fn exchange_refresh_token(
-        &self,
-        refresh_token: String,
-    ) -> ApiResult<(Option<String>, AccessToken, Option<Duration>)> {
+    pub async fn exchange_refresh_token(&self, refresh_token: String) -> ApiResult<RefreshTokenResponse> {
+        REFRESH_CACHE
+            .get_with(refresh_token.clone(), async move { self._exchange_refresh_token(refresh_token).await })
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn _exchange_refresh_token(&self, refresh_token: String) -> Result<RefreshTokenResponse, String> {
         let rt = RefreshToken::new(refresh_token);
 
-        let token_response = match self.core_client.exchange_refresh_token(&rt).request_async(&self.http_client).await {
-            Err(err) => err!(format!("Request to exchange_refresh_token endpoint failed: {:?}", err)),
-            Ok(token_response) => token_response,
-        };
-
-        Ok((
-            token_response.refresh_token().map(|token| token.secret().clone()),
-            token_response.access_token().clone(),
-            token_response.expires_in(),
-        ))
+        match self.core_client.exchange_refresh_token(&rt).request_async(&self.http_client).await {
+            Err(err) => {
+                error!("Request to exchange_refresh_token endpoint failed: {err}");
+                Err(format!("Request to exchange_refresh_token endpoint failed: {err}"))
+            }
+            Ok(token_response) => Ok((
+                token_response.refresh_token().map(|token| token.secret().clone()),
+                token_response.access_token().clone(),
+                token_response.expires_in(),
+            )),
+        }
     }
 }
 
