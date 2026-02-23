@@ -1,5 +1,10 @@
 # Changelog
 
+# v2026.2.0-2
+
+- Add 30s cache to SSO exchange_refresh_token
+  Prevent errors when clients make parallels calls to refresh_token but the Provider prevent reuse.
+
 # v2026.2.0-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.2.0-1`
