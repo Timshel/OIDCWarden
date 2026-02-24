@@ -146,6 +146,10 @@ Depending on the format of the provider value different logic will be used:
 Only the `path` style allows to match a group using its name. A simple value can match multiple Organization/Group, this will generate an error and disable sync.
 When matching a group then the user will be considered part of the parent Organization even if it's not listed in the provider groups.
 
+### Differences with Vaultwarden
+
+- When SSO is activated, organization invitation will redirect to SSO login (Vaultwarden require `SSO_ONLY=true` too).
+
 ## Docker
 
 Change the docker files to package both front-end from [Timshel/oidc_web_vault](https://github.com/Timshel/oidc_web_vault/releases).

@@ -94,6 +94,7 @@ test('invited with existing account', async ({ page }) => {
 
     await test.step('Redirect to Keycloak', async () => {
         await page.goto(link);
+        await page.getByRole('button', { name: /Use single sign-on/ }).click();
     });
 
     await test.step('Keycloak login', async () => {
