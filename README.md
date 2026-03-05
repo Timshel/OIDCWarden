@@ -53,7 +53,7 @@ Sync is done by default at login and optionally on token refresh (this can be ex
 
 ### Role mapping
 
-Allow to map roles from the Access token to users to grant access to `VaultWarden` `admin` console.
+Allow to map roles from the Access token to users to grant access to `VaultWarden` `admin` console ([documentation](https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page#using-the-vaultwarden-admin-panel)).
 Support two roles: `admin` or `user`.
 
 This feature is controlled by the following conf:

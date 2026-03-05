@@ -10,7 +10,7 @@
     <div class="align-items-center p-3 mb-3 text-opacity-75 text-light bg-danger rounded shadow">
         {{#if sso_only}}
             <div>
-                <h6 class="mb-0 text-light">You do not have access to the admin panel (or the admin session expired and you need to log again)</h6>
+                <h6 class="mb-0 text-light">You do not have access to the admin panel (or the admin session expired and you need to <a href="{{urlpath}}/">log</a> again)</h6>
             </div>
         {{else}}
             <div>
