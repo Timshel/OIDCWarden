@@ -1,5 +1,9 @@
 # Changelog
 
+# v2026.2.1-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.2.1-1`
+
 # v2026.2.0-3
 
 - Integrate latest change from `Vaultwarden` up to [1.35.4](https://github.com/dani-garcia/vaultwarden/releases/tag/1.35.4)
