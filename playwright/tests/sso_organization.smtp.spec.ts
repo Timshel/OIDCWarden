@@ -122,8 +122,6 @@ test('invited with existing account', async ({ page }) => {
 });
 
 test('Org invite auto accept', async ({ page }, testInfo: TestInfo) => {
-    test.setTimeout(40000);
-
     await utils.restartVault(page, testInfo, {
         ORGANIZATION_INVITE_AUTO_ACCEPT: true,
         SMTP_HOST: process.env.MAILDEV_HOST,
