@@ -657,6 +657,19 @@ async fn _user_api_key_login(
         Value::Null
     };
 
+    let account_keys = if user.private_key.is_some() {
+        json!({
+            "publicKeyEncryptionKeyPair": {
+                "wrappedPrivateKey": user.private_key,
+                "publicKey": user.public_key,
+                "Object": "publicKeyEncryptionKeyPair"
+            },
+            "Object": "privateKeys"
+        })
+    } else {
+        Value::Null
+    };
+
     // Note: No refresh_token is returned. The CLI just repeats the
     // client_credentials login flow when the existing token expires.
     let result = json!({
@@ -671,7 +684,9 @@ async fn _user_api_key_login(
         "KdfMemory": user.client_kdf_memory,
         "KdfParallelism": user.client_kdf_parallelism,
         "ResetMasterPassword": false, // TODO: according to official server seems something like: user.password_hash.is_empty(), but would need testing
+        "ForcePasswordReset": false,
         "scope": AuthMethod::UserApiKey.scope(),
+        "AccountKeys": account_keys,
         "UserDecryptionOptions": {
             "HasMasterPassword": has_master_password,
             "MasterPasswordUnlock": master_password_unlock,
