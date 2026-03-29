@@ -43,6 +43,7 @@ services:
       - SSO_ROLES_DEFAULT_TO_USER
       - SSO_ROLES_ENABLED
       - SSO_SCOPES
+      - SSO_TRUSTED_DEVICE_ENCRYPTION
     restart: "no"
     depends_on:
       - OIDCWardenPrebuild
