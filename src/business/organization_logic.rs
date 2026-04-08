@@ -91,7 +91,7 @@ pub async fn invite(
             }
             MembershipStatus::Accepted => {
                 mail::send_enrolled(&user.email, &org.name).await?;
-                if auto {
+                if auto && user.private_key.is_some() {
                     mail::send_invite_accepted(&user.email, &invited_by_email, &org.name).await?;
                 }
             }

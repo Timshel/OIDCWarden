@@ -270,11 +270,7 @@ async fn accept_org_invite(
     reset_password_key: Option<String>,
     conn: &DbConn,
 ) -> EmptyResult {
-    if !(member.status == MembershipStatus::Invited as i32
-        || (member.status == MembershipStatus::Accepted as i32
-            && crate::CONFIG.sso_enabled()
-            && crate::CONFIG.organization_invite_auto_accept()))
-    {
+    if member.status != MembershipStatus::Invited as i32 {
         err!("User already accepted the invitation");
     }
 

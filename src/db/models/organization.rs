@@ -936,6 +936,18 @@ impl Membership {
         }}
     }
 
+    pub async fn find_accepted_by_user(user_uuid: &UserId, conn: &DbConn) -> Vec<(Self, Organization)> {
+        db_run! { conn: {
+            users_organizations::table
+                .filter(users_organizations::user_uuid.eq(user_uuid))
+                .filter(users_organizations::status.eq(MembershipStatus::Accepted as i32))
+                .inner_join(organizations::table.on(organizations::uuid.eq(users_organizations::org_uuid)))
+                .select((users_organizations::all_columns, organizations::all_columns))
+                .load::<(Self, Organization)>(conn)
+                .unwrap_or_default()
+        }}
+    }
+
     pub async fn find_confirmed_by_user(user_uuid: &UserId, conn: &DbConn) -> Vec<Self> {
         db_run! { conn: {
             users_organizations::table
