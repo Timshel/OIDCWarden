@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     env::consts::EXE_SUFFIX,
     fmt,
     process::exit,
@@ -840,6 +841,8 @@ make_config! {
         sso_organizations_enabled:      bool,   true,   def,    false;
         /// Process revocation
         sso_organizations_revocation:   bool,   true,   def,    false;
+        /// Allowed provider groups |> Optional comma separated list. Allow to ignore unmapped groups to keep revocation active
+        sso_provider_groups_allowlist:  String, true,  def,    String::new();
         /// Id token path to read Organization/Groups
         sso_organizations_token_path:   String, true,   def,    "/groups".to_string();
         /// On invitation, grant access to all existing collections |> Does not grant access to collections created afterwards.
@@ -1762,6 +1765,10 @@ impl Config {
 
     pub fn sso_authorize_extra_params_vec(&self) -> Vec<(String, String)> {
         url::form_urlencoded::parse(self.sso_authorize_extra_params().as_bytes()).into_owned().collect()
+    }
+
+    pub fn sso_provider_groups_allowlist_set(&self) -> HashSet<String> {
+        self.sso_provider_groups_allowlist().split(',').map(|g| g.trim().to_string()).filter(|g| !g.is_empty()).collect()
     }
 }
 

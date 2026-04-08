@@ -96,10 +96,14 @@ This feature is controlled with the following configuration:
 If a user is removed from the provider group, the membership will be revoked. User will lose access but no admin intervention will be needed to grant access back.
 \
 The state of the membership is kept (`invited`, `confirmed`, `accepted`) and will be restored if the user is once again added to the group/organization.
+\
+If a provider group cannot be matched to an organization or group then revocation will be disabled to prevent wiping organization in case of a config error.
+If you cannot restrict the groups sent by the provider, you can set the allowlist to limit the groups which are considered.
 
 This feature is controlled with the following configuration:
 
 - `SSO_ORGANIZATIONS_REVOCATION`: control if user revocation are made (default `false`).
+- `SSO_PROVIDER_GROUPS_ALLOWLIST`: optional, list of provider groups to consider when mapping.
 
 
 #### Organization member role

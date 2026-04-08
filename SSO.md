@@ -35,6 +35,7 @@ The following configurations are available
 - `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the Id token (used by organization membership role too).
 - `SSO_ORGANIZATIONS_ENABLED`: control if group/orgnization mapping is done (will send Org invitation), default is `false`
 - `SSO_ORGANIZATIONS_REVOCATION`: control if membership can be revoked, default is `false`
+- `SSO_PROVIDER_GROUPS_ALLOWLIST`: optional, list of provider groups to consider when mapping (Allow to keep revocation active even if not all groups are mapped).
 - `SSO_ORGANIZATIONS_TOKEN_PATH`: path to read groups/organization in the Id token
 - `SSO_ORGANIZATIONS_ALL_COLLECTIONS`: On invitation, grant read access to all existing collections, default is `true`. Does not grant access to collections created afterwards.
 - `ORGANIZATION_INVITE_AUTO_ACCEPT`: Bypass part of the invitation logic and set users as `Accepted` (Apply to non SSO logic too). Admin confirmation is still required.

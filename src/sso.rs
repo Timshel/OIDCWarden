@@ -627,9 +627,17 @@ async fn sync_organizations(
     user_groups: &Option<Vec<String>>,
     conn: &DbConn,
 ) -> ApiResult<()> {
-    let groups = match (org_role, user_groups) {
+    let groups: HashSet<String> = match (org_role, user_groups) {
         (Some(UserOrgRole::OrgNoSync), _) => return Ok(()),
-        (_, Some(g)) if CONFIG.sso_organizations_enabled() => g,
+        (_, Some(g)) if CONFIG.sso_organizations_enabled() => {
+            let allowed = CONFIG.sso_provider_groups_allowlist_set();
+
+            if allowed.is_empty() {
+                HashSet::from_iter(g.to_owned())
+            } else {
+                HashSet::from_iter(g.to_owned()).intersection(&allowed).cloned().collect()
+            }
+        },
         _ => return Ok(()),
     };
 
@@ -835,14 +843,14 @@ async fn sync_org_groups(
     Ok(())
 }
 
-fn parse_user_groups(raw_groups: &Vec<String>) -> Vec<(String, Option<String>)> {
+fn parse_user_groups(raw_groups: HashSet<String>) -> Vec<(String, Option<String>)> {
     use std::path::Path;
 
     let root = Path::new("/");
     let mut orgs: HashMap<String, HashSet<String>> = HashMap::new();
 
     for rg in raw_groups {
-        let p = root.join(Path::new(rg));
+        let p = root.join(Path::new(&rg));
 
         let (org, group) = match (p.parent().and_then(|o| o.to_str()), p.file_name().and_then(|g| g.to_str())) {
             (None | Some("/"), Some(file_name)) => (Some(file_name.to_string()), None),
