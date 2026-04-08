@@ -27,7 +27,7 @@ The following configurations are available
 - `SSO_AUDIENCE_TRUSTED`: Optional, Regex to trust additional audience for the IdToken (`client_id` is always trusted). Use single quote when writing the regex: `'^$'`.
 - `SSO_CLIENT_ID` : Client Id
 - `SSO_CLIENT_SECRET` : Client Secret
-- `SSO_MASTER_PASSWORD_POLICY`: Optional Master password policy (`enforceOnLogin` is not supported).
+- `SSO_MASTER_PASSWORD_POLICY`: Optional Master password policy.
 - `SSO_AUTH_ONLY_NOT_SESSION`: Enable to use SSO only for authentication not session lifecycle.
 - `SSO_SYNC_ON_REFRESH`: Enable to refresh role, orgs and groups on refresh_token. Will call `user_info`, can be expensive since the client can spam the refresh_token endpoint
 - `SSO_ROLES_ENABLED`: control if the mapping is done, default is `false`

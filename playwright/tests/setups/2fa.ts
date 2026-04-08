@@ -14,7 +14,8 @@ export async function activateTOTP(test: Test, page: Page, user: { name: string,
         await page.getByLabel('Master password (required)').fill(user.password);
         await page.getByRole('button', { name: 'Continue' }).click();
 
-        const secret = await page.getByLabel('Key').innerText();
+        const secret = await page.getByLabel('Key', { exact: true }).innerText();
+
         let totp = new OTPAuth.TOTP({ secret, period: 30 });
 
         await page.getByLabel(/Verification code/).fill(totp.generate());
