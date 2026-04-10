@@ -1,5 +1,13 @@
 # Changelog
 
+# v2026.3.1-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.3.1-1`
+- Integrate latest change from `Vaultwarden` up to [2b37368](https://github.com/dani-garcia/vaultwarden/commit/a6b43651ca2896fad9ecf8583f0a20d8101f2443)
+  - MasterPassword organization policy do not apply to owner anymore.
+- Delay `accepted` email until after the user has set a password.
+- Add `SSO_PROVIDER_GROUPS_ALLOWLIST` to keep revocation active without having to map all provider's group.
+
 # v2026.3.0-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.3.0-1`

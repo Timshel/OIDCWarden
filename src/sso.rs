@@ -637,7 +637,7 @@ async fn sync_organizations(
             } else {
                 HashSet::from_iter(g.to_owned()).intersection(&allowed).cloned().collect()
             }
-        },
+        }
         _ => return Ok(()),
     };
 

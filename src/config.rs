@@ -1778,7 +1778,11 @@ impl Config {
     }
 
     pub fn sso_provider_groups_allowlist_set(&self) -> HashSet<String> {
-        self.sso_provider_groups_allowlist().split(',').map(|g| g.trim().to_string()).filter(|g| !g.is_empty()).collect()
+        self.sso_provider_groups_allowlist()
+            .split(',')
+            .map(|g| g.trim().to_string())
+            .filter(|g| !g.is_empty())
+            .collect()
     }
 }
 

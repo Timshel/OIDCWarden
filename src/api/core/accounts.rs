@@ -375,7 +375,8 @@ async fn post_set_password(data: Json<SetPasswordData>, headers: Headers, conn: 
 
     if CONFIG.organization_invite_auto_accept() && CONFIG.mail_enabled() {
         for (member, org) in Membership::find_accepted_by_user(&user.uuid, &conn).await {
-            mail::send_invite_accepted(&user.email, &member.invited_by_email.unwrap_or(org.billing_email), &org.name).await?;
+            mail::send_invite_accepted(&user.email, &member.invited_by_email.unwrap_or(org.billing_email), &org.name)
+                .await?;
         }
     } else if let Some(identifier) = data.org_identifier {
         if identifier != crate::sso::FAKE_IDENTIFIER && identifier != crate::api::admin::FAKE_ADMIN_UUID {
