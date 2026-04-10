@@ -897,9 +897,11 @@ mod tests {
             "org/withslash2/group71/".to_string(),
             "/simpleorg1/duplicate11".to_string(),
             "/simpleorg1/duplicate12".to_string(),
-        ];
+        ]
+        .into_iter()
+        .collect::<HashSet<String>>();
 
-        let mut res = parse_user_groups(&raw_groups);
+        let mut res = parse_user_groups(raw_groups);
         res.sort();
 
         assert_eq!(
