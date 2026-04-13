@@ -1,5 +1,10 @@
 # Changelog
 
+# v2026.3.1-2
+
+- Integrate latest change from `Vaultwarden` up to [1.35.6](https://github.com/dani-garcia/vaultwarden/tree/1.35.6)
+- Revert Guard on master password policy which prevented SSO setup when not invited to any org.
+
 # v2026.3.1-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.3.1-1`
