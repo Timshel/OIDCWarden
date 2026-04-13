@@ -1925,7 +1925,7 @@ async fn list_policies_token(org_id: OrganizationId, token: &str, conn: DbConn) 
 // Called during the SSO enrollment.
 // Return the org policy if it exists, otherwise use the default one.
 #[get("/organizations/<org_id>/policies/master-password", rank = 1)]
-async fn get_master_password_policy(org_id: OrganizationId, _headers: OrgMemberHeaders, conn: DbConn) -> JsonResult {
+async fn get_master_password_policy(org_id: OrganizationId, conn: DbConn) -> JsonResult {
     let policy =
         OrgPolicy::find_by_org_and_type(&org_id, OrgPolicyType::MasterPassword, &conn).await.unwrap_or_else(|| {
             let (enabled, data) = match CONFIG.sso_master_password_policy_value() {
