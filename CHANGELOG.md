@@ -1,5 +1,9 @@
 # Changelog
 
+# v2026.3.1-3
+
+- Integrate latest change from `Vaultwarden` up to [1.35.7](https://github.com/dani-garcia/vaultwarden/tree/1.35.7)
+
 # v2026.3.1-2
 
 - Integrate latest change from `Vaultwarden` up to [1.35.6](https://github.com/dani-garcia/vaultwarden/tree/1.35.6)
