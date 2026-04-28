@@ -42,6 +42,7 @@ use crate::{
 pub fn routes() -> Vec<Route> {
     routes![
         login,
+        password_prelogin,
         prelogin,
         identity_register,
         register_verification_email,
@@ -1004,6 +1005,11 @@ async fn _json_err_twofactor(
 
 #[post("/accounts/prelogin", data = "<data>")]
 async fn prelogin(data: Json<PreloginData>, conn: DbConn) -> Json<Value> {
+    _prelogin(data, conn).await
+}
+
+#[post("/accounts/prelogin/password", data = "<data>")]
+async fn password_prelogin(data: Json<PreloginData>, conn: DbConn) -> Json<Value> {
     _prelogin(data, conn).await
 }
 
