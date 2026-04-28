@@ -25,7 +25,7 @@ use crate::{
     CONFIG,
 };
 
-pub static FAKE_SSO_IDENTIFIER: &str = "vaultwarden-dummy-oidc-identifier";
+pub static FAKE_SSO_IDENTIFIER: &str = "00000000-01DC-01DC-01DC-000000000000";
 pub const ACTING_AUTO_ENROLL_USER: &str = "oidcwarden-auto-00000-000000000000";
 
 static SSO_JWT_ISSUER: LazyLock<String> = LazyLock::new(|| format!("{}|sso", CONFIG.domain_origin()));
