@@ -467,7 +467,9 @@ pub async fn redeem(
         user_sso.save(conn).await?;
     }
 
-    if let Err(err) = sync_organizations(user, device, ip, &auth_user.org_role, &auth_user.groups, conn).await {
+    if let Err(err) =
+        sync_organizations(user, device, ip, auth_user.org_role.as_ref(), auth_user.groups.as_ref(), conn).await
+    {
         error!("Failure during sso organization sync: {err}");
     }
 
@@ -579,7 +581,7 @@ pub async fn exchange_refresh_token(
                 let ac = additional_claims(&user.email, vec![(user_info.additional_claims(), "user_info")])?;
                 is_admin = CONFIG.sso_roles_enabled() && ac.is_admin();
                 if CONFIG.sso_organizations_enabled() {
-                    sync_organizations(user, device, ip, &ac.org_role, &ac.groups, conn).await?;
+                    sync_organizations(user, device, ip, ac.org_role.as_ref(), ac.groups.as_ref(), conn).await?;
                 }
             }
 
@@ -623,8 +625,8 @@ async fn sync_organizations(
     user: &User,
     device: &Device,
     ip: &ClientIp,
-    org_role: &Option<UserOrgRole>,
-    user_groups: &Option<Vec<String>>,
+    org_role: Option<&UserOrgRole>,
+    user_groups: Option<&Vec<String>>,
     conn: &DbConn,
 ) -> ApiResult<()> {
     let groups: HashSet<String> = match (org_role, user_groups) {
@@ -705,13 +707,13 @@ async fn sync_orgs_and_role(
     user: &User,
     device: &Device,
     ip: &ClientIp,
-    org_role: &Option<UserOrgRole>,
+    org_role: Option<&UserOrgRole>,
     mut orgs: HashMap<OrganizationId, (Organization, HashSet<GroupId>)>,
     allow_revoking: bool,
     conn: &DbConn,
 ) -> ApiResult<()> {
     let acting_user: UserId = ACTING_AUTO_ENROLL_USER.into();
-    let provider_role = org_role.as_ref().map(|or| or.membership_type());
+    let provider_role = org_role.map(|or| or.membership_type());
     let user_org_groups: Vec<GroupId> = vec![];
 
     debug!(

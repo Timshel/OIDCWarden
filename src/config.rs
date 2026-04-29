@@ -1107,7 +1107,7 @@ fn validate_config(cfg: &ConfigItems, on_update: bool) -> Result<(), Error> {
 
         validate_internal_sso_issuer_url(&cfg.sso_authority)?;
         validate_internal_sso_redirect_url(&cfg.sso_callback_path)?;
-        validate_sso_master_password_policy(&cfg.sso_master_password_policy)?;
+        validate_sso_master_password_policy(cfg.sso_master_password_policy.as_ref())?;
 
         assert!(
             !cfg.sso_organizations_invite || cfg.sso_organizations_enabled,
@@ -1312,7 +1312,7 @@ fn validate_internal_sso_redirect_url(sso_callback_path: &String) -> Result<open
 }
 
 fn validate_sso_master_password_policy(
-    sso_master_password_policy: &Option<String>,
+    sso_master_password_policy: Option<&String>,
 ) -> Result<Option<serde_json::Value>, Error> {
     let policy = sso_master_password_policy.as_ref().map(|mpp| serde_json::from_str::<serde_json::Value>(mpp));
 
@@ -1766,7 +1766,7 @@ impl Config {
     }
 
     pub fn sso_master_password_policy_value(&self) -> Option<serde_json::Value> {
-        validate_sso_master_password_policy(&self.sso_master_password_policy()).ok().flatten()
+        validate_sso_master_password_policy(self.sso_master_password_policy().as_ref()).ok().flatten()
     }
 
     pub fn sso_scopes_vec(&self) -> Vec<String> {
