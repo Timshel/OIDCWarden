@@ -1,5 +1,10 @@
 # Changelog
 
+# v2026.4.1-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.4.1-3`
+- Integrate latest change from `Vaultwarden` up to [6274810](https://github.com/dani-garcia/vaultwarden/commit/62748100f04178b9b2df7f9fd8f9884fab59fbd8)
+
 # v2026.3.1-3
 
 - Integrate latest change from `Vaultwarden` up to [1.35.7](https://github.com/dani-garcia/vaultwarden/tree/1.35.7)
