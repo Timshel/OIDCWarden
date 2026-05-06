@@ -1,5 +1,12 @@
 # Changelog
 
+# v2026.4.2-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.4.2-1`
+- Integrate latest change from `Vaultwarden` up to [1.36.0](https://github.com/dani-garcia/vaultwarden/tree/1.36.0)
+  \
+  :warning: This release contains security fixes, update is strongly recommended.
+
 # v2026.4.1-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.4.1-3`
