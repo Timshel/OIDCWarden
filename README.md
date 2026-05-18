@@ -195,7 +195,7 @@ It can easily be done manually (Make a backup :) :
 
 ```psql
 >BEGIN;
->DELETE FROM __diesel_schema_migrations WHERE version in ('20250514120000', '20251104120000', '20260128120000'); -- sqlite won't have the `20251104120000` migration
+>DELETE FROM __diesel_schema_migrations WHERE version in ('20250514120000', '20251104120000', '20260128120000', '20260518120000'); -- sqlite won't have the `20251104120000` migration
 >DROP INDEX IF EXISTS organizations_external_id; -- only sqlite
 >ALTER TABLE organizations DROP COLUMN external_id;
 > COMMIT / ROLLBACK;
