@@ -9,6 +9,7 @@
 # 	https://docs.docker.com/develop/develop-images/multistage-build/
 # 	https://whitfin.io/speeding-up-rust-docker-builds/
 
+
 ########################## ALPINE BUILD IMAGES ##########################
 ## NOTE: The Alpine Base Images do not support other platforms then linux/amd64 and linux/arm64
 ## And for Alpine we define all build images here, they will only be loaded when actually used
@@ -38,7 +39,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     # Use PostgreSQL v17 during Alpine/MUSL builds instead of the default v16
     # Debian Trixie uses libpq v17
     PQ_LIB_DIR="/usr/local/musl/pq17/lib"
-
 
 
 # Create CARGO_HOME folder and don't download rust docs

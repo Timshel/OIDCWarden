@@ -1,9 +1,13 @@
 use crate::{
-    api::{core::log_event, core::organizations::CollectionData, ApiResult, EmptyResult},
+    CONFIG,
+    api::{ApiResult, EmptyResult, core::log_event, core::organizations::CollectionData},
     auth::ClientIp,
-    db::models::*,
     db::DbConn,
-    mail, CONFIG,
+    db::models::{
+        Collection, CollectionUser, Device, EventType, GroupId, GroupUser, Membership, MembershipId, MembershipStatus,
+        MembershipType, OrgPolicy, Organization, OrganizationId, User, UserId,
+    },
+    mail,
 };
 
 #[allow(clippy::too_many_arguments)]
