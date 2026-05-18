@@ -1,11 +1,18 @@
 # Changelog
 
+# v2026.4.2-2
+
+- Integrate latest change from `Vaultwarden` up to [d626ea81](https://github.com/dani-garcia/vaultwarden/commit/d626ea81abf8504b7e54be14b0cfaf45134171b6)
+- Bring `sso_auth` inline with `Vaultarden` [cf](https://github.com/dani-garcia/vaultwarden/pull/7197)
+  :warning: Include database migration (DB will stay compatible with `v2026.4.2-1`).
+
 # v2026.4.2-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.4.2-1`
 - Integrate latest change from `Vaultwarden` up to [1.36.0](https://github.com/dani-garcia/vaultwarden/tree/1.36.0)
   \
   :warning: This release contains security fixes, update is strongly recommended.
+  :warning: Include database migration (Not compatible with previous versions).
 
 # v2026.4.1-1
 
