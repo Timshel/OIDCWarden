@@ -1465,7 +1465,12 @@ struct DeviceKeysData {
 }
 
 #[put("/devices/identifier/<device_id>/keys", data = "<data>")]
-async fn put_device_keys(device_id: DeviceId, data: Json<DeviceKeysData>, headers: Headers, conn: DbConn) -> JsonResult {
+async fn put_device_keys(
+    device_id: DeviceId,
+    data: Json<DeviceKeysData>,
+    headers: Headers,
+    conn: DbConn,
+) -> JsonResult {
     if headers.device.uuid != device_id {
         err!("No device found");
     }
@@ -1473,7 +1478,9 @@ async fn put_device_keys(device_id: DeviceId, data: Json<DeviceKeysData>, header
         err!("No device found");
     };
     let data = data.into_inner();
-    if data.encrypted_user_key.is_empty() || data.encrypted_public_key.is_empty() || data.encrypted_private_key.is_empty()
+    if data.encrypted_user_key.is_empty()
+        || data.encrypted_public_key.is_empty()
+        || data.encrypted_private_key.is_empty()
     {
         err!("Invalid device keys");
     }
@@ -1485,18 +1492,33 @@ async fn put_device_keys(device_id: DeviceId, data: Json<DeviceKeysData>, header
 }
 
 #[post("/devices/identifier/<device_id>/keys", data = "<data>")]
-async fn post_device_keys(device_id: DeviceId, data: Json<DeviceKeysData>, headers: Headers, conn: DbConn) -> JsonResult {
+async fn post_device_keys(
+    device_id: DeviceId,
+    data: Json<DeviceKeysData>,
+    headers: Headers,
+    conn: DbConn,
+) -> JsonResult {
     put_device_keys(device_id, data, headers, conn).await
 }
 
 // Bitwarden server: `PUT|POST devices/{identifier}/keys` (not `devices/identifier/.../keys`).
 #[put("/devices/<device_id>/keys", data = "<data>")]
-async fn put_device_keys_by_uuid(device_id: DeviceId, data: Json<DeviceKeysData>, headers: Headers, conn: DbConn) -> JsonResult {
+async fn put_device_keys_by_uuid(
+    device_id: DeviceId,
+    data: Json<DeviceKeysData>,
+    headers: Headers,
+    conn: DbConn,
+) -> JsonResult {
     put_device_keys(device_id, data, headers, conn).await
 }
 
 #[post("/devices/<device_id>/keys", data = "<data>")]
-async fn post_device_keys_by_uuid(device_id: DeviceId, data: Json<DeviceKeysData>, headers: Headers, conn: DbConn) -> JsonResult {
+async fn post_device_keys_by_uuid(
+    device_id: DeviceId,
+    data: Json<DeviceKeysData>,
+    headers: Headers,
+    conn: DbConn,
+) -> JsonResult {
     put_device_keys(device_id, data, headers, conn).await
 }
 

@@ -87,13 +87,13 @@ impl Device {
             "identifier": self.uuid,
             "creationDate": format_date(&self.created_at),
             "isTrusted": self.is_trusted(),
-            "encryptedUserKey": Self::enc_string_json(&self.encrypted_user_key),
-            "encryptedPublicKey": Self::enc_string_json(&self.encrypted_public_key),
+            "encryptedUserKey": Self::enc_string_json(self.encrypted_user_key.as_ref()),
+            "encryptedPublicKey": Self::enc_string_json(self.encrypted_public_key.as_ref()),
             "object":"device"
         })
     }
 
-    fn enc_string_json(v: &Option<String>) -> Value {
+    fn enc_string_json(v: Option<&String>) -> Value {
         match v {
             Some(s) if !s.is_empty() => Value::String(s.clone()),
             _ => Value::Null,
@@ -151,8 +151,8 @@ impl DeviceWithAuthRequest {
             "creationDate": format_date(&self.device.created_at),
             "devicePendingAuthRequest": auth_request,
             "isTrusted": self.device.is_trusted(),
-            "encryptedPublicKey": Device::enc_string_json(&self.device.encrypted_public_key),
-            "encryptedUserKey": Device::enc_string_json(&self.device.encrypted_user_key),
+            "encryptedPublicKey": Device::enc_string_json(self.device.encrypted_public_key.as_ref()),
+            "encryptedUserKey": Device::enc_string_json(self.device.encrypted_user_key.as_ref()),
             "object": "device",
         })
     }

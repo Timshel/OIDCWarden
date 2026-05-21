@@ -3,11 +3,11 @@
 //! References: Bitwarden `UserDecryptionOptionsBuilder`, `TrustedDeviceUserDecryptionOption`, and
 //! `libs/common/.../user-decryption-options.response.ts` in bitwarden/clients.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use crate::db::models::{Device, Membership, SsoUser, User, UserId};
-use crate::db::DbConn;
 use crate::CONFIG;
+use crate::db::DbConn;
+use crate::db::models::{Device, Membership, SsoUser, User, UserId};
 
 /// Device types that may approve “login with device” / trusted-device flows (see Bitwarden `LoginApprovingClientTypes`).
 pub fn device_type_can_approve_trusted_login(atype: i32) -> bool {
@@ -16,10 +16,7 @@ pub fn device_type_can_approve_trusted_login(atype: i32) -> bool {
 
 async fn has_login_approving_device(user_uuid: &UserId, current: &Device, conn: &DbConn) -> bool {
     let devices = Device::find_by_user(user_uuid, conn).await;
-    devices.iter().any(|d| {
-        d.uuid != current.uuid
-            && device_type_can_approve_trusted_login(d.atype)
-    })
+    devices.iter().any(|d| d.uuid != current.uuid && device_type_can_approve_trusted_login(d.atype))
 }
 
 fn has_valid_reset_password_key(m: &Membership) -> bool {
@@ -47,6 +44,7 @@ async fn user_in_sso_context(user_uuid: &UserId, conn: &DbConn) -> bool {
     SsoUser::find_by_user(user_uuid, conn).await.is_some()
 }
 
+#[allow(clippy::fn_params_excessive_bools)]
 fn trusted_device_option_token(
     has_admin_approval: bool,
     has_login_approving_device: bool,
@@ -56,18 +54,8 @@ fn trusted_device_option_token(
 ) -> Value {
     let (enc_priv, enc_user) = if device.is_trusted() {
         (
-            device
-                .encrypted_private_key
-                .as_ref()
-                .filter(|s| !s.is_empty())
-                .map(|s| json!(s))
-                .unwrap_or(Value::Null),
-            device
-                .encrypted_user_key
-                .as_ref()
-                .filter(|s| !s.is_empty())
-                .map(|s| json!(s))
-                .unwrap_or(Value::Null),
+            device.encrypted_private_key.as_ref().filter(|s| !s.is_empty()).map_or(Value::Null, |s| json!(s)),
+            device.encrypted_user_key.as_ref().filter(|s| !s.is_empty()).map_or(Value::Null, |s| json!(s)),
         )
     } else {
         (Value::Null, Value::Null)
@@ -83,6 +71,7 @@ fn trusted_device_option_token(
     })
 }
 
+#[allow(clippy::fn_params_excessive_bools)]
 fn trusted_device_option_sync(
     has_admin_approval: bool,
     has_login_approving_device: bool,
@@ -92,18 +81,8 @@ fn trusted_device_option_sync(
 ) -> Value {
     let (enc_priv, enc_user) = if device.is_trusted() {
         (
-            device
-                .encrypted_private_key
-                .as_ref()
-                .filter(|s| !s.is_empty())
-                .map(|s| json!(s))
-                .unwrap_or(Value::Null),
-            device
-                .encrypted_user_key
-                .as_ref()
-                .filter(|s| !s.is_empty())
-                .map(|s| json!(s))
-                .unwrap_or(Value::Null),
+            device.encrypted_private_key.as_ref().filter(|s| !s.is_empty()).map_or(Value::Null, |s| json!(s)),
+            device.encrypted_user_key.as_ref().filter(|s| !s.is_empty()).map_or(Value::Null, |s| json!(s)),
         )
     } else {
         (Value::Null, Value::Null)
