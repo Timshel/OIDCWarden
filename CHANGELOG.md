@@ -1,5 +1,10 @@
 # Changelog
 
+# v2026.4.2-3
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.4.2-2`
+- Fix the `HTTP_REQUEST_BLOCK_NON_GLOBAL_IPS` restriction applying to the SSO provider.
+
 # v2026.4.2-2
 
 - Integrate latest change from `Vaultwarden` up to [d626ea81](https://github.com/dani-garcia/vaultwarden/commit/d626ea81abf8504b7e54be14b0cfaf45134171b6)
