@@ -179,7 +179,7 @@ docker compose --profile oidcwarden --env-file .env build OIDCWardenPrebuild OID
 All configuration for `keycloak` / `OIDCWarden` / `keycloak_setup.sh` can be found in [.env](.env.template).
 The content of the file will be loaded as environment variables in all containers.
 
-- `keycloak` [configuration](https://www.keycloak.org/server/all-config) include `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` and any variable prefixed `KC_` ([more information](https://www.keycloak.org/server/configuration#_example_configuring_the_db_url_host_parameter)).
+- `keycloak` [configuration](https://www.keycloak.org/server/all-config) include `KC_BOOTSTRAP_ADMIN_USERNAME` / `KC_BOOTSTRAP_ADMIN_PASSWORD` and any variable prefixed `KC_` ([more information](https://www.keycloak.org/server/configuration#_example_configuring_the_db_url_host_parameter)).
 - All `OIDCWarden` configuration can be set (EX: `SMTP_*`)
 
 ## Cleanup
