@@ -55,7 +55,7 @@ export async function members(test, page: Page, name: string) {
         await expect(page.getByRole('heading', { name: `${name} collections` })).toBeVisible();
         await page.getByRole('link', { name: 'Members' }).click();
         await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
-        await expect(page.getByRole('cell', { name: 'All' })).toBeVisible();
+        await expect(page.getByRole('table').filter({ hasText: 'All' })).toBeVisible();
     });
 }
 
@@ -67,9 +67,9 @@ export async function invite(test, page: Page, name: string, email: string) {
         await page.getByRole('tab', { name: 'Collections' }).click();
         await page.getByRole('combobox', { name: 'Permission' }).click();
         await page.getByText('Edit items', { exact: true }).click();
-        await page.getByLabel('Select collections').click();
+        await page.getByRole('combobox', { name: 'Select collections' }).click();
         await page.getByText('Default collection').click();
-        await page.getByRole('cell', { name: 'Collection', exact: true }).click();
+        await page.getByRole('columnheader', { name: 'Collection' }).click();
         await page.getByRole('button', { name: 'Save' }).click();
         await utils.checkNotification(page, 'User(s) invited');
     });
