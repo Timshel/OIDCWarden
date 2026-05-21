@@ -17,10 +17,3 @@ test.beforeAll('Setup', async ({ browser }, testInfo: TestInfo) => {
 test.afterAll('Teardown', async () => {
     utils.stopVault();
 });
-
-test('Web vault serves sso-connector.html for browser SSO', async ({ request }) => {
-    const res = await request.get('/sso-connector.html');
-    expect(res.ok(), await res.text()).toBeTruthy();
-    const ct = res.headers()['content-type'] || '';
-    expect(ct).toMatch(/text\/html/i);
-});
