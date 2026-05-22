@@ -525,8 +525,7 @@ async fn authenticated_response(
 
     let master_password_policy = master_password_policy(user, conn).await;
 
-    let user_decryption_options =
-        super::user_decryption::build_token_user_decryption_options(user, device, conn, sso_login).await;
+    let user_decryption_options = super::user_decryption::build_token_user_decryption_options(user, device, sso_login);
 
     let account_keys = if user.private_key.is_some() {
         json!({
@@ -656,8 +655,7 @@ async fn user_api_key_login(
 
     info!("User {} logged in successfully via API key. IP: {}", user.email, ip.ip);
 
-    let user_decryption_options =
-        super::user_decryption::build_token_user_decryption_options(&user, &device, conn, false).await;
+    let user_decryption_options = super::user_decryption::build_token_user_decryption_options(&user, &device, false);
 
     let account_keys = if user.private_key.is_some() {
         json!({
