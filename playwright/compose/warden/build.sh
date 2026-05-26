@@ -16,3 +16,6 @@ if [[ ! -z "${REPO_URL}" ]] && [[ ! -z "${COMMIT_HASH}" ]] ; then
     tar -xf /oidc_web_vault/oidc_button_web_vault.tar.gz; mv web-vault /web-vault_button
     tar -xf /oidc_web_vault/oidc_override_web_vault.tar.gz; mv web-vault /web-vault_override
 fi
+
+# Lower the KDF iterations default for faster tests.
+sed -i 's/(6e5,2e6,6e5)/(1e5,2e6,1e5)/'  web-vault_button/app/main.*.js web-vault_override/app/main.*.js
