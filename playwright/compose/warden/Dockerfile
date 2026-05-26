@@ -37,6 +37,7 @@ WORKDIR /
 COPY --from=prebuilt /start.sh .
 COPY --from=prebuilt /oidcwarden .
 
+COPY --from=build /data ./data
 COPY --from=build /web-vault_button ./web-vault_button
 COPY --from=build /web-vault_override ./web-vault_override
 
