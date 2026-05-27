@@ -30,6 +30,7 @@ The following configurations are available
 - `SSO_MASTER_PASSWORD_POLICY`: Optional Master password policy.
 - `SSO_AUTH_ONLY_NOT_SESSION`: Enable to use SSO only for authentication not session lifecycle.
 - `SSO_SYNC_ON_REFRESH`: Enable to refresh role, orgs and groups on refresh_token. Will call `user_info`, can be expensive since the client can spam the refresh_token endpoint
+- `SSO_TRUSTED_DEVICE_ENCRYPTION`: Enable trusted Device Encryption (TDE) for SSO. Requires clients that support TDE. See: https://bitwarden.com/help/sso-decryption-options/ (default `false`)
 - `SSO_ROLES_ENABLED`: control if the mapping is done, default is `false`
 - `SSO_ROLES_DEFAULT_TO_USER`: do not block login in case of missing or invalid roles, default is `true`.
 - `SSO_ROLES_TOKEN_PATH=/resource_access/${SSO_CLIENT_ID}/roles`: path to read roles in the Id token (used by organization membership role too).

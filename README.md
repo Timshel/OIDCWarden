@@ -32,6 +32,7 @@ New release are tested using Playwright integration tests. Currenttly tested flo
 - Login flow using Master password and/or SSO
 - Key settings change (KDF iterations and Argon2 switch)
 - 2FA using email and TOTP (with/without SSO)
+- Trusting a device using Master password or another device
 - Role mapping (access to admin console)
 - Organization and collection creation
 - Organization invitation using Master password and SSO
@@ -51,6 +52,14 @@ Role and Organization mapping can be read from the id token or the user info end
 Sync is done by default at login and optionally on token refresh (this can be expensive since the client can span the endpoint).
 
 - `SSO_SYNC_ON_REFRESH`: Enable to refresh role, orgs and groups on refresh_token.
+
+### Trusted device encryption
+
+Allow to authenticate using SSO and decrypt the vault using a device-stored encryption key ([About trusted devices](https://bitwarden.com/help/about-trusted-devices/)).
+\
+As currently implemented setting a Master password is still required, the option to trust a device will not be available during onboarding.
+
+This feature is controlled by the configuration key `SSO_TRUSTED_DEVICE_ENCRYPTION`.
 
 ### Role mapping
 

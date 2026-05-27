@@ -3,6 +3,12 @@
 # v2026.4.2-4
 
 - Fix typos including Playwright tests `PW_KEEP_SERVICE_RUNNING`
+- Fix incompatible migration with `Mariadb` `12.2.2`.
+- Add trusted device encryption ([About trusted devices](https://bitwarden.com/help/about-trusted-devices/))
+  - Activated with `SSO_TRUSTED_DEVICE_ENCRYPTION` (default `false`)
+  - Available only after a user has set a Master password
+  - Support trusting a device with the Master password or another device
+  :warning: Include database migration (only optional column, should stay compatible with previous releases).
 
 # v2026.4.2-3
 
