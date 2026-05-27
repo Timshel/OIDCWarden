@@ -271,6 +271,7 @@ export async function checkNotification(page: Page, hasText: string) {
 }
 
 export async function cleanLanding(page: Page) {
+    await page.context().clearCookies();
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('button').nth(0)).toBeVisible();
 

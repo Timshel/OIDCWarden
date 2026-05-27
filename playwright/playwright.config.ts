@@ -39,6 +39,10 @@ export default defineConfig({
         browserName: 'firefox',
         locale: 'en-GB',
         timezoneId: 'Europe/London',
+        ignoreHTTPSErrors: true,
+        launchOptions: {
+            args: ['--ignore-certificate-errors']
+        },
 
         /* Always collect trace (other values add random test failures) See https://playwright.dev/docs/trace-viewer */
         trace: 'on',

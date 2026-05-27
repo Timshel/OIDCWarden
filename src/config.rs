@@ -831,6 +831,8 @@ make_config! {
         sso_auth_only_not_session:      bool,   true,   def,    false;
         /// Refresh role, orgs and groups on refresh_token |> Will call `user_info`, can be expensive since the client cam spam the refresh_token endpoint
         sso_sync_on_refresh:            bool,   true,   def,    false;
+        /// Trusted Device Encryption (TDE) for SSO |> When enabled, SSO token responses include `TrustedDeviceOption` per Bitwarden Identity (`UserDecryptionOptions`). Requires clients that support TDE. See: https://bitwarden.com/help/sso-decryption-options/
+        sso_trusted_device_encryption:  bool,   true,   def,    false;
         /// Roles mapping |> Enable the mapping of roles (user/admin) from the access_token
         sso_roles_enabled:              bool,   true,   def,    false;
         /// Missing/Invalid roles default to user

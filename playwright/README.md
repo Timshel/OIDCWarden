@@ -93,7 +93,7 @@ This does not start the server, you will need to start it manually.
 
 ```bash
 DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env up OIDCWarden
-npx playwright codegen "http://127.0.0.1:8000"
+npx playwright codegen "https://127.0.0.1:8000" --ignore-https-errors
 ```
 
 ## Override web-vault
@@ -109,7 +109,7 @@ export PW_WV_COMMIT_HASH=8707dc76df3f0cceef2be5bfae37bb29bd17fae6
 DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env build Playwright
 ```
 
-Then check `http://127.0.0.1:8003/admin/diagnostics` with `admin`.
+Then check `https://127.0.0.1:8003/admin/diagnostics` with `admin`.
 
 # OpenID Connect test setup
 
@@ -127,7 +127,7 @@ Then start the stack (the `profile` is required to run `OIDCWarden`) :
 ```bash
 > docker compose --profile oidcwarden --env-file .env up
 ....
-keycloakSetup_1  | Logging into http://127.0.0.1:8080 as user admin of realm master
+keycloakSetup_1  | Logging into https://127.0.0.1:8080 as user admin of realm master
 keycloakSetup_1  | Created new realm with id 'test'
 keycloakSetup_1  | 74af4933-e386-4e64-ba15-a7b61212c45e
 oidc_keycloakSetup_1 exited with code 0
@@ -137,7 +137,7 @@ Wait until `oidc_keycloakSetup_1 exited with code 0` which indicate the correct 
 
 Then you can access :
 
-- `OIDCWarden` on http://0.0.0.0:8000 with the default user `test@yopmail.com/test`.
+- `OIDCWarden` on https://0.0.0.0:8000 with the default user `test@yopmail.com/test`.
 - `Keycloak` on http://0.0.0.0:8080/admin/master/console/ with the default user `admin/admin`
 - `Maildev` on http://0.0.0.0:1080
 

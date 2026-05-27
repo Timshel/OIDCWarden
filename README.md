@@ -30,6 +30,7 @@ See [changelog](CHANGELOG.md) for more details.
 New release are tested using Playwright integration tests. Currenttly tested flow include:
 
 - Login flow using Master password and/or SSO
+- Key settings change (KDF iterations and Argon2 switch)
 - 2FA using email and TOTP (with/without SSO)
 - Role mapping (access to admin console)
 - Organization and collection creation

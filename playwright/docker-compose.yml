@@ -43,6 +43,7 @@ services:
       - SSO_ROLES_DEFAULT_TO_USER
       - SSO_ROLES_ENABLED
       - SSO_SCOPES
+      - SSO_TRUSTED_DEVICE_ENCRYPTION
     restart: "no"
     depends_on:
       - OIDCWardenPrebuild
@@ -66,7 +67,7 @@ services:
   Mariadb:
     profiles: ["playwright"]
     container_name: playwright_mariadb
-    image: mariadb:12.3.1
+    image: mariadb:11.2.4
     env_file: test.env
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
