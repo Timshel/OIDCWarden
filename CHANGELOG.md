@@ -1,5 +1,9 @@
 # Changelog
 
+# v2026.4.2-4
+
+- Fix typos including Playwright tests `PW_KEEP_SERVICE_RUNNING`
+
 # v2026.4.2-3
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.4.2-2`

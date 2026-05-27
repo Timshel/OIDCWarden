@@ -203,7 +203,7 @@ function dbConfig(testInfo: TestInfo){
         case "sso-sqlite":
             return { I_REALLY_WANT_VOLATILE_STORAGE: true };
         default:
-            throw new Error(`Unknow database name: ${testInfo.project.name}`);
+            throw new Error(`Unknown database name: ${testInfo.project.name}`);
     }
 }
 
@@ -234,7 +234,7 @@ export async function startVault(browser: Browser, testInfo: TestInfo, env = {},
                 wipeSqlite();
                 break;
             default:
-                throw new Error(`Unknow database name: ${testInfo.project.name}`);
+                throw new Error(`Unknown database name: ${testInfo.project.name}`);
         }
     }
 
@@ -247,7 +247,7 @@ export async function startVault(browser: Browser, testInfo: TestInfo, env = {},
 }
 
 export async function stopVault(force: boolean = false) {
-    if( force === false && process.env.PW_KEEP_SERVICE_RUNNNING === "true" ) {
+    if( force === false && process.env.PW_KEEP_SERVICE_RUNNING === "true" ) {
         console.log(`Keep OIDCWarden running on: ${process.env.DOMAIN}`);
     } else {
         console.log(`OIDCWarden stopping`);

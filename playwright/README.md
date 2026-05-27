@@ -64,10 +64,10 @@ DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env run Pl
 
 ### Keep services running
 
-If you want you can keep the Db and Keycloak runnning (states are not impacted by the tests):
+If you want you can keep the Db and Keycloak running (states are not impacted by the tests):
 
 ```bash
-PW_KEEP_SERVICE_RUNNNING=true npx playwright test
+PW_KEEP_SERVICE_RUNNING=true npx playwright test
 ```
 
 ### Running specific tests
@@ -79,7 +79,7 @@ DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env run Pl
 DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env run Playwright test --project=sqlite login
 ```
 
-To run only a specifc test (It might fail if it has dependency):
+To run only a specific test (It might fail if it has dependency):
 
 ```bash
 DOCKER_BUILDKIT=1 docker compose --profile playwright --env-file test.env run Playwright test --project=sqlite -g "Account creation"
@@ -118,7 +118,7 @@ Additionally this `docker-compose` template allow to run locally `OIDCWarden`, [
 ## Setup
 
 This rely on `docker` and the `compose` [plugin](https://docs.docker.com/compose/install/).
-First create a copy of `.env.template` as `.env` (This is done to prevent commiting your custom settings, Ex `SMTP_`).
+First create a copy of `.env.template` as `.env` (This is done to prevent committing your custom settings, Ex `SMTP_`).
 
 ## Usage
 
@@ -151,7 +151,7 @@ You can switch between both [version](https://github.com/Timshel/oidc_web_vault)
 ## Testing Organization and group sync
 
 The default config activate role, organization and groups mappings.
-Default users are configured with vairous role, organization and groups visible in [setup.sh](https://github.com/Timshel/oidcwarden/blob/main/playwright/compose/keycloak/setup.sh) or the via the admin console.
+Default users are configured with various role, organization and groups visible in [setup.sh](https://github.com/Timshel/oidcwarden/blob/main/playwright/compose/keycloak/setup.sh) or the via the admin console.
 
 But as an example logged as the user `test/test` create the Organization `Test` with a group `Group1`.
 Then when `test2/test2` login it will be added to the org and groups with the `Owner` role (still need to be confirmed by `test`).
