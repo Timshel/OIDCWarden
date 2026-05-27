@@ -1,6 +1,6 @@
 FROM playwright_oidc_warden_prebuilt AS prebuilt
 
-FROM node:20-trixie AS build
+FROM node:22-trixie AS build
 
 ARG REPO_URL
 ARG COMMIT_HASH

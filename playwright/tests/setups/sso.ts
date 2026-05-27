@@ -15,8 +15,6 @@ export async function logNewUser(
     options: { mailBuffer?: MailBuffer, override?: boolean } = {}
 ) {
     await test.step(`Create user ${user.name}`, async () => {
-        await page.context().clearCookies();
-
         await test.step('Landing page', async () => {
             await utils.cleanLanding(page);
 
@@ -78,8 +76,6 @@ export async function logUser(
     let mailBuffer = options.mailBuffer;
 
     await test.step(`Log user ${user.email}`, async () => {
-        await page.context().clearCookies();
-
         await test.step('Landing page', async () => {
             await utils.cleanLanding(page);
 
