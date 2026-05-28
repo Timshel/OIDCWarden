@@ -39,6 +39,7 @@ New release are tested using Playwright integration tests. Currenttly tested flo
 - Organization auto-invitation
 - Organization membership role sync (Owner, admin ...)
 - Organization membership revocation
+- Organization admin account recovery
 
 Goal will be to continue to increase the test coverage but I would recommend to always deploy a specific version and always backup/test before deploying a new release.
 
