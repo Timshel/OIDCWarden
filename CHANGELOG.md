@@ -1,5 +1,10 @@
 # Changelog
 
+# v2026.4.2-5
+
+- Fix admin password recovery (endpoint change)
+- Add `SSO_SIGNUPS_ALLOWED` (default `true`)
+
 # v2026.4.2-4
 
 - Fix typos including Playwright tests `PW_KEEP_SERVICE_RUNNING`
