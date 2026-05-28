@@ -14,6 +14,7 @@ The following configurations are available
 
 - `SSO_ENABLED` : Activate the SSO
 - `SSO_ONLY` : disable email+Master password authentication
+- `SSO_SIGNUPS_ALLOWED`: Allow SSO flow to create account. You probably want to disable it when using a public provider (default `true`).
 - `SSO_SIGNUPS_MATCH_EMAIL`: On SSO Signup if a user with a matching email already exists make the association (default `true`)
 - `SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION`: Allow unknown email verification status (default `false`). Allowing this with `SSO_SIGNUPS_MATCH_EMAIL` open potential account takeover.
 - `SSO_AUTHORITY` : the OpenID Connect Discovery endpoint of your SSO
@@ -195,6 +196,7 @@ Then configure your server with
 - `SSO_AUTHORITY=https://gitlab.com`
 - `SSO_CLIENT_ID`
 - `SSO_CLIENT_SECRET`
+- `SSO_SIGNUPS_ALLOWED=false`: Unless you are ok with anyone creating an account
 
 ## Google Auth
 
@@ -208,6 +210,7 @@ Configure your server with :
 - `SSO_AUTHORIZE_EXTRA_PARAMS="access_type=offline&prompt=consent"`
 - `SSO_CLIENT_ID`
 - `SSO_CLIENT_SECRET`
+- `SSO_SIGNUPS_ALLOWED=false`: Unless you are ok with anyone creating an account
 
 ## Kanidm
 
