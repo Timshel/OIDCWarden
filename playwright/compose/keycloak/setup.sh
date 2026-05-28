@@ -62,7 +62,7 @@ All_SUBGROUP2_ID=$(kcadm.sh create -r "$TEST_REALM" "groups/$All_GROUP_ID/childr
 SUB_GROUP1_ID=$(kcadm.sh create -r "$TEST_REALM" groups -s name=SubGroup1 -i)
 SUB_GROUP2_ID=$(kcadm.sh create -r "$TEST_REALM" groups -s name=SubGroup2 -i)
 
-TEST_CLIENT_ID=$(kcadm.sh create -r "$TEST_REALM" clients -s "name=Warden" -s "clientId=$SSO_CLIENT_ID" -s "secret=$SSO_CLIENT_SECRET" -s "redirectUris=[\"$DOMAIN/*\", \"http://127.0.0.1:$ROCKET_PORT/*\", \"https://vw.lan/*\"]" -i)
+TEST_CLIENT_ID=$(kcadm.sh create -r "$TEST_REALM" clients -s "name=Warden" -s "clientId=$SSO_CLIENT_ID" -s "secret=$SSO_CLIENT_SECRET" -s "redirectUris=[\"$DOMAIN/*\", \"https://127.0.0.1:$ROCKET_PORT/*\", \"https://vw.lan/*\"]" -i)
 
 ## ADD Role mapping scope
 kcadm.sh update -r "$TEST_REALM" "clients/$TEST_CLIENT_ID" --body "{\"optionalClientScopes\": [\"$TEST_CLIENT_ROLES_SCOPE_ID\"]}"
