@@ -1468,8 +1468,11 @@ async fn post_clear_device_token(device_id: DeviceId, conn: DbConn) -> EmptyResu
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct DeviceKeysData {
+    #[serde(alias = "EncryptedUserKey")]
     encrypted_user_key: String,
+    #[serde(alias = "EncryptedPublicKey")]
     encrypted_public_key: String,
+    #[serde(alias = "EncryptedPrivateKey")]
     encrypted_private_key: String,
 }
 

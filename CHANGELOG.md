@@ -1,5 +1,9 @@
 # Changelog
 
+# v2026.4.2-6
+
+- Support `PUT` device keys Android PascalCase
+
 # v2026.4.2-5
 
 - Fix admin password recovery (endpoint change)
