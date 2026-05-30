@@ -1,5 +1,9 @@
 # Changelog
 
+# v2026.4.2-7
+
+- Fix regression with domain_allowed in SSO onboarding
+
 # v2026.4.2-6
 
 - Support `PUT` device keys Android PascalCase
