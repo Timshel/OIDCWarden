@@ -179,6 +179,17 @@ Docker images available at:
  - Docker hub [hub.docker.com/r/timshel/oidcwarden](https://hub.docker.com/r/timshel/oidcwarden/tags)
  - Github container registry [ghcr.io/timshel/oidcwarden](https://github.com/Timshel/oidcwarden/pkgs/container/oidcwarden)
 
+## NixOS
+
+A nixpkgs is available maintained by [@DerGrumpf](https://github.com/DerGrumpf)
+
+OIDCWarden can be used with the existing [vaultwarden service](https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/services/security/vaultwarden/default.nix) defined in [nixpkgs](https://github.com/NixOS/nixpkgs).
+
+Just set the package option to: 
+```nix 
+services.vaultwarden.package = pkgs.oidcwarden;
+```
+
 ### Front-end version
 
 By default front-end version is fixed to prevent regression (check [CHANGELOG.md](CHANGELOG.md)).
