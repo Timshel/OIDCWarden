@@ -269,7 +269,7 @@ impl Client {
         } else {
             let challenge = PkceCodeChallenge::from_code_verifier_sha256(&verifier);
             if challenge.as_str() != String::from(sso_auth.client_challenge.clone()) {
-                err!(format!("PKCE client challenge failed"))
+                err!("PKCE client challenge failed")
             }
         }
 
