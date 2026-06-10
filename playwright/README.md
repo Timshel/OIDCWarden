@@ -15,7 +15,7 @@ It's possible to run `Playwright` outside of the container, this remove the need
 You'll additionally need `nodejs` then run:
 
 ```bash
-npm ci --ignore-scripts
+npm ci --ignore-scripts --allow-git=none --allow-remote=none
 npx playwright install-deps
 npx playwright install firefox
 ```
