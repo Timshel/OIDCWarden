@@ -1,5 +1,9 @@
 # Changelog
 
+# v2026.6.0-3
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.6.0-3`
+
 # v2026.4.2-7
 
 - Fix regression with domain_allowed in SSO onboarding
