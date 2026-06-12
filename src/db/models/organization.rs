@@ -976,8 +976,10 @@ impl Membership {
         .await
     }
 
-    // Should be used only when email are disabled.
     // In Organizations::send_invite status is set to Accepted only if the user has a password.
+    // As such should only be used
+    //  - when email are disabled.
+    //  - when organization_invite_auto_accept is active.
     pub async fn accept_user_invitations(user_uuid: &UserId, conn: &DbConn) -> EmptyResult {
         conn.run(move |conn| {
             diesel::update(users_organizations::table)

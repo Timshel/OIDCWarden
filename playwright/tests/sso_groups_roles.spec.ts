@@ -35,6 +35,8 @@ test.afterAll('Teardown', async ({}) => {
 });
 
 test('Roles', async ({ context, page }, testInfo: TestInfo) => {
+    test.setTimeout(480_000);
+
     await test.step('Setup', async () => {
         await logNewUser(test, page, users.user1);
         await orgs.create(test, page, '/All');

@@ -51,8 +51,8 @@ export async function logNewUser(
         if( options.mailBuffer ){
             let mailBuffer = options.mailBuffer;
             await test.step('Check emails', async () => {
-                await mailBuffer.expect((m) => m.subject === "Welcome");
                 await mailBuffer.expect((m) => m.subject.includes("New Device Logged"));
+                await mailBuffer.expect((m) => m.subject === "Welcome");
             });
         }
     });

@@ -466,11 +466,13 @@ async fn post_set_password(data: Json<SetPasswordData>, headers: Headers, conn: 
         user.public_key = Some(keys.public_key);
     }
 
-    if CONFIG.organization_invite_auto_accept() && CONFIG.mail_enabled() {
-        for (member, org) in Membership::find_accepted_by_user(&user.uuid, &conn).await {
-            mail::send_invite_accepted(&user.email, &member.invited_by_email.unwrap_or(org.billing_email), &org.name)
-                .await?;
-        }
+    user.save(&conn).await?;
+
+    log_user_event(EventType::UserChangedPassword as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn)
+        .await;
+
+    if CONFIG.organization_invite_auto_accept() || !CONFIG.mail_enabled() {
+        Membership::accept_user_invitations(&user.uuid, &conn).await?;
     } else if let Some(identifier) = data.org_identifier
         && identifier != crate::sso::FAKE_SSO_IDENTIFIER
         && identifier != crate::api::admin::FAKE_ADMIN_UUID
@@ -488,14 +490,18 @@ async fn post_set_password(data: Json<SetPasswordData>, headers: Headers, conn: 
 
     if CONFIG.mail_enabled() {
         mail::send_welcome(&user.email.to_lowercase()).await?;
-    } else {
-        Membership::accept_user_invitations(&user.uuid, &conn).await?;
+        if CONFIG.organization_invite_auto_accept() {
+            for (member, org) in Membership::find_accepted_by_user(&user.uuid, &conn).await {
+                mail::send_enrolled(&user.email, &org.name).await?;
+                mail::send_invite_accepted(
+                    &user.email,
+                    &member.invited_by_email.unwrap_or(org.billing_email),
+                    &org.name,
+                )
+                .await?;
+            }
+        }
     }
-
-    log_user_event(EventType::UserChangedPassword as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn)
-        .await;
-
-    user.save(&conn).await?;
 
     Ok(Json(json!({
       "object": "set-password",

@@ -25,9 +25,9 @@ pub async fn invite(
     auto: bool,
     conn: &DbConn,
 ) -> ApiResult<Membership> {
-    // automatically accept existing users if mail is disabled or config if set
-    let membership_status = if (!user.password_hash.is_empty() && !CONFIG.mail_enabled())
-        || (CONFIG.sso_enabled() && CONFIG.organization_invite_auto_accept())
+    // automatically accept existing users if mail is disabled or config is set
+    let membership_status = if !user.password_hash.is_empty()
+        && (!CONFIG.mail_enabled() || (CONFIG.sso_enabled() && CONFIG.organization_invite_auto_accept()))
     {
         MembershipStatus::Accepted
     } else {
@@ -79,6 +79,7 @@ pub async fn invite(
 
     if CONFIG.mail_enabled() {
         match membership_status {
+            MembershipStatus::Invited if auto && CONFIG.organization_invite_auto_accept() => (),
             MembershipStatus::Invited => {
                 if let Err(e) = mail::send_invite(
                     user,
