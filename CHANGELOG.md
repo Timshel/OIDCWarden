@@ -1,5 +1,14 @@
 # Changelog
 
+# v2026.6.0-4
+
+- Fix onboarding failing when `ORGANIZATION_INVITE_AUTO_ACCEPT` activated and emails are disabled.
+- Change `ORGANIZATION_INVITE_AUTO_ACCEPT` logic concerning invited user.
+  - If the user does not already exists it will stay in the `Invited` state.
+  - This allows to differentiate it (before it was shown as accepted but confirmation was not possible).
+  - The sent email is now `Join ...` with a link instead of the `Enrolled` one.
+  - Become possible to resend the email if needed.
+
 # v2026.6.0-3
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.6.0-3`

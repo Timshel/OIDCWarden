@@ -17,7 +17,7 @@ Would not be possible without the maintainers and contributors of the source pro
 
 More sponsors are needed to ensure continued support, if possible please help :).
 
-It would make possible working on new features such as [Trusted device](https://bitwarden.com/help/about-trusted-devices/), Backchannel logout and adding more integration tests.
+It would make possible working on new features such as backchannel logout and adding more integration tests.
 
 ## Versions
 
