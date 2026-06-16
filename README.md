@@ -30,6 +30,8 @@ See [changelog](CHANGELOG.md) for more details.
 New release are tested using Playwright integration tests. Currenttly tested flow include:
 
 - Login flow using Master password and/or SSO
+- Create a password and ssh key entry
+- Create and consult a Send with and without password
 - Key settings change (KDF iterations and Argon2 switch)
 - 2FA using email and TOTP (with/without SSO)
 - Trusting a device using Master password or another device

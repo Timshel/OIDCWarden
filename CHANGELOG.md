@@ -1,5 +1,9 @@
 # Changelog
 
+# v2026.6.0-5
+
+- Fix Send and add playwright tests
+
 # v2026.6.0-4
 
 - Fix onboarding failing when `ORGANIZATION_INVITE_AUTO_ACCEPT` activated and emails are disabled.
