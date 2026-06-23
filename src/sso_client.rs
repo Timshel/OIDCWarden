@@ -1,15 +1,16 @@
-use std::{borrow::Cow, future::Future, pin::Pin, sync::LazyLock, time::Duration};
+use std::{borrow::Cow, collections::HashSet, future::Future, pin::Pin, sync::LazyLock, time::Duration};
 
 use openidconnect::{
-    AccessToken, AdditionalClaims, AsyncHttpClient, AuthDisplay, AuthPrompt, AuthenticationFlow, AuthorizationCode,
-    AuthorizationRequest, ClientId, ClientSecret, CsrfToken, EmptyExtraTokenFields, EndpointMaybeSet, EndpointNotSet,
-    EndpointSet, HttpClientError, HttpRequest, HttpResponse, IdTokenClaims, IdTokenFields, Nonce, OAuth2TokenResponse,
-    PkceCodeChallenge, PkceCodeVerifier, RefreshToken, ResponseType, Scope, StandardErrorResponse,
-    StandardTokenResponse, UserInfoClaims,
+    AccessToken, AdditionalClaims, AsyncHttpClient, AuthDisplay, AuthPrompt, AuthType, AuthenticationFlow,
+    AuthorizationCode, AuthorizationRequest, ClientId, ClientSecret, CsrfToken, EmptyExtraTokenFields,
+    EndpointMaybeSet, EndpointNotSet, EndpointSet, HttpClientError, HttpRequest, HttpResponse, IdTokenClaims,
+    IdTokenFields, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, RefreshToken, ResponseType, Scope,
+    StandardErrorResponse, StandardTokenResponse, UserInfoClaims,
     core::{
-        CoreAuthDisplay, CoreAuthPrompt, CoreErrorResponseType, CoreGenderClaim, CoreIdTokenVerifier, CoreJsonWebKey,
-        CoreJweContentEncryptionAlgorithm, CoreJwsSigningAlgorithm, CoreProviderMetadata, CoreResponseType,
-        CoreRevocableToken, CoreRevocationErrorResponse, CoreTokenIntrospectionResponse, CoreTokenType,
+        CoreAuthDisplay, CoreAuthPrompt, CoreClientAuthMethod, CoreErrorResponseType, CoreGenderClaim,
+        CoreIdTokenVerifier, CoreJsonWebKey, CoreJweContentEncryptionAlgorithm, CoreJwsSigningAlgorithm,
+        CoreProviderMetadata, CoreResponseType, CoreRevocableToken, CoreRevocationErrorResponse,
+        CoreTokenIntrospectionResponse, CoreTokenType,
     },
     http, url,
 };
@@ -165,7 +166,21 @@ impl Client {
             Ok(metadata) => metadata,
         };
 
-        let base_client = MetadataClient::from_provider_metadata(provider_metadata, client_id, Some(client_secret));
+        let auth_methods: Option<HashSet<CoreClientAuthMethod>> = provider_metadata
+            .token_endpoint_auth_methods_supported()
+            .map(|v| v.iter().map(ToOwned::to_owned).collect());
+
+        let mut base_client = MetadataClient::from_provider_metadata(provider_metadata, client_id, Some(client_secret));
+
+        if let Some(am) = auth_methods {
+            if am.contains(&CoreClientAuthMethod::ClientSecretBasic) {
+                base_client = base_client.set_auth_type(AuthType::BasicAuth); // Default
+            } else if am.contains(&CoreClientAuthMethod::ClientSecretPost) {
+                base_client = base_client.set_auth_type(AuthType::RequestBody);
+            } else {
+                err!(format!("No supported auth_methods (only basic or request body), advertised: {am:?}"));
+            }
+        }
 
         let token_uri = if let Some(uri) = base_client.token_uri() {
             uri.clone()
