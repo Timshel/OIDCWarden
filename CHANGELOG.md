@@ -1,5 +1,11 @@
 # Changelog
 
+# v2026.6.1-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.6.1-1`
+- Prevent creating a sends with email verification (until https://github.com/dani-garcia/vaultwarden/pull/7363 is merged).
+- Add a provider auth method detection to switch to request body if basic is not supported.
+
 # v2026.6.0-5
 
 - Fix Send and add playwright tests
