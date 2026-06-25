@@ -67,8 +67,8 @@ test('invited with new account', async ({ page }) => {
         await expect(page).toHaveTitle(/Create account | OIDCWarden Web/);
 
         // await page.getByLabel('Name').fill(users.user2.name);
-        await page.getByLabel('Master password (required)', { exact: true }).fill(users.user2.password);
-        await page.getByLabel('Confirm master password (').fill(users.user2.password);
+        await page.getByRole('textbox', { name: 'Master password * (required)', exact: true }).fill(users.user2.password);
+        await page.getByRole('textbox', { name: 'Confirm master password * (' }).fill(users.user2.password);
         await page.getByRole('button', { name: 'Create account' }).click();
         await utils.checkNotification(page, 'Your new account has been created');
 
@@ -98,8 +98,8 @@ test('invited with existing account', async ({ page }) => {
     await page.getByRole('button', { name: 'Continue' }).click();
 
     // Unlock page
-    await page.getByLabel('Master password').fill(users.user3.password);
-    await page.getByRole('button', { name: 'Log in with master password' }).click();
+    await page.getByRole('textbox', { name: 'Master password * (required)', exact: true }).fill(users.user3.password);
+    await page.getByRole('button', { name: 'Log in', exact: true }).click();
 
     // We are now in the default vault page
     await expect(page).toHaveTitle('Vaults | OIDCWarden Web');
@@ -134,8 +134,8 @@ test('Recover user password', async ({ page }) => {
         await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
         await page.getByRole('row').filter({hasText: users.user2.email}).getByLabel('Options').click();
         await page.getByRole('menuitem', { name: 'Recover account' }).click();
-        await page.getByRole('textbox', { name: 'New master password (required)', exact: true }).fill(newPassword);
-        await page.getByRole('textbox', { name: 'Confirm new master password (' }).fill(newPassword);
+        await page.getByRole('textbox', { name: 'New master password * (required)', exact: true }).fill(newPassword);
+        await page.getByRole('textbox', { name: 'Confirm new master password * (' }).fill(newPassword);
          await page.getByRole('button', { name: 'Save' }).click();
         await utils.checkNotification(page, 'Password reset success');
     });

@@ -7,7 +7,7 @@ export async function create(test, page: Page, name: string) {
         await page.locator('a').filter({ hasText: 'Password Manager' }).first().click();
         await expect(page.getByTitle('All vaults', { exact: true })).toBeVisible();
         await page.getByRole('link', { name: 'New organisation' }).click();
-        await page.getByLabel('Organisation name (required)').fill(name);
+        await page.getByRole('textbox', { name: 'Organisation name * (required)', exact: true }).fill(name);
         await page.getByRole('button', { name: 'Submit' }).click();
 
         await utils.checkNotification(page, 'Organisation created');
@@ -55,7 +55,7 @@ export async function members(test, page: Page, name: string) {
         await expect(page.getByRole('heading', { name: `${name} collections` })).toBeVisible();
         await page.getByRole('link', { name: 'Members' }).click();
         await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
-        await expect(page.getByRole('table').filter({ hasText: 'All' })).toBeVisible();
+        await expect(page.getByRole('columnheader', { name: 'Select all' })).toBeVisible();
     });
 }
 
@@ -63,7 +63,7 @@ export async function invite(test, page: Page, name: string, email: string) {
     await test.step(`Invite ${email}`, async () => {
         await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
         await page.getByRole('button', { name: 'Invite member' }).click();
-        await page.getByLabel('Email (required)').fill(email);
+        await page.getByRole('textbox', { name: 'Email * (required)', exact: true }).fill(email);
         await page.getByRole('tab', { name: 'Collections' }).click();
         await page.getByRole('combobox', { name: 'Permission' }).click();
         await page.getByText('Edit items', { exact: true }).click();
@@ -142,7 +142,7 @@ export async function groups(test, page: Page, name: string) {
 export async function createGroup(test, page: Page, name: string, group_name: string, group_id?: string) {
     await test.step(`Create group ${name}/${group_name} `, async () => {
         await page.getByRole('button', { name: 'New group' }).click();
-        await page.getByRole('textbox', { name: 'Name (required)' }).fill(group_name);
+        await page.getByRole('textbox', { name: 'Name * (required)' }).fill(group_name);
 
         if( group_id !== undefined ) {
             await page.getByRole('textbox', { name: 'External ID' }).fill(group_id);

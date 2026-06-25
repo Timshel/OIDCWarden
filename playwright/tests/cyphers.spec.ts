@@ -24,10 +24,10 @@ test('Change Key settings', async ({ page }) => {
         await page.getByRole('link', { name: 'Security' }).click();
         await page.getByRole('link', { name: 'Keys' }).click();
 
-        await page.getByRole('spinbutton', { name: 'KDF iterations (required)' }).fill('700000');
+        await page.getByRole('spinbutton', { name: 'KDF iterations * (required)'}).fill('700000');
 
         await page.getByRole('button', { name: 'Update encryption settings' }).click();
-        await page.getByRole('textbox', { name: 'Master password (required)' }).fill(users.user1.password);
+        await page.getByRole('textbox', { name: 'Master password * (required)' }).fill(users.user1.password);
         await page.getByRole('button', { name: 'Update settings' }).click();
         await page.getByRole('heading', { name: 'Log in' }).click();
     });
@@ -41,12 +41,13 @@ test('Change Key settings', async ({ page }) => {
 
         await page.locator('.ng-arrow-wrapper').click();
         await page.getByText('Argon2id').click();
-        await page.getByRole('spinbutton', { name: 'KDF memory (MB) (required)' }).fill('16');
-        await page.getByRole('spinbutton', { name: 'KDF iterations (required)' }).fill('2');
-        await page.getByRole('spinbutton', { name: 'KDF parallelism (required)' }).fill('1');
+
+        await page.getByRole('spinbutton', { name: 'KDF memory (MB) * (required)'}).fill('16');
+        await page.getByRole('spinbutton', { name: 'KDF iterations * (required)'}).fill('2');
+        await page.getByRole('spinbutton', { name: 'KDF parallelism * (required)'}).fill('1');
 
         await page.getByRole('button', { name: 'Update encryption settings' }).click();
-        await page.getByRole('textbox', { name: 'Master password (required)' }).fill(users.user1.password);
+        await page.getByRole('textbox', { name: 'Master password * (required)' }).fill(users.user1.password);
         await page.getByRole('button', { name: 'Update settings' }).click();
         await page.getByRole('heading', { name: 'Log in' }).click();
     });

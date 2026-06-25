@@ -17,8 +17,8 @@ export async function createAccount(test, page: Page, user: { email: string, nam
         await page.getByRole('button', { name: 'Continue' }).click();
 
         // Vault finish Creation
-        await page.getByLabel('Master password (required)', { exact: true }).fill(user.password);
-        await page.getByLabel('Confirm master password (').fill(user.password);
+        await page.getByRole('textbox', { name: 'Master password * (required)', exact: true }).fill(user.password);
+        await page.getByRole('textbox', { name: 'Confirm master password * (' }).fill(user.password);
         await page.getByRole('button', { name: 'Create account' }).click();
 
         await utils.checkNotification(page, 'Your new account has been created')
@@ -42,8 +42,8 @@ export async function logUser(test, page: Page, user: { email: string, password:
         await page.getByRole('button', { name: 'Continue' }).click();
 
         // Unlock page
-        await page.getByLabel('Master password').fill(user.password);
-        await page.getByRole('button', { name: 'Log in with master password' }).click();
+        await page.getByRole('textbox', { name: 'Master password * (required)', exact: true }).fill(user.password);
+        await page.getByRole('button', { name: 'Log in', exact: true }).click();
 
         // We are now in the default vault page
         await expect(page).toHaveTitle(/Vaults/);

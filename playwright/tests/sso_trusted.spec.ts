@@ -63,7 +63,7 @@ test('Trusted', async ({ browser, page }) => {
         await test.step('Activate', async () => {
             await page.getByRole('button', { name: 'Use master password' }).click();
             await expect(page.getByRole('heading', { name: 'Your vault is locked' })).toBeVisible();
-            await page.getByRole('textbox', { name: 'Master password (required)' }).fill(users.user1.password);
+            await page.getByRole('textbox', { name: 'Master password * (required)', exact: true }).fill(users.user1.password);
             await page.getByRole('button', { name: 'Unlock' }).click();
         });
 
@@ -108,7 +108,7 @@ test('Trusted', async ({ browser, page }) => {
         await page.getByRole('link', { name: 'Settings' }).click();
         await page.getByRole('button', { name: 'Deauthorise sessions' }).click();;
         await expect(page.getByRole('heading', { name: 'Deauthorise sessions' })).toBeVisible();
-        await page.getByRole('textbox', { name: 'Master password (required)' }).fill(users.user1.password);
+        await page.getByRole('textbox', { name: 'Master password * (required)', exact: true }).fill(users.user1.password);
         await page.getByRole('button', { name: 'Deauthorise sessions' }).click();
     });
 

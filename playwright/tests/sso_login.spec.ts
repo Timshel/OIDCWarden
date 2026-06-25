@@ -33,8 +33,8 @@ test('Non SSO login', async ({ page }) => {
     await page.getByRole('button', { name: 'Log in with master password' }).click();
 
     // Unlock page
-    await page.getByLabel('Master password').fill(users.user1.password);
-    await page.getByRole('button', { name: 'Log in with master password' }).click();
+    await page.getByRole('textbox', { name: 'Master password * (required)', exact: true }).fill(users.user1.password);
+    await page.getByRole('button', { name: 'Log in', exact: true }).click();
 
     // We are now in the default vault page
     await expect(page).toHaveTitle(/Vaults/);
@@ -82,5 +82,5 @@ test('No SSO login', async ({ page }, testInfo: TestInfo) => {
 
     // Can continue to Master password
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByRole('button', { name: /Log in with master password/ })).toHaveCount(1);
+    await expect(page.getByRole('button', { name: /Log in/ })).toHaveCount(1);
 });

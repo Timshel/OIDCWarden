@@ -23,7 +23,7 @@ test('Create', async ({ page }) => {
     await test.step('Create Collection', async () => {
         await page.getByRole('button', { name: 'New', exact: true }).click();
         await page.getByRole('menuitem', { name: 'Collection' }).click();
-        await page.getByLabel('Name (required)').fill('RandomCollec');
+        await page.getByRole('textbox', { name: 'Name * (required)', exact: true }).fill('RandomCollec');
         await page.getByRole('button', { name: 'Save' }).click();
         await utils.checkNotification(page, 'Created collection RandomCollec');
         await expect(page.getByRole('button', { name: 'RandomCollec' })).toBeVisible();
