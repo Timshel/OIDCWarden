@@ -1,5 +1,10 @@
 # Changelog
 
+# v2026.6.2-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.6.2-2`
+  Client [release](https://github.com/Timshel/oidc_web_vault/releases/tag/v2026.6.2-2) now include extensions build (Firefox&Chrome, don't forget to set the self-hosted url).
+
 # v2026.6.1-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.6.1-1`
