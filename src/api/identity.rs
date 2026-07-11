@@ -578,6 +578,27 @@ async fn authenticated_response(
     let user_decryption_options =
         super::user_decryption::build_token_user_decryption_options(user, device, sso_login, conn).await;
 
+    // Key connector users have no master password, the master key is stored on the connector
+    let uses_key_connector = CONFIG.key_connector_enabled() && user.uses_key_connector;
+    let has_master_password = !user.password_hash.is_empty() && !uses_key_connector;
+    let master_password_unlock = if has_master_password {
+        json!({
+            "Kdf": {
+                "KdfType": user.client_kdf_type,
+                "Iterations": user.client_kdf_iter,
+                "Memory": user.client_kdf_memory,
+                "Parallelism": user.client_kdf_parallelism
+            },
+            // This field is named inconsistently and will be removed and replaced by the "wrapped" variant in the apps.
+            // https://github.com/bitwarden/android/blob/release/2025.12-rc41/network/src/main/kotlin/com/bitwarden/network/model/MasterPasswordUnlockDataJson.kt#L22-L26
+            "MasterKeyEncryptedUserKey": user.akey,
+            "MasterKeyWrappedUserKey": user.akey,
+            "Salt": user.email
+        })
+    } else {
+        Value::Null
+    };
+
     let account_keys = if user.private_key.is_some() {
         json!({
             "publicKeyEncryptionKeyPair": {
@@ -611,6 +632,11 @@ async fn authenticated_response(
 
     if !user.akey.is_empty() {
         result["Key"] = Value::String(user.akey.clone());
+    }
+
+    if uses_key_connector {
+        result["UserDecryptionOptions"]["KeyConnectorOption"] =
+            crate::api::core::key_connector::key_connector_user_decryption_option();
     }
 
     if let Some(token) = twofactor_token {
