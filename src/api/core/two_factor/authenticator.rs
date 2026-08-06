@@ -3,7 +3,7 @@ use rocket::{Route, serde::json::Json};
 
 use crate::{
     api::{EmptyResult, JsonResult, PasswordOrOtpData, core::log_user_event, core::two_factor::generate_recover_code},
-    auth::{ClientIp, Headers, authenticator},
+    auth::{ClientIp, Headers, two_factor},
     crypto,
     db::{
         DbConn,
@@ -20,7 +20,6 @@ pub fn routes() -> Vec<Route> {
 
 #[post("/two-factor/get-authenticator", data = "<data>")]
 async fn generate_authenticator(data: Json<PasswordOrOtpData>, headers: Headers, conn: DbConn) -> JsonResult {
-    let data: PasswordOrOtpData = data.into_inner();
     let user = headers.user;
 
     data.validate(&user, false, &conn).await?;
@@ -33,17 +32,12 @@ async fn generate_authenticator(data: Json<PasswordOrOtpData>, headers: Headers,
         _ => (false, crypto::encode_random_bytes::<20>(&BASE32)),
     };
 
-    // Since: https://github.com/bitwarden/clients/blob/web-v2026.7.1/libs/common/src/auth/two-factor/response/two-factor-authenticator.response.ts
     Ok(Json(rocket::serde::json::json!({
         "authenticator": rocket::serde::json::json!({
             "enabled": enabled,
             "key": key,
         }),
-        "userVerificationToken": authenticator::generate_token(user.uuid, key.clone(), enabled),
-        // Legacy
-        "enabled": enabled,
-        "key": key,
-        "object": "twoFactorAuthenticator",
+        "userVerificationToken": two_factor::authenticator_token(user.uuid, key, enabled),
     })))
 }
 
@@ -52,23 +46,7 @@ async fn generate_authenticator(data: Json<PasswordOrOtpData>, headers: Headers,
 struct EnableAuthenticatorData {
     key: String,
     token: NumberOrString,
-
-    #[serde(flatten)]
-    compat: EnableAuthenticatorCompat,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum EnableAuthenticatorCompat {
-    Cur(AuthenticatorToken),
-    Old(PasswordOrOtpData),
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AuthenticatorToken {
-    #[serde(alias = "userVerificationToken")]
-    token: String,
+    user_verification_token: String,
 }
 
 #[post("/two-factor/authenticator", data = "<data>")]
@@ -79,10 +57,7 @@ async fn activate_authenticator(data: Json<EnableAuthenticatorData>, headers: He
 
     let mut user = headers.user;
 
-    match data.compat {
-        EnableAuthenticatorCompat::Cur(eac) => authenticator::validate(&eac.token, &user.uuid, &key, false)?,
-        EnableAuthenticatorCompat::Old(poo) => poo.validate(&user, true, &conn).await?,
-    }
+    two_factor::validate_authenticator(&data.user_verification_token, &user.uuid, &key, false)?;
 
     // Validate key as base32 and 20 bytes length
     let decoded_key: Vec<u8> = if let Ok(decoded) = BASE32.decode(key.as_bytes()) {
@@ -108,10 +83,6 @@ async fn activate_authenticator(data: Json<EnableAuthenticatorData>, headers: He
             "enabled": true,
             "key": key,
         }),
-        // Legacy
-        "enabled": true,
-        "key": key,
-        "object": "twoFactorAuthenticator",
     })))
 }
 
@@ -206,37 +177,14 @@ pub async fn validate_totp_code(
 #[serde(rename_all = "camelCase")]
 struct DisableAuthenticatorData {
     key: String,
-
-    #[serde(flatten)]
-    compat: DisableAuthenticatorCompat,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum DisableAuthenticatorCompat {
-    Cur(AuthenticatorToken),
-    Old(DisableAuthenticatorOld),
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DisableAuthenticatorOld {
-    master_password_hash: String,
-    // r#type: NumberOrString,
+    user_verification_token: String,
 }
 
 #[delete("/two-factor/authenticator", data = "<data>")]
 async fn disable_authenticator(data: Json<DisableAuthenticatorData>, headers: Headers, conn: DbConn) -> JsonResult {
     let user = headers.user;
 
-    match &data.compat {
-        DisableAuthenticatorCompat::Cur(dac) => authenticator::validate(&dac.token, &user.uuid, &data.key, true)?,
-        DisableAuthenticatorCompat::Old(dao) => {
-            if !user.check_valid_password(&dao.master_password_hash) {
-                err!("Invalid password");
-            }
-        }
-    }
+    two_factor::validate_authenticator(&data.user_verification_token, &user.uuid, &data.key, true)?;
 
     if let Some(twofactor) =
         TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Authenticator as i32, &conn).await
@@ -254,10 +202,5 @@ async fn disable_authenticator(data: Json<DisableAuthenticatorData>, headers: He
         super::enforce_2fa_policy(&user, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await?;
     }
 
-    Ok(Json(json!({
-        // Legacy
-        "enabled": false,
-        "keys": TwoFactorType::Authenticator as i32,
-        "object": "twoFactorProvider",
-    })))
+    Ok(Json(json!({})))
 }
