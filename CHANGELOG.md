@@ -1,5 +1,12 @@
 # Changelog
 
+# v2026.7.1-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.7.0-1`
+  Latest client change the activation/decativation of 2FA providers (Authenticator, Email, Duo and Webauthn were tested but :warning: not Yubikey).
+- Integrate latest change from `Vaultwarden` up to [fa2566d1](https://github.com/dani-garcia/vaultwarden/commit/fa2566d1)
+  Should bring compatibility with 8.0 browser extension.
+
 # v2026.7.0-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.7.0-1`
