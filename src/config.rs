@@ -665,7 +665,7 @@ make_config! {
 
     client {
         /// Control whether clients onboarding interstitials are suppressed |> post-login welcome dialogs, extension install prompts, setup extension redirects, and premium upsell modals
-        client_suppress_onboarding:         bool, true,   def,    false;
+        client_suppress_onboarding:         bool, true,   def,    true;
     },
 
     /// Advanced settings
