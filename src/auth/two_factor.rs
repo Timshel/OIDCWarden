@@ -37,6 +37,16 @@ pub struct DuoClaims {
     data: Option<DuoData>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct WebauthnClaims {
+    pub keys: Vec<i32>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct YubikeyClaims {
+    pub keys: Vec<String>,
+}
+
 #[derive(Serialize, Deserialize, PartialEq)]
 pub struct DuoData {
     pub host: String, // Duo API hostname
@@ -170,6 +180,42 @@ pub fn validate_email(token: &str, user_id: &UserId, email: String, enabled: boo
     let claims = validate::<EmailClaims>(token, user_id, enabled)?;
     if enabled && claims.email != Some(email) {
         err!("Invalid verification token: Invalid email");
+    }
+    Ok(())
+}
+
+pub fn webauthn_token(user_id: UserId, keys: Vec<i32>, enabled: bool) -> String {
+    token(
+        user_id,
+        enabled,
+        WebauthnClaims {
+            keys,
+        },
+    )
+}
+
+pub fn validate_webauthn(token: &str, user_id: &UserId, keys: &[i32], enabled: bool) -> EmptyResult {
+    let claims = validate::<WebauthnClaims>(token, user_id, enabled)?;
+    if keys != claims.keys {
+        err!("Invalid verification token: Invalid keys");
+    }
+    Ok(())
+}
+
+pub fn yubikey_token(user_id: UserId, keys: Vec<String>, enabled: bool) -> String {
+    token(
+        user_id,
+        enabled,
+        YubikeyClaims {
+            keys,
+        },
+    )
+}
+
+pub fn validate_yubikey(token: &str, user_id: &UserId, keys: &Vec<String>, enabled: bool) -> EmptyResult {
+    let claims = validate::<YubikeyClaims>(token, user_id, enabled)?;
+    if *keys != claims.keys {
+        err!("Invalid verification token: Invalid keys");
     }
     Ok(())
 }

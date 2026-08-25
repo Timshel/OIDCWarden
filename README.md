@@ -29,19 +29,24 @@ See [changelog](CHANGELOG.md) for more details.
 
 New release are tested using Playwright integration tests. Currenttly tested flow include:
 
-- Login flow using Master password and/or SSO
-- Create a password and ssh key entry
-- Create and consult a Send with and without password
-- Key settings change (KDF iterations and Argon2 switch)
-- 2FA using email and TOTP (with/without SSO)
-- Trusting a device using Master password or another device
-- Role mapping (access to admin console)
-- Organization and collection creation
-- Organization invitation using Master password and SSO
-- Organization auto-invitation
-- Organization membership role sync (Owner, admin ...)
-- Organization membership revocation
-- Organization admin account recovery
+- Account
+  - Creation flow using create page and SSO.
+  - Login flow using Master password and/or SSO
+  - 2FA using email and TOTP (with/without SSO)
+  - 2FA recovery
+  - Trusting a device using Master password or another device
+  - Key settings change (KDF iterations and Argon2 switch)
+  - Role mapping (access to admin console)
+- Vault
+  - Create a password and ssh key entry
+  - Create and consult a Send with and without password
+- Organization
+  - creation and collection creation
+  - invitation using Master password and SSO
+  - auto-invitation
+  - membership role sync (Owner, admin ...)
+  - membership revocation
+  - admin account recovery
 
 Goal will be to continue to increase the test coverage but I would recommend to always deploy a specific version and always backup/test before deploying a new release.
 

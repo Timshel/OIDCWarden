@@ -5,7 +5,10 @@ use crate::{
     CONFIG,
     api::{
         EmptyResult, JsonResult, PasswordOrOtpData,
-        core::{log_user_event, two_factor::generate_recover_code},
+        core::{
+            log_user_event,
+            two_factor::{VerificationTokenData, generate_recover_code},
+        },
     },
     auth::{ClientHeaders, Headers, two_factor},
     crypto,
@@ -229,14 +232,8 @@ async fn email(data: Json<EmailData>, headers: Headers, conn: DbConn) -> JsonRes
     Ok(Json(json!({})))
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DisableEmailData {
-    user_verification_token: String,
-}
-
 #[delete("/two-factor/email", data = "<data>")]
-async fn disable_email(data: Json<DisableEmailData>, headers: Headers, conn: DbConn) -> JsonResult {
+async fn disable_email(data: Json<VerificationTokenData>, headers: Headers, conn: DbConn) -> EmptyResult {
     let user = headers.user;
 
     if let Some(twofactor) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Email as i32, &conn).await {
@@ -252,7 +249,7 @@ async fn disable_email(data: Json<DisableEmailData>, headers: Headers, conn: DbC
         super::enforce_2fa_policy(&user, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await?;
     }
 
-    Ok(Json(json!({})))
+    Ok(())
 }
 
 /// Validate the email code when used as TwoFactor token mechanism

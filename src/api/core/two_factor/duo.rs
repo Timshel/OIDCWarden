@@ -5,8 +5,9 @@ use rocket::{Route, serde::json::Json};
 use crate::{
     CONFIG,
     api::{
-        ApiResult, EmptyResult, JsonResult, PasswordOrOtpData, core::log_user_event,
-        core::two_factor::generate_recover_code,
+        ApiResult, EmptyResult, JsonResult, PasswordOrOtpData,
+        core::log_user_event,
+        core::two_factor::{VerificationTokenData, generate_recover_code},
     },
     auth::{Headers, two_factor, two_factor::DuoData},
     crypto,
@@ -130,11 +131,12 @@ async fn activate_duo(data: Json<EnableDuoData>, headers: Headers, conn: DbConn)
     log_user_event(EventType::UserUpdated2fa as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
 
     Ok(Json(json!({
-        "enabled": true,
-        "host": data.host,
-        "clientSecret": data.sk,
-        "clientId": data.ik,
-        "object": "twoFactorDuo"
+        "duo": json!({
+            "enabled": true,
+            "host": data.host,
+            "clientSecret": data.sk,
+            "clientId": data.ik,
+        }),
     })))
 }
 
@@ -143,14 +145,8 @@ async fn activate_duo_put(data: Json<EnableDuoData>, headers: Headers, conn: DbC
     activate_duo(data, headers, conn).await
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DisableDuoData {
-    user_verification_token: String,
-}
-
 #[delete("/two-factor/duo", data = "<data>")]
-async fn disable_duo(data: Json<DisableDuoData>, headers: Headers, conn: DbConn) -> JsonResult {
+async fn disable_duo(data: Json<VerificationTokenData>, headers: Headers, conn: DbConn) -> EmptyResult {
     let user = headers.user;
 
     if let Some(twofactor) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Duo as i32, &conn).await {
@@ -172,7 +168,7 @@ async fn disable_duo(data: Json<DisableDuoData>, headers: Headers, conn: DbConn)
         super::enforce_2fa_policy(&user, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await?;
     }
 
-    Ok(Json(json!({})))
+    Ok(())
 }
 
 async fn duo_api_request(method: &str, path: &str, params: &str, data: &DuoData) -> EmptyResult {

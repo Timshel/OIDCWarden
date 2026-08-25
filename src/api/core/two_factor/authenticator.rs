@@ -32,8 +32,8 @@ async fn generate_authenticator(data: Json<PasswordOrOtpData>, headers: Headers,
         _ => (false, crypto::encode_random_bytes::<20>(&BASE32)),
     };
 
-    Ok(Json(rocket::serde::json::json!({
-        "authenticator": rocket::serde::json::json!({
+    Ok(Json(json!({
+        "authenticator": json!({
             "enabled": enabled,
             "key": key,
         }),
@@ -181,7 +181,7 @@ struct DisableAuthenticatorData {
 }
 
 #[delete("/two-factor/authenticator", data = "<data>")]
-async fn disable_authenticator(data: Json<DisableAuthenticatorData>, headers: Headers, conn: DbConn) -> JsonResult {
+async fn disable_authenticator(data: Json<DisableAuthenticatorData>, headers: Headers, conn: DbConn) -> EmptyResult {
     let user = headers.user;
 
     two_factor::validate_authenticator(&data.user_verification_token, &user.uuid, &data.key, true)?;
@@ -202,5 +202,5 @@ async fn disable_authenticator(data: Json<DisableAuthenticatorData>, headers: He
         super::enforce_2fa_policy(&user, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await?;
     }
 
-    Ok(Json(json!({})))
+    Ok(())
 }
