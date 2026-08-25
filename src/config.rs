@@ -663,6 +663,11 @@ make_config! {
         events_days_retain:     i64,    false,   option;
     },
 
+    client {
+        /// Control whether clients onboarding interstitials are suppressed |> post-login welcome dialogs, extension install prompts, setup extension redirects, and premium upsell modals
+        client_suppress_onboarding:         bool, true,   def,    false;
+    },
+
     /// Advanced settings
     advanced {
         /// Client IP header |> If not present, the remote IP is used.
@@ -1205,11 +1210,8 @@ fn validate_config(cfg: &ConfigItems, on_update: bool) -> Result<(), Error> {
                     }
 
                     #[cfg(unix)]
-                    {
-                        use std::os::unix::fs::PermissionsExt;
-                        if !metadata.permissions().mode() & 0o111 != 0 {
-                            err!(format!("sendmail command at `{path:?}` isn't executable"));
-                        }
+                    if nix::unistd::access(&path, nix::unistd::AccessFlags::X_OK).is_err() {
+                        err!(format!("sendmail command at `{path:?}` isn't executable"));
                     }
                 }
             }
@@ -1549,6 +1551,9 @@ impl Config {
         let operator = storage::operator_for_path(&CONFIG_FILE_PARENT_DIR)?;
         operator.write(&CONFIG_FILENAME, config_str).await?;
 
+        // Invalidate CSS Cache because several config items might have impact on the rendered CSS
+        crate::api::invalidate_css_cache();
+
         Ok(())
     }
 
@@ -1641,6 +1646,9 @@ impl Config {
             writer._usr = usr;
             writer._overrides = Vec::new();
         }
+
+        // Invalidate CSS Cache because several config items might have impact on the rendered CSS
+        crate::api::invalidate_css_cache();
 
         Ok(())
     }

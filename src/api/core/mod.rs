@@ -242,7 +242,7 @@ fn config() -> Json<Value> {
             "ssoOrgGroupExternalId": CONFIG.sso_enabled() && CONFIG.sso_organizations_enabled() && CONFIG.org_groups_enabled(),
             // When enabled, this setting signals to clients that onboarding interstitials
             // (post-login welcome dialogs, extension install prompts, setup extension redirects, and premium upsell modals) should be suppressed
-            "suppressOnboardingInterstitials": false,
+            "suppressOnboardingInterstitials": CONFIG.client_suppress_onboarding(),
         },
         "environment": {
           "vault": domain,

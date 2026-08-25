@@ -1,6 +1,10 @@
 use rocket::{Route, serde::json::Json};
 use serde_json::Value;
-use yubico::{config::Config, verify_async};
+use yubico_ng::{
+    Verifier, YubicoError,
+    config::Config,
+    transport::{AsyncTransport, Response},
+};
 
 use crate::{
     CONFIG,
@@ -17,10 +21,37 @@ use crate::{
         models::{EventType, TwoFactor, TwoFactorType},
     },
     error::{Error, MapResult},
+    http_client,
 };
 
 pub fn routes() -> Vec<Route> {
     routes![generate_yubikey, activate_yubikey, activate_yubikey_put, delete_yubikeys,]
+}
+
+struct HttpClientTransport {
+    client: reqwest::Client,
+}
+
+impl HttpClientTransport {
+    fn new() -> Result<Self, reqwest::Error> {
+        http_client::get_reqwest_client_builder(false).redirect(reqwest::redirect::Policy::none()).build().map(
+            |client| Self {
+                client,
+            },
+        )
+    }
+}
+
+impl AsyncTransport for HttpClientTransport {
+    type Error = YubicoError;
+
+    async fn yubico_get(&self, url: &str) -> Result<Response, Self::Error> {
+        let response = self.client.get(url).send().await.map_err(YubicoError::transport)?;
+        Ok(Response {
+            status: response.status().as_u16(),
+            body: response.text().await.map_err(YubicoError::transport)?,
+        })
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,8 +77,7 @@ pub struct YubikeyMetadata {
 
 fn parse_yubikeys(data: &EnableYubikeyData) -> Vec<String> {
     let data_keys = [&data.key1, &data.key2, &data.key3, &data.key4, &data.key5];
-
-    data_keys.into_iter().flatten().cloned().collect()
+    data_keys.into_iter().flatten().filter(|e| !e.is_empty()).cloned().collect()
 }
 
 fn jsonify_yubikeys(yubikeys: Vec<String>) -> Value {
@@ -75,13 +105,15 @@ fn get_yubico_credentials() -> Result<(String, String), Error> {
 async fn verify_yubikey_otp(otp: String) -> EmptyResult {
     let (yubico_id, yubico_secret) = get_yubico_credentials()?;
 
-    let config = Config::default().set_client_id(yubico_id).set_key(yubico_secret);
-
-    match CONFIG.yubico_server() {
-        Some(server) => verify_async(otp, config.set_api_hosts(vec![server])).await,
-        None => verify_async(otp, config).await,
+    let mut config = Config::default().set_client_id(yubico_id).set_key(yubico_secret)?;
+    if let Some(yubico_server) = CONFIG.yubico_server() {
+        config = config.set_api_host(yubico_server);
     }
-    .map_res("Failed to verify OTP")
+
+    let client = HttpClientTransport::new()?;
+    let verifier = Verifier::with_client(config, client)?;
+
+    verifier.verify(otp).await.map_res("Failed to verify OTP")
 }
 
 #[post("/two-factor/get-yubikey", data = "<data>")]
