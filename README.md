@@ -35,7 +35,8 @@ New release are tested using Playwright integration tests. Currenttly tested flo
   - 2FA using email and TOTP (with/without SSO)
   - 2FA recovery
   - Trusting a device using Master password or another device
-  - Key settings change (KDF iterations and Argon2 switch)
+  - Changing the Master password
+  - Changing the Key settings (KDF iterations and Argon2 switch)
   - Role mapping (access to admin console)
 - Vault
   - Create a password and ssh key entry

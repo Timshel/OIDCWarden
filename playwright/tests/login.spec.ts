@@ -24,6 +24,32 @@ test('Master password login', async ({ page }) => {
     await logUser(test, page, users.user1);
 });
 
+test('Change Master password', async ({ page }) => {
+    await logUser(test, page, users.user1);
+
+    let newPassword = "TotoNewPassword";
+
+    await test.step('Change password', async () => {
+        await page.getByRole('button', { name: users.user1.name }).click();
+        await page.getByRole('menuitem', { name: 'Account settings' }).click();
+        await page.getByRole('link', { name: 'Security' }).click();
+        await page.getByRole('link', { name: 'Master password' }).click();
+
+        await expect(page.getByRole('heading', { name: 'Change master password' })).toBeVisible();
+        await page.getByRole('textbox', { name: 'Current master password * (required)' }).fill(users.user1.password);
+        await page.getByRole('textbox', { name: 'New master password * (required)', exact: true }).fill(newPassword);
+        await page.getByRole('textbox', { name: 'Confirm new master password * (required)', exact: true }).fill(newPassword);
+        await page.getByRole('checkbox', { name: 'Check known data breaches for this password' }).uncheck();
+        await page.getByRole('checkbox', { name: "Also rotate my account's encryption key" }).check();
+        await page.getByRole('button', { name: 'Yes' }).click();
+        await page.getByRole('button', { name: 'Change master password' }).click();
+
+        await expect(page.getByRole('heading', { name: 'Log in', exact: true })).toBeVisible();
+    });
+    users.user1.password = newPassword;
+    await logUser(test, page, users.user1);
+});
+
 test('Authenticator 2fa', async ({ page }) => {
     await logUser(test, page, users.user1);
 
