@@ -46,7 +46,7 @@ test('Invite users', async ({ page }) => {
     await test.step(`Set account recovery`, async () => {
         await orgs.policies(test, page, 'Test');
         await page.getByRole('button', { name: 'Account recovery' }).click();
-        await page.getByRole('checkbox', { name: 'Turn on' }).check();
+        await page.locator('.tw-opacity-0.tw-text-\\[\\.75rem\\]').click(); // await page.getByRole('switch', { name: 'Enable policy' }).click();
         await page.getByRole('checkbox', { name: 'Automatically enroll new' }).check();
         await page.getByRole('button', { name: 'Save' }).click();
         await utils.checkNotification(page, 'Edited policy Account recovery');
