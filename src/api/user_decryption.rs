@@ -43,6 +43,7 @@ pub async fn build_token_user_decryption_options(
     let mut out = json!({
         "hasMasterPassword": has_master_password,
         "masterPasswordUnlock": master_password_unlock,
+        "userKeyId": user.key_id,
         "object": "userDecryptionOptions"
     });
 
