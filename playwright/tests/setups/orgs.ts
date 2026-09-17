@@ -117,12 +117,8 @@ export async function setRole(test, page: Page, name: string, user_email: string
         await page.getByRole('row').filter({hasText: user_email}).getByLabel('Options').click();
         await page.getByRole('menuitem', { name: 'Member role' }).click();
         await expect(page.getByRole('heading', { name: 'Edit Member' })).toBeVisible();
-        await page.getByRole('radio', { name: role }).click();
-
-        if( role === 'Custom' ){
-            await page.getByRole('checkbox', { name: 'Manage all collections' }).click();
-        }
-
+        await page.getByRole('combobox', { name: 'Member role Learn more about' }).click();
+        await page.getByLabel('Options List').getByText(role, { exact: true }).click();
         await page.getByRole('button', { name: 'Save' }).click();
         await utils.checkNotification(page, 'Edited user');
     });
