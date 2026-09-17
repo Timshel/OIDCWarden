@@ -253,6 +253,10 @@ impl User {
             &self.name
         }
     }
+
+    pub fn master_password_salt(&self) -> String {
+        self.email.trim().to_lowercase()
+    }
 }
 
 /// Database methods

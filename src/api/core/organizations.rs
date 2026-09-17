@@ -7,6 +7,7 @@ use serde_json::Value;
 use crate::{
     CONFIG,
     api::admin::FAKE_ADMIN_UUID,
+    api::core::{AuthenticationData, UnlockData},
     api::{
         EmptyResult, JsonResult, Notify, PasswordOrOtpData, UpdateType,
         core::{CipherSyncData, CipherSyncType, accept_org_invite, log_event, two_factor},
@@ -2844,8 +2845,8 @@ struct OrganizationUserResetPasswordEnrollmentRequest {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct OrganizationUserRecoverAccountRequest {
-    new_master_password_hash: Option<String>,
-    key: Option<String>,
+    authentication_data: Option<AuthenticationData>,
+    unlock_data: Option<UnlockData>,
 
     #[serde(default)]
     reset_master_password: bool,
@@ -2959,10 +2960,21 @@ async fn recover_account(
     }
 
     if req.reset_master_password {
-        if let Some(key) = req.key
-            && let Some(hash) = req.new_master_password_hash
-        {
-            user.set_password(hash.as_str(), Some(key), true, None, &conn).await?;
+        if let (Some(authentication_data), Some(unlock_data)) = (req.authentication_data, req.unlock_data) {
+            authentication_data.check(&user, &unlock_data)?;
+
+            if !authentication_data.kdf.matches_user(&user) {
+                err!("KDF settings do not match the user account")
+            }
+
+            user.set_password(
+                &authentication_data.master_password_authentication_hash,
+                Some(unlock_data.master_key_wrapped_user_key),
+                true,
+                None,
+                &conn,
+            )
+            .await?;
         } else {
             err_code!("Unprocessable request", "Missing fields to reset password", Status::UnprocessableEntity.code);
         }
@@ -3023,6 +3035,7 @@ async fn get_reset_password_details(
         "kdfIterations": user.client_kdf_iter,
         "kdfMemory": user.client_kdf_memory,
         "kdfParallelism": user.client_kdf_parallelism,
+        "masterPasswordSalt": user.master_password_salt(),
         "resetPasswordKey": member.reset_password_key,
         "encryptedPrivateKey": org.private_key,
     })))

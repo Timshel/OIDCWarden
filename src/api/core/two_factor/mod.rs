@@ -13,8 +13,8 @@ use crate::{
     db::{
         DbConn, DbPool,
         models::{
-            DeviceType, EventType, Membership, MembershipType, OrgPolicyType, Organization, OrganizationId,
-            TwoFactor, TwoFactorIncomplete, TwoFactorType, User, UserId,
+            DeviceType, EventType, Membership, MembershipType, OrgPolicyType, Organization, OrganizationId, TwoFactor,
+            TwoFactorIncomplete, TwoFactorType, User, UserId,
         },
     },
     mail,

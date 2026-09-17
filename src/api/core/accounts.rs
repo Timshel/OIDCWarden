@@ -10,6 +10,7 @@ use serde_json::Value;
 
 use crate::{
     CONFIG,
+    api::core::{AuthenticationData, KDFData, UnlockData},
     api::{
         AnonymousNotify, ApiResult, EmptyResult, JsonResult, Notify, PasswordOrOtpData, UpdateType,
         core::{accept_org_invite, log_user_event, two_factor::email},
@@ -80,19 +81,6 @@ pub fn routes() -> Vec<rocket::Route> {
         get_auth_requests,
         get_auth_requests_pending,
     ]
-}
-
-#[derive(Debug, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct KDFData {
-    #[serde(alias = "kdfType")]
-    kdf: i32,
-    #[serde(alias = "iterations")]
-    kdf_iterations: i32,
-    #[serde(alias = "memory")]
-    kdf_memory: Option<i32>,
-    #[serde(alias = "parallelism")]
-    kdf_parallelism: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -714,22 +702,6 @@ fn set_kdf_data(user: &mut User, data: &KDFData) -> EmptyResult {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct AuthenticationData {
-    salt: String,
-    kdf: KDFData,
-    master_password_authentication_hash: String,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct UnlockData {
-    salt: String,
-    kdf: KDFData,
-    master_key_wrapped_user_key: String,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct ChangeKdfData {
     authentication_data: AuthenticationData,
     unlock_data: UnlockData,
@@ -739,20 +711,13 @@ struct ChangeKdfData {
 #[post("/accounts/kdf", data = "<data>")]
 async fn post_kdf(data: Json<ChangeKdfData>, headers: Headers, conn: DbConn, nt: Notify<'_>) -> EmptyResult {
     let data: ChangeKdfData = data.into_inner();
+    let mut user = headers.user;
 
-    if !headers.user.check_valid_password(&data.master_password_hash) {
+    if !user.check_valid_password(&data.master_password_hash) {
         err!("Invalid password")
     }
 
-    if data.authentication_data.kdf != data.unlock_data.kdf {
-        err!("KDF settings must be equal for authentication and unlock")
-    }
-
-    if headers.user.email != data.authentication_data.salt || headers.user.email != data.unlock_data.salt {
-        err!("Invalid master password salt")
-    }
-
-    let mut user = headers.user;
+    data.authentication_data.check(&user, &data.unlock_data)?;
 
     set_kdf_data(&mut user, &data.unlock_data.kdf)?;
 
