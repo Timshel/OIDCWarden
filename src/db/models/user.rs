@@ -261,6 +261,10 @@ impl User {
 
 /// Database methods
 impl User {
+    pub fn verified(&self) -> bool {
+        !CONFIG.mail_enabled() || self.verified_at.is_some()
+    }
+
     pub async fn to_json(&self, conn: &DbConn) -> Value {
         let mut orgs_json = Vec::new();
         for c in Membership::find_confirmed_by_user(&self.uuid, conn).await {
@@ -298,7 +302,7 @@ impl User {
             "id": self.uuid,
             "name": self.name,
             "email": self.email,
-            "emailVerified": !CONFIG.mail_enabled() || self.verified_at.is_some(),
+            "emailVerified": self.verified(),
             "premium": true,
             "premiumFromOrganization": false,
             "culture": "en-US",
