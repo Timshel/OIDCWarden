@@ -3,7 +3,7 @@ use num_traits::FromPrimitive;
 use rocket::{
     Route,
     form::{Form, FromForm},
-    http::CookieJar,
+    http::{Accept, CookieJar, MediaType},
     response::Redirect,
     serde::json::Json,
 };
@@ -895,6 +895,12 @@ async fn twofactor_auth(
 
             // Remove all twofactors from the user
             TwoFactor::delete_all_by_user(&user.uuid, conn).await?;
+
+            // No device may keep skipping 2FA once every second factor is gone.
+            // `device` is cleared in memory too, since saving it later would restore its token.
+            Device::clear_twofactor_remember_by_user(&user.uuid, conn).await?;
+            device.delete_twofactor_remember();
+
             enforce_2fa_policy(user, &user.uuid, device.atype, &ip.ip, conn).await?;
 
             log_user_event(EventType::UserRecovered2fa as i32, &user.uuid, device.atype, &ip.ip, conn).await;
@@ -1040,13 +1046,13 @@ async fn json_err_twofactor(
 }
 
 #[post("/accounts/prelogin", data = "<data>")]
-async fn post_prelogin(data: Json<PreloginData>, conn: DbConn) -> Json<Value> {
-    prelogin(data, conn).await
+async fn post_prelogin(data: Json<PreloginData>, ip: ClientIp, conn: DbConn) -> JsonResult {
+    prelogin(data, ip, conn).await
 }
 
 #[post("/accounts/prelogin/password", data = "<data>")]
-async fn prelogin_password(data: Json<PreloginData>, conn: DbConn) -> Json<Value> {
-    prelogin(data, conn).await
+async fn prelogin_password(data: Json<PreloginData>, ip: ClientIp, conn: DbConn) -> JsonResult {
+    prelogin(data, ip, conn).await
 }
 
 #[post("/accounts/register", data = "<data>")]
@@ -1067,11 +1073,18 @@ enum RegisterVerificationResponse {
     #[response(status = 204)]
     NoContent(()),
     Token(Json<String>),
+    PlainToken(String),
+}
+
+// Return JSON only when the client explicitly requests it, otherwise return plain text.
+fn accepts_json(accept: Option<&Accept>) -> bool {
+    accept.is_some_and(|accept| accept.preferred().media_type() == &MediaType::JSON)
 }
 
 #[post("/accounts/register/send-verification-email", data = "<data>")]
 async fn register_verification_email(
     data: Json<RegisterVerificationData>,
+    accept: Option<&Accept>,
     ip: ClientIp,
     conn: DbConn,
 ) -> ApiResult<RegisterVerificationResponse> {
@@ -1109,7 +1122,11 @@ async fn register_verification_email(
     } else {
         // If email verification is not required, return the token directly
         // the clients will use this token to finish the registration
-        Ok(RegisterVerificationResponse::Token(Json(token)))
+        Ok(if accepts_json(accept) {
+            RegisterVerificationResponse::Token(Json(token))
+        } else {
+            RegisterVerificationResponse::PlainToken(token)
+        })
     }
 }
 

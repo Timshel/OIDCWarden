@@ -536,11 +536,12 @@ pub async fn update_cipher_from_data(
     cipher.move_to_folder(data.folder_id, &headers.user.uuid, conn).await?;
     cipher.set_favorite(data.favorite, &headers.user.uuid, conn).await?;
 
-    if let Some(dt_str) = data.archived_date {
-        match NaiveDateTime::parse_from_str(&dt_str, "%+") {
+    match data.archived_date {
+        Some(dt_str) => match NaiveDateTime::parse_from_str(&dt_str, "%+") {
             Ok(dt) => cipher.set_archived_at(dt, &headers.user.uuid, conn).await?,
             Err(err) => warn!("Error parsing ArchivedDate '{dt_str}': {err}"),
-        }
+        },
+        None => cipher.unarchive(&headers.user.uuid, conn).await?,
     }
 
     if ut != UpdateType::None {
@@ -552,16 +553,8 @@ pub async fn update_cipher_from_data(
                 (_, _) => EventType::CipherUpdated,
             };
 
-            log_event(
-                event_type as i32,
-                &cipher.uuid,
-                org_id,
-                &headers.user.uuid,
-                headers.device.atype,
-                &headers.ip.ip,
-                conn,
-            )
-            .await;
+            log_event(event_type, &cipher.uuid, org_id, &headers.user.uuid, headers.device.atype, &headers.ip.ip, conn)
+                .await;
         }
         nt.send_cipher_update(
             ut,
@@ -849,7 +842,7 @@ async fn post_collections_update(
     .await;
 
     log_event(
-        EventType::CipherUpdatedCollections as i32,
+        EventType::CipherUpdatedCollections,
         &cipher.uuid,
         org_uuid,
         &headers.user.uuid,
@@ -929,7 +922,7 @@ async fn post_collections_admin(
     .await;
 
     log_event(
-        EventType::CipherUpdatedCollections as i32,
+        EventType::CipherUpdatedCollections,
         &cipher.uuid,
         org_uuid,
         &headers.user.uuid,
@@ -1334,7 +1327,7 @@ async fn save_attachment(
 
     if let Some(org_id) = &cipher.organization_uuid {
         log_event(
-            EventType::CipherAttachmentCreated as i32,
+            EventType::CipherAttachmentCreated,
             &cipher.uuid,
             org_id,
             &headers.user.uuid,
@@ -1695,7 +1688,7 @@ async fn purge_org_vault(
             nt.send_user_update(UpdateType::SyncVault, &user, headers.device.push_uuid.as_ref(), &conn).await;
 
             log_event(
-                EventType::OrganizationPurgedVault as i32,
+                EventType::OrganizationPurgedVault,
                 &organization.org_id,
                 &organization.org_id,
                 &user.uuid,
@@ -1823,9 +1816,9 @@ async fn delete_cipher_by_uuid(
         let event_type = if *delete_options == CipherDeleteOptions::SoftSingle
             || *delete_options == CipherDeleteOptions::SoftMulti
         {
-            EventType::CipherSoftDeleted as i32
+            EventType::CipherSoftDeleted
         } else {
-            EventType::CipherDeleted as i32
+            EventType::CipherDeleted
         };
 
         log_event(event_type, &cipher.uuid, &org_id, &headers.user.uuid, headers.device.atype, &headers.ip.ip, conn)
@@ -1894,7 +1887,7 @@ async fn restore_cipher_by_uuid(
 
     if let Some(org_id) = &cipher.organization_uuid {
         log_event(
-            EventType::CipherRestored as i32,
+            EventType::CipherRestored,
             &cipher.uuid.clone(),
             org_id,
             &headers.user.uuid,
@@ -1971,7 +1964,7 @@ async fn delete_cipher_attachment_by_id(
 
     if let Some(ref org_id) = cipher.organization_uuid {
         log_event(
-            EventType::CipherAttachmentDeleted as i32,
+            EventType::CipherAttachmentDeleted,
             &cipher.uuid,
             org_id,
             &headers.user.uuid,

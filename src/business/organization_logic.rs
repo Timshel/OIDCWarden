@@ -69,16 +69,8 @@ pub async fn invite(
         group_entry.save(conn).await?;
     }
 
-    log_event(
-        EventType::OrganizationUserInvited as i32,
-        &new_member.uuid,
-        &org.uuid,
-        act_user_id,
-        device.atype,
-        &ip.ip,
-        conn,
-    )
-    .await;
+    log_event(EventType::OrganizationUserInvited, &new_member.uuid, &org.uuid, act_user_id, device.atype, &ip.ip, conn)
+        .await;
 
     if CONFIG.mail_enabled() {
         match membership_status {
@@ -127,7 +119,7 @@ pub async fn revoke_member(
     member.save(conn).await?;
 
     log_event(
-        EventType::OrganizationUserRevoked as i32,
+        EventType::OrganizationUserRevoked,
         &member.uuid,
         &member.org_uuid,
         act_user_id,
@@ -152,7 +144,7 @@ pub async fn restore_member(
     member.save(conn).await?;
 
     log_event(
-        EventType::OrganizationUserRestored as i32,
+        EventType::OrganizationUserRestored,
         &member.uuid,
         &member.org_uuid,
         act_user_id,
@@ -191,7 +183,7 @@ pub async fn set_membership_type(
     OrgPolicy::check_user_allowed(member, "modify", conn).await?;
 
     log_event(
-        EventType::OrganizationUserUpdated as i32,
+        EventType::OrganizationUserUpdated,
         &member.uuid,
         &member.org_uuid,
         act_user_id,
@@ -216,16 +208,8 @@ pub async fn add_group_user(
     let mut user_entry = GroupUser::new(group_id.clone(), member_uuid);
     user_entry.save(conn).await?;
 
-    log_event(
-        EventType::OrganizationUserUpdatedGroups as i32,
-        group_id,
-        org_id,
-        act_user_id,
-        device.atype,
-        &ip.ip,
-        conn,
-    )
-    .await;
+    log_event(EventType::OrganizationUserUpdatedGroups, group_id, org_id, act_user_id, device.atype, &ip.ip, conn)
+        .await;
 
     Ok(())
 }
@@ -241,16 +225,8 @@ pub async fn delete_group_user(
 ) -> EmptyResult {
     GroupUser::delete_by_group_and_member(group_id, member_uuid, conn).await?;
 
-    log_event(
-        EventType::OrganizationUserUpdatedGroups as i32,
-        group_id,
-        org_id,
-        act_user_id,
-        device.atype,
-        &ip.ip,
-        conn,
-    )
-    .await;
+    log_event(EventType::OrganizationUserUpdatedGroups, group_id, org_id, act_user_id, device.atype, &ip.ip, conn)
+        .await;
 
     Ok(())
 }

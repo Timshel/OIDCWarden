@@ -18,7 +18,7 @@ repos:
 
   # When this version is updated, do not forget to update this in `.github/workflows/typos.yaml` too
   - repo: https://github.com/crate-ci/typos
-    rev: 8a48f81b6c64dcfea44b3633223084c4be58ac5f # v1.49.0
+    rev: d43b6c087ac471e2ea7b8af622ff15f05c0c365b # v1.50.1
     hooks:
       - id: typos
         always_run: true

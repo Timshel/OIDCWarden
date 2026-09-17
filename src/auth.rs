@@ -827,7 +827,7 @@ pub struct AdminHeaders {
 
 impl AdminHeaders {
     pub async fn log_event(&self, event_type: EventType, source_uuid: &str, org_id: &OrganizationId, conn: &DbConn) {
-        log_event(event_type as i32, source_uuid, org_id, &self.user.uuid, self.device.atype, &self.ip.ip, conn).await;
+        log_event(event_type, source_uuid, org_id, &self.user.uuid, self.device.atype, &self.ip.ip, conn).await;
     }
 }
 
