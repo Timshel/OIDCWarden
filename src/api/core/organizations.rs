@@ -2962,11 +2962,7 @@ async fn recover_account(
 
     if req.reset_master_password {
         if let (Some(authentication_data), Some(unlock_data)) = (req.authentication_data, req.unlock_data) {
-            authentication_data.check(&user, &unlock_data)?;
-
-            if !authentication_data.kdf.matches_user(&user) {
-                err!("KDF settings do not match the user account")
-            }
+            authentication_data.check_kdf(&user, &unlock_data)?;
 
             user.set_password(
                 &authentication_data.master_password_authentication_hash,

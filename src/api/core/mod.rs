@@ -342,13 +342,23 @@ struct AuthenticationData {
 }
 
 impl AuthenticationData {
-    fn check(&self, user: &User, unlock: &UnlockData) -> EmptyResult {
+    pub fn check(&self, user: &User, unlock: &UnlockData) -> EmptyResult {
         if self.kdf != unlock.kdf {
             err!("KDF settings must be equal for authentication and unlock")
         }
 
         if self.salt != user.master_password_salt() || self.salt != unlock.salt {
             err!("Invalid master password salt")
+        }
+
+        Ok(())
+    }
+
+    pub fn check_kdf(&self, user: &User, unlock: &UnlockData) -> EmptyResult {
+        self.check(user, unlock)?;
+
+        if !self.kdf.matches_user(user) {
+            err!("KDF settings do not match the user account")
         }
 
         Ok(())

@@ -6,7 +6,7 @@ use crate::{
     CONFIG,
     api::{
         EmptyResult, JsonResult,
-        core::{CipherSyncData, CipherSyncType},
+        core::{AuthenticationData, CipherSyncData, CipherSyncType, UnlockData},
     },
     auth::{Headers, decode_emergency_access_invite},
     db::{
@@ -624,8 +624,8 @@ async fn takeover_emergency_access(emer_id: EmergencyAccessId, headers: Headers,
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct EmergencyAccessPasswordData {
-    new_master_password_hash: String,
-    key: String,
+    authentication_data: AuthenticationData,
+    unlock_data: UnlockData,
 }
 
 #[post("/emergency-access/<emer_id>/password", data = "<data>")]
@@ -638,8 +638,6 @@ async fn password_emergency_access(
     check_emergency_access_enabled()?;
 
     let data: EmergencyAccessPasswordData = data.into_inner();
-    let new_master_password_hash = &data.new_master_password_hash;
-    //let key = &data.Key;
 
     let requesting_user = headers.user;
     let Some(emergency_access) =
@@ -656,17 +654,28 @@ async fn password_emergency_access(
         err!("Grantor user not found.")
     };
 
+    data.authentication_data.check_kdf(&grantor_user, &data.unlock_data)?;
+
     // change grantor_user password
-    grantor_user.set_password(new_master_password_hash, Some(data.key), true, None, &conn).await?;
+    grantor_user
+        .set_password(
+            &data.authentication_data.master_password_authentication_hash,
+            Some(data.unlock_data.master_key_wrapped_user_key),
+            true,
+            None,
+            &conn,
+        )
+        .await?;
     grantor_user.save(&conn).await?;
 
     // Disable TwoFactor providers since they will otherwise block logins
     TwoFactor::delete_all_by_user(&grantor_user.uuid, &conn).await?;
 
-    // Remove grantor from all organisations unless Owner
-    for member in Membership::find_any_state_by_user(&grantor_user.uuid, &conn).await {
+    // Revoke grantor from all organisations unless Owner
+    for mut member in Membership::find_any_state_by_user(&grantor_user.uuid, &conn).await {
         if member.atype != MembershipType::Owner as i32 {
-            member.delete(&conn).await?;
+            member.revoke();
+            member.save(&conn).await?;
         }
     }
     Ok(())
