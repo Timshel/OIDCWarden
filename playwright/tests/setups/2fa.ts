@@ -44,9 +44,9 @@ export async function activateTOTP(test: Test, page: Page, user: { name: string,
     })
 }
 
-export async function disableTOTP(test: Test, page: Page, user: { password: string }) {
+export async function disableTOTP(test: Test, page: Page, user: { name: string, password: string }) {
     await test.step('Disable TOTP 2FA', async () => {
-        await page.getByRole('button', { name: 'Test' }).click();
+        await page.getByRole('button', { name: user.name }).click();
         await page.getByRole('menuitem', { name: 'Account settings' }).click();
         await page.getByRole('link', { name: 'Security' }).click();
         await page.getByRole('link', { name: 'Two-step login' }).click();
@@ -92,9 +92,9 @@ export async function retrieveEmailCode(test: Test, page: Page, mailBuffer: Mail
     });
 }
 
-export async function disableEmail(test: Test, page: Page, user: { password: string }) {
+export async function disableEmail(test: Test, page: Page, user: { name: string, password: string }) {
     await test.step('Disable Email 2FA', async () => {
-        await page.getByRole('button', { name: 'Test' }).click();
+        await page.getByRole('button', { name: user.name }).click();
         await page.getByRole('menuitem', { name: 'Account settings' }).click();
         await page.getByRole('link', { name: 'Security' }).click();
         await page.getByRole('link', { name: 'Two-step login' }).click();
