@@ -34,6 +34,7 @@ New release are tested using Playwright integration tests. Currenttly tested flo
   - Login flow using Master password and/or SSO
   - 2FA using email and TOTP (with/without SSO)
   - 2FA recovery
+  - Emergency access
   - Trusting a device using Master password or another device
   - Changing the Master password
   - Changing the Key settings (KDF iterations and Argon2 switch)

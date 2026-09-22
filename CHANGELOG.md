@@ -1,5 +1,12 @@
 # Changelog
 
+# v2026.9.0-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.9.0-1`
+- Integrate latest change from `Vaultwarden` up to [cc67d64](https://github.com/dani-garcia/vaultwarden/commit/cc67d64)
+- `SSO_ACR_MIN` and `SSO_ACR_NO_2FA` allow to limit login and/or skip 2FA.
+- Fix on 2FA reset try to fallback to email only if SMTP is activated.
+
 # v2026.8.0-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.8.0-1`
