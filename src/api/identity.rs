@@ -370,7 +370,11 @@ async fn sso_login(
         Some((mut user, sso_user)) => {
             let mut device = get_device(&data, conn, &user).await?;
 
-            let twofactor_token = twofactor_auth(&mut user, &data, &mut device, ip, client_version, conn).await?;
+            let twofactor_token = if user_infos.acr_2fa_required() {
+                twofactor_auth(&mut user, &data, &mut device, ip, client_version, conn).await?
+            } else {
+                None
+            };
 
             if user.private_key.is_none() {
                 // User was invited a stub was created

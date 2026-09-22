@@ -841,6 +841,10 @@ make_config! {
         sso_authorize_extra_params:     String, true,  def,    String::new();
         /// Use PKCE during Authorization flow
         sso_pkce:                       bool,   true,   def,    true;
+        /// Minimum ACR level for login |> Comma separated list in order of preference.
+        sso_acr_min:                    String, true,   def,    String::new();
+        /// ACR level at which 2fa is skipped |> Comma separated list.
+        sso_acr_no_2fa:                 String, true,   def,    String::new();
         /// Regex for additional trusted Id token audience |> By default only the client_id is trusted.
         sso_audience_trusted:           String, true,  option;
         /// CallBack Path |> Generated from Domain.
@@ -1163,6 +1167,10 @@ fn validate_config(cfg: &ConfigItems, on_update: bool) -> Result<(), Error> {
         validate_internal_sso_issuer_url(&cfg.sso_authority)?;
         validate_internal_sso_redirect_url(&cfg.sso_callback_path)?;
         validate_sso_master_password_policy(cfg.sso_master_password_policy.as_ref())?;
+
+        if cfg.sso_acr_no_2fa.contains('1') {
+            println!("[WARNING] SSO_ACR_NO_2FA include 1, 2FA will be disabled for SSO login");
+        }
 
         assert!(
             !cfg.sso_organizations_invite || cfg.sso_organizations_enabled,
@@ -1761,6 +1769,14 @@ impl Config {
 
     pub fn sso_scopes_vec(&self) -> Vec<String> {
         self.sso_scopes().split_whitespace().map(str::to_owned).collect()
+    }
+
+    pub fn sso_acr_min_vec(&self) -> Vec<String> {
+        self.sso_acr_min().split(',').map(str::to_owned).collect()
+    }
+
+    pub fn sso_acr_no_2fa_vec(&self) -> Vec<String> {
+        self.sso_acr_no_2fa().split(',').map(str::to_owned).collect()
     }
 
     pub fn sso_authorize_extra_params_vec(&self) -> Vec<(String, String)> {

@@ -36,6 +36,8 @@ services:
       - SMTP_FROM
       - SMTP_DEBUG
       - SSO_AUTH_ONLY_NOT_SESSION
+      - SSO_ACR_MIN
+      - SSO_ACR_NO_2FA
       - SSO_DEBUG_TOKENS
       - SSO_ENABLED
       - SSO_FRONTEND

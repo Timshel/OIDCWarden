@@ -9,6 +9,7 @@ use diesel::{
 use std::time::Duration;
 
 use crate::{
+    CONFIG,
     api::EmptyResult,
     db::{DbConn, DbPool, schema::sso_auth},
     error::MapResult,
@@ -37,11 +38,22 @@ pub struct OIDCAuthenticatedUser {
     pub role: Option<UserRole>,
     pub org_role: Option<UserOrgRole>,
     pub groups: Option<Vec<String>>,
+    pub acr: Option<String>,
 }
 
 impl OIDCAuthenticatedUser {
     pub fn is_admin(&self) -> bool {
         self.role.as_ref().is_some_and(|x| x == &UserRole::Admin)
+    }
+
+    pub fn acr_min(&self) -> bool {
+        CONFIG.sso_acr_min_vec().is_empty()
+            || self.acr.as_ref().map_or_default(|acr| CONFIG.sso_acr_min_vec().contains(acr))
+    }
+
+    // Check if the returned value is enough to disable 2FA
+    pub fn acr_2fa_required(&self) -> bool {
+        !self.acr.as_ref().map_or_default(|acr| CONFIG.sso_acr_no_2fa_vec().contains(acr))
     }
 }
 

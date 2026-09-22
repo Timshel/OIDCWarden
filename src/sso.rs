@@ -439,7 +439,18 @@ pub async fn exchange_code(
         role: additional_claims.role,
         org_role: additional_claims.org_role,
         groups: additional_claims.groups,
+        acr: id_claims.auth_context_ref().map(|acr| acr.to_string()),
     };
+
+    if !authenticated_user.acr_min() {
+        info!("User {email} failed to login due to missing/invalid acr ({:?})", authenticated_user.acr);
+        err!(
+            "Invalid authentication. Contact your administrator",
+            ErrorEvent {
+                event: EventType::UserFailedLogIn
+            }
+        )
+    }
 
     debug!("Authenticated user {authenticated_user:?}");
     sso_auth.auth_response = Some(authenticated_user.clone());

@@ -21,6 +21,16 @@ kcadm.sh config credentials --server "http://${KC_HTTP_HOST}:${KC_HTTP_PORT}" --
 
 kcadm.sh create realms -s realm="$TEST_REALM" -s enabled=true -s "accessTokenLifespan=600"
 
+## Create AMR mapping client scope
+TEST_AMR_CLIENT_SCOPE_ID=$(kcadm.sh create -r "$TEST_REALM" client-scopes -s name=amr -s protocol=openid-connect -i)
+kcadm.sh create -r "$TEST_REALM" "client-scopes/$TEST_AMR_CLIENT_SCOPE_ID/protocol-mappers/models" \
+    -s name=AMR \
+    -s protocol=openid-connect \
+    -s protocolMapper=oidc-amr-mapper \
+    -s consentRequired=false \
+    -s 'config."id.token.claim"=true' \
+    -s 'config."access.token.claim"=true'
+
 ## Delete default roles mapping
 DEFAULT_ROLE_SCOPE_ID=$(kcadm.sh get -r "$TEST_REALM" client-scopes | jq -r '.[] | select(.name == "roles") | .id')
 kcadm.sh delete -r "$TEST_REALM" "client-scopes/$DEFAULT_ROLE_SCOPE_ID"
@@ -63,6 +73,10 @@ SUB_GROUP1_ID=$(kcadm.sh create -r "$TEST_REALM" groups -s name=SubGroup1 -i)
 SUB_GROUP2_ID=$(kcadm.sh create -r "$TEST_REALM" groups -s name=SubGroup2 -i)
 
 TEST_CLIENT_ID=$(kcadm.sh create -r "$TEST_REALM" clients -s "name=Warden" -s "clientId=$SSO_CLIENT_ID" -s "secret=$SSO_CLIENT_SECRET" -s "redirectUris=[\"$DOMAIN/*\", \"https://127.0.0.1:$ROCKET_PORT/*\", \"https://vw.lan/*\"]" -i)
+
+## ADD AMR mapping scope
+kcadm.sh update -r "$TEST_REALM" "clients/$TEST_CLIENT_ID" --body "{\"optionalClientScopes\": [\"$TEST_AMR_CLIENT_SCOPE_ID\"]}"
+kcadm.sh update -r "$TEST_REALM" "clients/$TEST_CLIENT_ID/optional-client-scopes/$TEST_AMR_CLIENT_SCOPE_ID"
 
 ## ADD Role mapping scope
 kcadm.sh update -r "$TEST_REALM" "clients/$TEST_CLIENT_ID" --body "{\"optionalClientScopes\": [\"$TEST_CLIENT_ROLES_SCOPE_ID\"]}"

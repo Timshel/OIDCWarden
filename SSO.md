@@ -25,6 +25,8 @@ The following configurations are available
   \
   For example can be used to set the `prompt` parameter: [openid-connect-core-1_0.html#AuthRequest](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest) (`SSO_AUTHORIZE_EXTRA_PARAMS="prompt=select_account"`).
 - `SSO_PKCE`: Activate PKCE for the Auth Code flow (default `true`). Cf [#on-sso_pkce](#on-sso_pkce).
+- `SSO_ACR_MIN`: Minimum ACR level for login. Comma separated list in order of preference.
+- `SSO_ACR_NO_2FA`: ACR level at which 2fa is skipped. Comma separated list.
 - `SSO_AUDIENCE_TRUSTED`: Optional, Regex to trust additional audience for the IdToken (`client_id` is always trusted). Use single quote when writing the regex: `'^$'`.
 - `SSO_CLIENT_ID` : Client Id
 - `SSO_CLIENT_SECRET` : Client Secret

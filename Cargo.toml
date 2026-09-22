@@ -1,6 +1,6 @@
 [workspace.package]
 edition = "2024"
-rust-version = "1.96.1"
+rust-version = "1.98.1"
 license = "AGPL-3.0-only"
 repository = "https://github.com/timshel/oidcwarden"
 publish = false

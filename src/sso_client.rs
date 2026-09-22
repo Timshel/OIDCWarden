@@ -1,11 +1,11 @@
 use std::{borrow::Cow, collections::HashSet, future::Future, pin::Pin, sync::LazyLock, time::Duration};
 
 use openidconnect::{
-    AccessToken, AdditionalClaims, AsyncHttpClient, AuthDisplay, AuthPrompt, AuthType, AuthenticationFlow,
-    AuthorizationCode, AuthorizationRequest, ClientId, ClientSecret, CsrfToken, EmptyExtraTokenFields,
-    EndpointMaybeSet, EndpointNotSet, EndpointSet, HttpClientError, HttpRequest, HttpResponse, IdTokenClaims,
-    IdTokenFields, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, RefreshToken, ResponseType, Scope,
-    StandardErrorResponse, StandardTokenResponse, UserInfoClaims,
+    AccessToken, AdditionalClaims, AsyncHttpClient, AuthDisplay, AuthPrompt, AuthType, AuthenticationContextClass,
+    AuthenticationFlow, AuthorizationCode, AuthorizationRequest, ClientId, ClientSecret, CsrfToken,
+    EmptyExtraTokenFields, EndpointMaybeSet, EndpointNotSet, EndpointSet, HttpClientError, HttpRequest, HttpResponse,
+    IdTokenClaims, IdTokenFields, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, RefreshToken,
+    ResponseType, Scope, StandardErrorResponse, StandardTokenResponse, UserInfoClaims,
     core::{
         CoreAuthDisplay, CoreAuthPrompt, CoreClientAuthMethod, CoreErrorResponseType, CoreGenderClaim,
         CoreIdTokenVerifier, CoreJsonWebKey, CoreJweContentEncryptionAlgorithm, CoreJwsSigningAlgorithm,
@@ -247,6 +247,10 @@ impl Client {
             )
             .add_scopes(scopes)
             .add_extra_params(CONFIG.sso_authorize_extra_params_vec());
+
+        for acr in CONFIG.sso_acr_min_vec() {
+            auth_req = auth_req.add_auth_context_value(AuthenticationContextClass::new(acr));
+        }
 
         if CONFIG.sso_pkce() {
             auth_req = auth_req
