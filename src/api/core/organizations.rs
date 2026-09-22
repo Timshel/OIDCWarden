@@ -1085,7 +1085,6 @@ async fn send_invite(
             && data.permissions.get("deleteAnyCollection") == Some(&json!(true))
             && data.permissions.get("createNewCollections") == Some(&json!(true)));
 
-    let mut user_created: bool = false;
     let collections = data.collections.into_iter().flatten().collect();
 
     let Some(org) = Organization::find_by_uuid(&org_id, &conn).await else {
@@ -1093,6 +1092,7 @@ async fn send_invite(
     };
 
     for email in &data.emails {
+        let mut user_created = false;
         let user = match User::find_by_mail(email, &conn).await {
             None => {
                 if !CONFIG.invitations_allowed() {
