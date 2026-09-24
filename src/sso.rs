@@ -404,7 +404,12 @@ pub async fn exchange_code(
 
     let email_verified = id_claims.email_verified().or(user_info.email_verified());
 
-    let user_name = id_claims.preferred_username().or(user_info.preferred_username()).map(|un| un.to_string());
+    let user_name =
+        id_claims.preferred_username().or(user_info.preferred_username()).map(|un| un.to_string()).or(id_claims
+            .name()
+            .and_then(|ln| ln.get(id_claims.locale()))
+            .or(user_info.name().and_then(|ln| ln.get(user_info.locale())))
+            .map(|un| un.to_string()));
 
     let additional_claims = additional_claims(
         &email,
