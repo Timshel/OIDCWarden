@@ -2,8 +2,8 @@ SELECT if (
     NOT EXISTS(
         SELECT DISTINCT index_name FROM information_schema.statistics
             WHERE table_schema = DATABASE()
-                AND table_name = 'sso_auth'
-                AND index_name = 'code_response_index'
+                AND table_name = 'devices'
+                AND column_name = 'encrypted_private_key'
     )
     ,'ALTER TABLE devices ADD COLUMN encrypted_private_key TEXT NULL, ADD COLUMN encrypted_public_key TEXT NULL, ADD COLUMN encrypted_user_key TEXT NULL'
     ,'SELECT "info: column exist."'
