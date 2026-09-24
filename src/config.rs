@@ -1776,11 +1776,11 @@ impl Config {
     }
 
     pub fn sso_acr_min_vec(&self) -> Vec<String> {
-        self.sso_acr_min().split(',').map(str::to_owned).collect()
+        self.sso_acr_min().split(',').map(str::to_owned).filter(|g| !g.is_empty()).collect()
     }
 
     pub fn sso_acr_no_2fa_vec(&self) -> Vec<String> {
-        self.sso_acr_no_2fa().split(',').map(str::to_owned).collect()
+        self.sso_acr_no_2fa().split(',').map(str::to_owned).filter(|g| !g.is_empty()).collect()
     }
 
     pub fn sso_authorize_extra_params_vec(&self) -> Vec<(String, String)> {
