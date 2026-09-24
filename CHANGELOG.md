@@ -1,5 +1,10 @@
 # Changelog
 
+# v2026.9.0-2
+
+- Integrate latest change from `Vaultwarden` up to [32098ca](https://github.com/dani-garcia/vaultwarden/commit/32098ca)
+- Fix regression on SSO login
+
 # v2026.9.0-1
 
 - Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.9.0-1`
