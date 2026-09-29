@@ -12,7 +12,7 @@ use crate::{
 static JWT_2FA_AUTH_ISSUER: LazyLock<String> = LazyLock::new(|| format!("{}|api.2fa", CONFIG.domain_origin()));
 
 #[derive(Serialize, Deserialize)]
-pub struct TwopFactorClaims<T> {
+pub struct TwoFactorClaims<T> {
     // Not before
     pub nbf: i64,
     // Expiration time
@@ -28,26 +28,35 @@ pub struct TwopFactorClaims<T> {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AuthenticatorClaims {
+    #[serde(rename = "authenticator_key")]
     pub key: String,
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DuoClaims {
-    data: Option<DuoData>,
+    #[serde(rename = "duo_data")]
+    pub data: Option<DuoData>,
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct WebauthnClaims {
+    #[serde(rename = "webauthn_keys")]
     pub keys: Vec<i32>,
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct YubikeyClaims {
+    #[serde(rename = "yubi_keys")]
     pub keys: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct DuoData {
     pub host: String, // Duo API hostname
     pub ik: String,   // client id
@@ -102,7 +111,7 @@ pub struct EmailClaims {
 
 fn token<T: Serialize>(user_id: UserId, enabled: bool, claims: T) -> String {
     let time_now = Utc::now();
-    let claims = TwopFactorClaims {
+    let claims = TwoFactorClaims {
         nbf: time_now.timestamp(),
         exp: (time_now + TimeDelta::try_minutes(5).unwrap()).timestamp(),
         iss: JWT_2FA_AUTH_ISSUER.to_string(),
@@ -114,7 +123,7 @@ fn token<T: Serialize>(user_id: UserId, enabled: bool, claims: T) -> String {
 }
 
 fn validate<T: DeserializeOwned>(token: &str, user_id: &UserId, enabled: bool) -> ApiResult<T> {
-    match decode_jwt::<TwopFactorClaims<T>>(token, JWT_2FA_AUTH_ISSUER.to_string()) {
+    match decode_jwt::<TwoFactorClaims<T>>(token, JWT_2FA_AUTH_ISSUER.to_string()) {
         Ok(claims) => {
             if claims.sub != *user_id {
                 err!("Invalid verification token: Invalid user");
