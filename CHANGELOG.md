@@ -1,5 +1,15 @@
 # Changelog
 
+# v2026.9.0-3
+
+- Integrate latest change from `Vaultwarden` up to [1.37.4](https://github.com/dani-garcia/vaultwarden/commits/1.37.4)
+  :warning: Include CVE fixes.
+- Fix past mysql migration (no impact)
+- SSO Fallback to name if preferred_username is empty
+- Pass IdToken subject to userinfo
+- 2FA fix and improvements
+- Fix key rotation with trusted devices
+
 # v2026.9.0-2
 
 - Integrate latest change from `Vaultwarden` up to [32098ca](https://github.com/dani-garcia/vaultwarden/commit/32098ca)
