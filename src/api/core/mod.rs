@@ -336,8 +336,11 @@ impl KDFData {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AuthenticationData {
+    #[serde(alias = "Salt")]
     salt: String,
+    #[serde(alias = "Kdf")]
     kdf: KDFData,
+    #[serde(alias = "MasterPasswordAuthenticationHash")]
     master_password_authentication_hash: String,
 }
 

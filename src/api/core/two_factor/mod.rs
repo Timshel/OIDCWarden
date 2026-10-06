@@ -127,6 +127,7 @@ pub async fn check_2fa_state(user: &User, device_type: i32, ip: &std::net::IpAdd
         Device::clear_twofactor_remember_by_user(&user.uuid, conn).await?;
         enforce_2fa_policy(user, &user.uuid, device_type, ip, conn).await?;
     }
+
     Ok(())
 }
 

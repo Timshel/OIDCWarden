@@ -104,7 +104,6 @@ impl Group {
             "id": self.uuid,
             "organizationId": self.organizations_uuid,
             "name": self.name,
-            "accessAll": self.access_all,
             "externalId": self.external_id,
             "collections": collections_groups,
             "object": "groupDetails"

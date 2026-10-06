@@ -7,7 +7,7 @@ use crate::{
     crypto,
     db::{
         DbConn,
-        models::{EventType, TwoFactor, TwoFactorType, UserId},
+        models::{Device, EventType, TwoFactor, TwoFactorType, UserId},
     },
     util::NumberOrString,
 };
@@ -191,6 +191,7 @@ async fn disable_authenticator(data: Json<DisableAuthenticatorData>, headers: He
     {
         if twofactor.data == data.key {
             twofactor.delete(&conn).await?;
+            Device::clear_twofactor_remember_by_user(&user.uuid, &conn).await?;
             log_user_event(EventType::UserDisabled2fa as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn)
                 .await;
         } else {
