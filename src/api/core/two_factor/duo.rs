@@ -126,7 +126,7 @@ async fn activate_duo(data: Json<EnableDuoData>, headers: Headers, conn: DbConn)
 
     generate_recover_code(&mut user, &conn).await;
 
-    log_user_event(EventType::UserUpdated2fa as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
+    log_user_event(EventType::UserUpdated2fa, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
 
     Ok(Json(json!({
         "duo": json!({
@@ -147,7 +147,7 @@ async fn activate_duo_put(data: Json<EnableDuoData>, headers: Headers, conn: DbC
 async fn disable_duo(data: Json<VerificationTokenData>, headers: Headers, conn: DbConn) -> EmptyResult {
     let user = headers.user;
 
-    if let Some(twofactor) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Duo as i32, &conn).await {
+    if let Some(twofactor) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Duo, &conn).await {
         // Apply the same transformation than in `get_duo` to check we are disabling the correct one
         let duo = match to_user_duo_data(&twofactor) {
             DuoStatus::Global(_) => Some(DuoData::secret()),
@@ -158,8 +158,7 @@ async fn disable_duo(data: Json<VerificationTokenData>, headers: Headers, conn: 
         two_factor::validate_duo(&data.user_verification_token, &user.uuid, duo.as_ref(), true)?;
 
         twofactor.delete(&conn).await?;
-        log_user_event(EventType::UserDisabled2fa as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn)
-            .await;
+        log_user_event(EventType::UserDisabled2fa, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
     }
 
     super::check_2fa_state(&user, headers.device.atype, &headers.ip.ip, &conn).await?;
@@ -192,10 +191,8 @@ async fn duo_api_request(method: &str, path: &str, params: &str, data: &DuoData)
 }
 
 async fn get_user_duo_data(user_id: &UserId, conn: &DbConn) -> DuoStatus {
-    let type_ = TwoFactorType::Duo as i32;
-
     // If the user doesn't have an entry, disabled
-    let Some(twofactor) = TwoFactor::find_by_user_and_type(user_id, type_, conn).await else {
+    let Some(twofactor) = TwoFactor::find_by_user_and_type(user_id, TwoFactorType::Duo, conn).await else {
         return DuoStatus::Disabled(DuoData::global().is_some());
     };
 

@@ -14,7 +14,10 @@ use crate::{
     crypto,
     db::{
         DbConn,
-        models::{AuthRequest, AuthRequestId, DeviceId, EventType, TwoFactor, TwoFactorType, User, UserId},
+        models::{
+            AuthRequest, AuthRequestId, DeviceId, EventType, TwoFactor, TwoFactorIncomplete, TwoFactorType, User,
+            UserId,
+        },
     },
     error::{Error, MapResult},
     mail,
@@ -94,6 +97,20 @@ async fn send_email_login(data: Json<SendEmailLoginData>, client_headers: Client
             {
                 err!("AuthRequest doesn't exist", "Invalid device, IP or code")
             }
+        } else if let Some(device_identifier) = &data.device_identifier {
+            // iOS/Android SSO logins send the email and device id but no password hash,
+            // so accept a device that has a pending 2FA login for this user
+            if TwoFactorIncomplete::find_by_user_and_device(&user.uuid, device_identifier, &conn).await.is_none() {
+                err!(
+                    "Username or password is incorrect. Try again",
+                    format!("IP: {}. Username: {}.", client_headers.ip.ip, email.escape_debug())
+                )
+            }
+            debug!(
+                "Email 2FA fallback: pending login. Username: {}. Device: {}.",
+                user.email,
+                device_identifier.to_string().escape_debug()
+            );
         } else {
             err!("No password hash has been submitted.")
         }
@@ -107,7 +124,7 @@ async fn send_email_login(data: Json<SendEmailLoginData>, client_headers: Client
         let Some(user) = User::find_by_device_for_email2fa(device_identifier, &conn).await else {
             err!(
                 "Username or password is incorrect. Try again",
-                format!("IP: {}. Device: {device_identifier}.", client_headers.ip.ip)
+                format!("IP: {}. Device: {}.", client_headers.ip.ip, device_identifier.to_string().escape_debug())
             )
         };
 
@@ -119,8 +136,8 @@ async fn send_email_login(data: Json<SendEmailLoginData>, client_headers: Client
 
 /// Generate the token, save the data for later verification and send email to user
 pub async fn send_token(user_id: &UserId, conn: &DbConn) -> EmptyResult {
-    let type_ = TwoFactorType::Email as i32;
-    let mut twofactor = TwoFactor::find_by_user_and_type(user_id, type_, conn).await.map_res("Two factor not found")?;
+    let mut twofactor =
+        TwoFactor::find_by_user_and_type(user_id, TwoFactorType::Email, conn).await.map_res("Two factor not found")?;
 
     let generated_token = crypto::generate_email_token(CONFIG.email_token_size());
 
@@ -143,7 +160,7 @@ async fn get_email(data: Json<PasswordOrOtpData>, headers: Headers, conn: DbConn
     data.validate(&mut user, false, &conn).await?;
 
     let (enabled, mfa_email) =
-        if let Some(x) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Email as i32, &conn).await {
+        if let Some(x) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Email, &conn).await {
             let twofactor_data = EmailTokenData::from_json(&x.data)?;
             (true, Some(twofactor_data.email))
         } else {
@@ -179,9 +196,7 @@ async fn send_email(data: Json<SendEmailData>, headers: Headers, conn: DbConn) -
         err!("Email 2FA is disabled")
     }
 
-    let type_ = TwoFactorType::Email as i32;
-
-    if let Some(tf) = TwoFactor::find_by_user_and_type(&user.uuid, type_, &conn).await {
+    if let Some(tf) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Email, &conn).await {
         tf.delete(&conn).await?;
     }
 
@@ -214,10 +229,9 @@ async fn email(data: Json<EmailData>, headers: Headers, conn: DbConn) -> JsonRes
 
     two_factor::validate_email(&data.user_verification_token, &user.uuid, data.email, false)?;
 
-    let mut twofactor =
-        TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::EmailVerificationChallenge as i32, &conn)
-            .await
-            .map_res("Two factor not found")?;
+    let mut twofactor = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::EmailVerificationChallenge, &conn)
+        .await
+        .map_res("Two factor not found")?;
 
     let mut email_data = EmailTokenData::from_json(&twofactor.data)?;
 
@@ -236,7 +250,7 @@ async fn email(data: Json<EmailData>, headers: Headers, conn: DbConn) -> JsonRes
 
     generate_recover_code(&mut user, &conn).await;
 
-    log_user_event(EventType::UserUpdated2fa as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
+    log_user_event(EventType::UserUpdated2fa, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
 
     Ok(Json(json!({})))
 }
@@ -245,13 +259,12 @@ async fn email(data: Json<EmailData>, headers: Headers, conn: DbConn) -> JsonRes
 async fn disable_email(data: Json<VerificationTokenData>, headers: Headers, conn: DbConn) -> EmptyResult {
     let user = headers.user;
 
-    if let Some(twofactor) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Email as i32, &conn).await {
+    if let Some(twofactor) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Email, &conn).await {
         let twofactor_data = EmailTokenData::from_json(&twofactor.data)?;
         two_factor::validate_email(&data.user_verification_token, &user.uuid, twofactor_data.email, true)?;
 
         twofactor.delete(&conn).await?;
-        log_user_event(EventType::UserDisabled2fa as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn)
-            .await;
+        log_user_event(EventType::UserDisabled2fa, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
     }
 
     super::check_2fa_state(&user, headers.device.atype, &headers.ip.ip, &conn).await?;
@@ -268,9 +281,8 @@ pub async fn validate_email_code_str(
     conn: &DbConn,
 ) -> EmptyResult {
     let mut email_data = EmailTokenData::from_json(data)?;
-    let mut twofactor = TwoFactor::find_by_user_and_type(user_id, TwoFactorType::Email as i32, conn)
-        .await
-        .map_res("Two factor not found")?;
+    let mut twofactor =
+        TwoFactor::find_by_user_and_type(user_id, TwoFactorType::Email, conn).await.map_res("Two factor not found")?;
     let Some(issued_token) = &email_data.last_token else {
         err!(
             format!("No token available! IP: {ip}"),
@@ -282,7 +294,7 @@ pub async fn validate_email_code_str(
 
     if !crypto::ct_eq(issued_token, token) {
         email_data.add_attempt();
-        if email_data.attempts >= CONFIG.email_attempts_limit() {
+        if email_data.attempts >= u64::from(CONFIG.email_attempts_limit()) {
             email_data.reset_token();
         }
         twofactor.data = email_data.to_json();
@@ -301,7 +313,7 @@ pub async fn validate_email_code_str(
     twofactor.save(conn).await?;
 
     let dt = DateTime::from_timestamp(email_data.token_sent, 0).expect("Email token timestamp invalid.").naive_utc();
-    let max_time = CONFIG.email_expiration_time().cast_signed();
+    let max_time = i64::from(CONFIG.email_expiration_time());
     if dt + TimeDelta::try_seconds(max_time).unwrap() < Utc::now().naive_utc() {
         err!(
             "Token has expired",

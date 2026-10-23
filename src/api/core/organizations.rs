@@ -2745,10 +2745,31 @@ async fn recover_account(
 
     let fallback_2fa_email =
         if req.reset_two_factor && CONFIG.mail_enabled() && CONFIG.email_2fa_auto_fallback() && user.verified() {
-            TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Email as i32, &conn).await.is_none()
+            TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::Email, &conn).await.is_none()
         } else {
             false
         };
+
+    // Check the new password before the email below, so that a rejected request doesn't tell the user
+    // their password was reset
+    let new_password = if req.reset_master_password {
+        let (new_master_password_hash, new_key) = if let (Some(authentication_data), Some(unlock_data)) =
+            (req.authentication_data, req.unlock_data)
+        {
+            authentication_data.check(&user, &unlock_data)?;
+
+            if !authentication_data.kdf.matches_user(&user) {
+                err!("KDF settings do not match the user account")
+            }
+
+            (authentication_data.master_password_authentication_hash, unlock_data.master_key_wrapped_user_key)
+        } else {
+            err_code!("Unprocessable request", "Missing fields to reset password", Status::UnprocessableEntity.code);
+        };
+        Some((new_master_password_hash, new_key))
+    } else {
+        None
+    };
 
     // Sending email first ensure working email configuration and the resulting user notification.
     // Also this might add some protection against security flaws and misuse
@@ -2765,21 +2786,8 @@ async fn recover_account(
         err!(format!("Error sending user reset password email: {e:#?}"));
     }
 
-    if req.reset_master_password {
-        if let (Some(authentication_data), Some(unlock_data)) = (req.authentication_data, req.unlock_data) {
-            authentication_data.check_kdf(&user, &unlock_data)?;
-
-            user.set_password(
-                &authentication_data.master_password_authentication_hash,
-                Some(unlock_data.master_key_wrapped_user_key),
-                true,
-                None,
-                &conn,
-            )
-            .await?;
-        } else {
-            err_code!("Unprocessable request", "Missing fields to reset password", Status::UnprocessableEntity.code);
-        }
+    if let Some((new_master_password_hash, new_key)) = new_password {
+        user.set_password(&new_master_password_hash, Some(new_key), true, None, &conn).await?;
     }
 
     if req.reset_two_factor {

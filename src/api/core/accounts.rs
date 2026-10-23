@@ -456,8 +456,7 @@ async fn post_set_password(data: Json<SetPasswordData>, headers: Headers, conn: 
 
     user.save(&conn).await?;
 
-    log_user_event(EventType::UserChangedPassword as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn)
-        .await;
+    log_user_event(EventType::UserChangedPassword, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
 
     if CONFIG.organization_invite_auto_accept() || !CONFIG.mail_enabled() {
         Membership::accept_user_invitations(&user.uuid, &conn).await?;
@@ -633,8 +632,7 @@ async fn post_password(data: Json<ChangePassData>, headers: Headers, conn: DbCon
         err!("Invalid password")
     }
 
-    log_user_event(EventType::UserChangedPassword as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn)
-        .await;
+    log_user_event(EventType::UserChangedPassword, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
 
     let (new_master_password_hash, new_key) =
         if let (Some(unlock_data), Some(authentication_data)) = (data.unlock_data, data.authentication_data) {
@@ -1760,7 +1758,7 @@ async fn post_auth_request(
     nt.send_auth_request(&user.uuid, &auth_request.uuid, &device, &conn).await;
 
     log_user_event(
-        EventType::UserRequestedDeviceApproval as i32,
+        EventType::UserRequestedDeviceApproval,
         &user.uuid,
         client_headers.device_type,
         &client_headers.ip.ip,
@@ -1854,7 +1852,7 @@ async fn put_auth_request(
         nt.send_auth_response(&auth_request.user_uuid, &auth_request.uuid, &headers.device, &conn).await;
 
         log_user_event(
-            EventType::OrganizationUserApprovedAuthRequest as i32,
+            EventType::OrganizationUserApprovedAuthRequest,
             &headers.user.uuid,
             headers.device.atype,
             &headers.ip.ip,
@@ -1865,7 +1863,7 @@ async fn put_auth_request(
         // If denied, there's no reason to keep the request
         auth_request.delete(&conn).await?;
         log_user_event(
-            EventType::OrganizationUserRejectedAuthRequest as i32,
+            EventType::OrganizationUserRejectedAuthRequest,
             &headers.user.uuid,
             headers.device.atype,
             &headers.ip.ip,

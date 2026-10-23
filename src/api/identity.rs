@@ -124,7 +124,7 @@ async fn login(
         match &login_result {
             Ok(_) => {
                 log_user_event(
-                    EventType::UserLoggedIn as i32,
+                    EventType::UserLoggedIn,
                     &user_id,
                     client_header.device_type,
                     &client_header.ip.ip,
@@ -134,8 +134,7 @@ async fn login(
             }
             Err(e) => {
                 if let Some(ev) = e.get_event() {
-                    log_user_event(ev.event as i32, &user_id, client_header.device_type, &client_header.ip.ip, &conn)
-                        .await;
+                    log_user_event(ev.event, &user_id, client_header.device_type, &client_header.ip.ip, &conn).await;
                 }
             }
         }
@@ -179,7 +178,7 @@ async fn refresh_login(
 
             if auth_tokens.is_admin {
                 debug!("Refreshed {} admin cookie", user.email);
-                admin::add_admin_cookie(cookies, secure.https);
+                admin::add_admin_cookie(cookies, secure.https)?;
             } else {
                 admin::remove_admin_cookie(cookies);
             }
@@ -403,7 +402,7 @@ async fn sso_login(
 
     if auth_tokens.is_admin {
         info!("User {} logged with admin cookie", user.email);
-        admin::add_admin_cookie(cookies, secure.https);
+        admin::add_admin_cookie(cookies, secure.https)?;
     }
 
     authenticated_response(&user, &mut device, auth_tokens, twofactor_token, conn, ip, true).await
@@ -489,9 +488,9 @@ async fn password_login(data: ConnectData, user_id: &mut Option<UserId>, conn: &
     if user.verified_at.is_none() && CONFIG.mail_enabled() && CONFIG.signups_verify() {
         if user.last_verifying_at.is_none()
             || now.signed_duration_since(user.last_verifying_at.unwrap()).num_seconds()
-                > CONFIG.signups_verify_resend_time().cast_signed()
+                > i64::from(CONFIG.signups_verify_resend_time())
         {
-            let resend_limit = CONFIG.signups_verify_resend_limit().cast_signed();
+            let resend_limit = i32::from(CONFIG.signups_verify_resend_limit());
             if resend_limit == 0 || user.login_verify_count < resend_limit {
                 // We want to send another email verification if we require signups to verify
                 // their email address, and we haven't sent them a reminder in a while...
@@ -907,7 +906,7 @@ async fn twofactor_auth(
 
             enforce_2fa_policy(user, &user.uuid, device.atype, &ip.ip, conn).await?;
 
-            log_user_event(EventType::UserRecovered2fa as i32, &user.uuid, device.atype, &ip.ip, conn).await;
+            log_user_event(EventType::UserRecovered2fa, &user.uuid, device.atype, &ip.ip, conn).await;
 
             if CONFIG.mail_enabled()
                 && let Err(e) =
@@ -977,7 +976,7 @@ async fn json_err_twofactor(providers: &[i32], user: &User, data: &ConnectData, 
             }
 
             Some(tf_type @ TwoFactorType::YubiKey) => {
-                let Some(twofactor) = TwoFactor::find_by_user_and_type(user_id, tf_type as i32, conn).await else {
+                let Some(twofactor) = TwoFactor::find_by_user_and_type(user_id, tf_type, conn).await else {
                     err!("No YubiKey devices registered")
                 };
 
@@ -989,7 +988,7 @@ async fn json_err_twofactor(providers: &[i32], user: &User, data: &ConnectData, 
             }
 
             Some(tf_type @ TwoFactorType::Email) => {
-                let Some(twofactor) = TwoFactor::find_by_user_and_type(user_id, tf_type as i32, conn).await else {
+                let Some(twofactor) = TwoFactor::find_by_user_and_type(user_id, tf_type, conn).await else {
                     err!("No twofactor email registered")
                 };
 

@@ -242,11 +242,11 @@ async fn post_events_collect(data: Json<Vec<EventCollection>>, headers: Headers,
     Ok(())
 }
 
-pub async fn log_user_event(event_type: i32, user_id: &UserId, device_type: i32, ip: &IpAddr, conn: &DbConn) {
+pub async fn log_user_event(event_type: EventType, user_id: &UserId, device_type: i32, ip: &IpAddr, conn: &DbConn) {
     if !CONFIG.org_events_enabled() {
         return;
     }
-    log_user_event_impl(event_type, user_id, device_type, None, ip, conn).await;
+    log_user_event_impl(event_type as i32, user_id, device_type, None, ip, conn).await;
 }
 
 async fn log_user_event_impl(
@@ -347,14 +347,17 @@ async fn log_event_impl(
 
 pub async fn event_cleanup_job(pool: DbPool) {
     debug!("Start events cleanup job");
-    if CONFIG.events_days_retain().is_none() {
-        debug!("events_days_retain is not configured, abort");
+    if CONFIG.events_days_retain().is_none_or(|d| d == 0) {
+        debug!("events_days_retain is not configured or set to 0, skipping");
         return;
     }
 
-    if let Ok(conn) = pool.get().await {
-        Event::clean_events(&conn).await.ok();
-    } else {
+    let Ok(conn) = pool.get().await else {
         error!("Failed to get DB connection while trying to cleanup the events table");
+        return;
+    };
+
+    if let Err(e) = Event::clean_events(&conn).await {
+        error!("Failed to cleanup the events table: {e}");
     }
 }

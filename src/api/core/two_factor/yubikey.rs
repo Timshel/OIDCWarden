@@ -127,10 +127,9 @@ async fn generate_yubikey(data: Json<PasswordOrOtpData>, headers: Headers, conn:
     data.validate(&mut user, false, &conn).await?;
 
     let user_id = &user.uuid;
-    let yubikey_type = TwoFactorType::YubiKey as i32;
 
     let (enabled, keys, yubikey_json) =
-        if let Some(r) = TwoFactor::find_by_user_and_type(user_id, yubikey_type, &conn).await {
+        if let Some(r) = TwoFactor::find_by_user_and_type(user_id, TwoFactorType::YubiKey, &conn).await {
             let yubikey_metadata: YubikeyMetadata = serde_json::from_str(&r.data)?;
             let enabled = !yubikey_metadata.keys.is_empty();
             let mut result = jsonify_yubikeys(yubikey_metadata.keys.clone());
@@ -160,7 +159,7 @@ async fn activate_yubikey(data: Json<EnableYubikeyData>, headers: Headers, conn:
 
     // Check if we already have some data
     let mut yubikey_data =
-        if let Some(yd) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::YubiKey as i32, &conn).await {
+        if let Some(yd) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::YubiKey, &conn).await {
             let ym: YubikeyMetadata = serde_json::from_str(&yd.data)?;
             two_factor::validate_yubikey(&data.user_verification_token, &user.uuid, &ym.keys, !ym.keys.is_empty())?;
             yd
@@ -190,7 +189,7 @@ async fn activate_yubikey(data: Json<EnableYubikeyData>, headers: Headers, conn:
 
     generate_recover_code(&mut user, &conn).await;
 
-    log_user_event(EventType::UserUpdated2fa as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
+    log_user_event(EventType::UserUpdated2fa, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
 
     let mut result = jsonify_yubikeys(yubikey_metadata.keys);
     result["enabled"] = Value::Bool(true);
@@ -207,13 +206,12 @@ async fn activate_yubikey_put(data: Json<EnableYubikeyData>, headers: Headers, c
 async fn delete_yubikeys(data: Json<VerificationTokenData>, headers: Headers, conn: DbConn) -> EmptyResult {
     let user = headers.user;
 
-    if let Some(r) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::YubiKey as i32, &conn).await {
+    if let Some(r) = TwoFactor::find_by_user_and_type(&user.uuid, TwoFactorType::YubiKey, &conn).await {
         let yubikey_metadata: YubikeyMetadata = serde_json::from_str(&r.data)?;
         two_factor::validate_yubikey(&data.user_verification_token, &user.uuid, &yubikey_metadata.keys, true)?;
 
         r.delete(&conn).await?;
-        log_user_event(EventType::UserDisabled2fa as i32, &user.uuid, headers.device.atype, &headers.ip.ip, &conn)
-            .await;
+        log_user_event(EventType::UserDisabled2fa, &user.uuid, headers.device.atype, &headers.ip.ip, &conn).await;
     }
 
     super::check_2fa_state(&user, headers.device.atype, &headers.ip.ip, &conn).await?;
