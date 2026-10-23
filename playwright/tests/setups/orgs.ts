@@ -64,13 +64,17 @@ export async function invite(test, page: Page, name: string, email: string) {
         await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
         await page.getByRole('button', { name: 'Invite member' }).click();
         await page.getByRole('textbox', { name: 'Email * (required)', exact: true }).fill(email);
-        await page.getByRole('tab', { name: 'Collections' }).click();
-        await page.getByRole('combobox', { name: 'Permission' }).click();
+
+        await page.getByRole('button', { name: 'More settings' }).click();
+
+        await page.getByRole('combobox', { name: 'Permission', exact: true }).click();
         await page.getByText('Edit items', { exact: true }).click();
-        await page.getByRole('combobox', { name: 'Select collections' }).click();
+
+        await page.getByRole('combobox', { name: 'Collections', exact: true }).click();
         await page.getByLabel('Options List').getByText('Default collection').click();
         await page.getByRole('columnheader', { name: 'Collection' }).click();
-        await page.getByRole('button', { name: 'Save' }).click();
+
+        await page.getByRole('button', { name: 'invite' }).click();
         await utils.checkNotification(page, 'User(s) invited');
     });
 }
