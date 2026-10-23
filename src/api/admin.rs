@@ -229,7 +229,7 @@ fn post_admin_login(
     if validate_token(&data.token) {
         // If the token received is valid, generate JWT and save it as a cookie
         if let Err(e) = add_admin_cookie(cookies, secure.https) {
-            return Err(AdminResponse::Ok(render_admin_login(Some(e.message()), redirect.as_deref())))
+            return Err(AdminResponse::Ok(render_admin_login(Some(e.message()), redirect.as_deref())));
         }
         if let Some(redirect) = redirect {
             Ok(Redirect::to(format!("{}{redirect}", admin_path())))
