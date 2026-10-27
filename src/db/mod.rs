@@ -572,7 +572,7 @@ mod cockroachdb_migrations {
 
         crate::util::retry_when(
             || connection.run_pending_migrations(MIGRATIONS).map(|v| v.len()),
-            20,
+            50,
             |err| {
                 (*err)
                     .downcast_ref::<diesel::result::Error>()
