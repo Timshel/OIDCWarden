@@ -459,7 +459,12 @@ pub async fn exchange_code(
         )
     }
 
-    debug!("Authenticated user {authenticated_user:?}");
+    if CONFIG.sso_debug_tokens() {
+        debug!("Authenticated user {authenticated_user:?}");
+    } else {
+        debug!("Authenticated user {identifier} - {email}");
+    }
+
     sso_auth.auth_response = Some(authenticated_user.clone());
     sso_auth.updated_at = Utc::now().naive_utc();
     sso_auth.save(conn).await?;
