@@ -465,25 +465,12 @@ mod tests {
     }
 
     fn read_request(stream: &mut TcpStream) {
-        stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
-        let mut data = Vec::new();
+        stream.set_read_timeout(Some(Duration::from_secs(1))).unwrap();
         let mut buf = [0u8; 1024];
         loop {
             let n = stream.read(&mut buf).unwrap_or(0);
-            if n == 0 {
+            if n < 1024 {
                 return;
-            }
-            data.extend_from_slice(&buf[..n]);
-            if let Some(end) = data.windows(4).position(|w| w == b"\r\n\r\n") {
-                let headers = String::from_utf8_lossy(&data[..end]).to_ascii_lowercase();
-                let length = headers
-                    .lines()
-                    .find_map(|line| line.strip_prefix("content-length:"))
-                    .and_then(|value| value.trim().parse().ok())
-                    .unwrap_or(0);
-                if data.len() >= end + 4 + length {
-                    return;
-                }
             }
         }
     }
@@ -496,7 +483,7 @@ mod tests {
     fn test_client(base: &str) -> Client {
         // main() installs this at startup. Err means another test already installed it.
         rustls::crypto::ring::default_provider().install_default().ok();
-        let core_client = CoreClient::new(
+        let core_client: CustomClient = openidconnect::Client::new(
             ClientId::new("vaultwarden".to_owned()),
             IssuerUrl::new(base.to_owned()).unwrap(),
             JsonWebKeySet::new(Vec::new()),
@@ -514,63 +501,71 @@ mod tests {
         }
     }
 
-    fn run<F: Future>(future: F) -> F::Output {
-        tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(future)
+    async fn refresh_status(base: &str) -> u16 {
+        let client = test_client(base).exchange_refresh_token_impl("refresh".to_owned()).await;
+        client.map_or_else(|(code, _)| code, |_| 200)
     }
 
-    fn refresh_status(base: &str) -> u16 {
-        let result = run(test_client(base).exchange_refresh_token_impl("refresh".to_owned()));
-        result.map_or_else(|(code, _)| code, |_| 200)
+    async fn user_info_status(base: &str) -> u16 {
+        let client = test_client(base).user_info(AccessToken::new("access".to_owned()), None).await;
+        client.map_or_else(|err| err.get_code(), |_| 200)
     }
 
-    fn user_info_status(base: &str) -> u16 {
-        let result = run(test_client(base).user_info(AccessToken::new("access".to_owned())));
-        result.map_or_else(|err| err.get_code(), |_| 200)
+    #[tokio::test]
+    async fn test_client_unavailable() {
+        let code = Client::cached().await.map_or_else(|err| err.get_code(), |_| 200);
+        assert_eq!(code, 503);
     }
 
-    #[test]
-    fn test_refresh_invalid_grant() {
+    #[tokio::test]
+    async fn test_refresh_invalid_grant() {
         let base = mock_provider(
             "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nContent-Length: 25\r\nConnection: close\r\n\r\n{\"error\":\"invalid_grant\"}",
         );
-        assert_eq!(refresh_status(&base), 400);
+        assert_eq!(refresh_status(&base).await, 400);
     }
 
-    #[test]
-    fn test_refresh_temporarily_unavailable() {
+    #[tokio::test]
+    async fn test_refresh_temporarily_unavailable() {
         let base = mock_provider(
             "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nContent-Length: 35\r\nConnection: close\r\n\r\n{\"error\":\"temporarily_unavailable\"}",
         );
-        assert_eq!(refresh_status(&base), 503);
+        assert_eq!(refresh_status(&base).await, 503);
     }
 
-    #[test]
-    fn test_refresh_provider_error_page() {
+    #[tokio::test]
+    async fn test_refresh_provider_error_page() {
         let base = mock_provider(
             "HTTP/1.1 502 Bad Gateway\r\nContent-Type: text/html\r\nContent-Length: 11\r\nConnection: close\r\n\r\nBad Gateway",
         );
-        assert_eq!(refresh_status(&base), 503);
+        assert_eq!(refresh_status(&base).await, 503);
     }
 
-    #[test]
-    fn test_refresh_provider_unreachable() {
-        assert_eq!(refresh_status(&unreachable_provider()), 503);
+    #[tokio::test]
+    async fn test_refresh_provider_unreachable() {
+        assert_eq!(refresh_status(&unreachable_provider()).await, 503);
     }
 
-    #[test]
-    fn test_user_info_invalid_token() {
+    #[tokio::test]
+    async fn test_validity_invalid_client() {
+        let code = Client::check_validity("fake_token".to_string()).await.map_or_else(|err| err.get_code(), |_| 200);
+        assert_eq!(code, 503);
+    }
+
+    #[tokio::test]
+    async fn test_user_info_invalid_token() {
         let base = mock_provider("HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
-        assert_eq!(user_info_status(&base), 400);
+        assert_eq!(user_info_status(&base).await, 400);
     }
 
-    #[test]
-    fn test_user_info_provider_unavailable() {
+    #[tokio::test]
+    async fn test_user_info_provider_unavailable() {
         let base = mock_provider("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
-        assert_eq!(user_info_status(&base), 502);
+        assert_eq!(user_info_status(&base).await, 502);
     }
 
-    #[test]
-    fn test_user_info_provider_unreachable() {
-        assert_eq!(user_info_status(&unreachable_provider()), 503);
+    #[tokio::test]
+    async fn test_user_info_provider_unreachable() {
+        assert_eq!(user_info_status(&unreachable_provider()).await, 503);
     }
 }
