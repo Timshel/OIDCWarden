@@ -72,7 +72,7 @@ services:
   Mariadb:
     profiles: ["playwright"]
     container_name: playwright_mariadb
-    image: mariadb:12.2.2
+    image: mariadb:12.3
     env_file: test.env
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
@@ -84,7 +84,7 @@ services:
   Mysql:
     profiles: ["playwright"]
     container_name: playwright_mysql
-    image: mysql:9.7.0
+    image: mysql:9.7
     env_file: test.env
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
@@ -108,7 +108,7 @@ services:
   Cockroach:
     profiles: ["playwright", "cockroach"]
     container_name: playwright_cockroach
-    image: cockroachdb/cockroach:v26.2.0
+    image: cockroachdb/cockroach:latest-v25.4
     env_file: test.env
     healthcheck:
       test: ["CMD-SHELL", "cockroach sql --insecure --host=localhost:26257 -d $${COCKROACH_DB} -e 'select 1' >/dev/null 2>&1"]
@@ -121,7 +121,7 @@ services:
   Maildev:
     profiles: ["oidcwarden", "maildev"]
     container_name: maildev
-    image: timshel/maildev:3.2.19
+    image: timshel/maildev:3.3.7
     ports:
       - ${SMTP_PORT}:1025
       - 1080:1080
@@ -129,7 +129,7 @@ services:
   Keycloak:
     profiles: ["keycloak", "oidcwarden"]
     container_name: keycloak-${ENV:-dev}
-    image: quay.io/keycloak/keycloak:26.6.2
+    image: quay.io/keycloak/keycloak:26.8.1
     network_mode: "host"
     command:
       - start-dev
@@ -144,7 +144,7 @@ services:
       context: compose/keycloak
       dockerfile: Dockerfile
       args:
-        KEYCLOAK_VERSION: 26.6.2
+        KEYCLOAK_VERSION: 26.8.1
     depends_on:
       - Keycloak
     restart: "no"
