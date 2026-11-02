@@ -29,7 +29,7 @@ test('Change Key settings', async ({ page }) => {
         await page.getByRole('button', { name: 'Update encryption settings' }).click();
         await page.getByRole('textbox', { name: 'Master password * (required)' }).fill(users.user1.password);
         await page.getByRole('button', { name: 'Update settings' }).click();
-        await page.getByRole('heading', { name: 'Log in' }).click();
+        await utils.checkNotification(page, 'Encryption key settings changed');
     });
 
     await logUser(test, page, users.user1);
@@ -49,7 +49,7 @@ test('Change Key settings', async ({ page }) => {
         await page.getByRole('button', { name: 'Update encryption settings' }).click();
         await page.getByRole('textbox', { name: 'Master password * (required)' }).fill(users.user1.password);
         await page.getByRole('button', { name: 'Update settings' }).click();
-        await page.getByRole('heading', { name: 'Log in' }).click();
+        await utils.checkNotification(page, 'Encryption key settings changed');
     });
 
     await logUser(test, page, users.user1);

@@ -141,7 +141,7 @@ export async function groups(test, page: Page, name: string) {
 
 export async function createGroup(test, page: Page, name: string, group_name: string, group_id?: string) {
     await test.step(`Create group ${name}/${group_name} `, async () => {
-        await page.getByRole('button', { name: 'New group' }).click();
+        await page.getByRole('button', { name: 'Add group' }).click();
         await page.getByRole('textbox', { name: 'Name * (required)' }).fill(group_name);
 
         if( group_id !== undefined ) {
