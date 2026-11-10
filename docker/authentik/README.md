@@ -54,3 +54,11 @@ Use `docker-compose --profile VaultWarden down`.
 
 At the moment the access token lifetime is set to `5min` which will collide with the expiration detection of `VaultWarden` which is set to `5min` too.
 This might result in spamming of the refresh token endpoint and race condition might trigger a logout.
+
+## Updating `pg_init.sql`
+
+Run and make the needed modifications.
+
+Find container ip: `docker inspect $container`
+
+Dump the database: `pg_dump -h 172.20.0.3 -U authentik -d authentik > pg_init.sql`
