@@ -447,10 +447,21 @@ pub async fn exchange_code(
         org_role: additional_claims.org_role,
         groups: additional_claims.groups,
         acr: id_claims.auth_context_ref().map(|acr| acr.to_string()),
+        amr: id_claims.auth_method_refs().unwrap_or(&Vec::new()).iter().map(|amr| amr.to_string()).collect(),
     };
 
     if !authenticated_user.acr_min() {
         info!("User {email} failed to login due to missing/invalid acr ({:?})", authenticated_user.acr);
+        err!(
+            "Invalid authentication. Contact your administrator",
+            ErrorEvent {
+                event: EventType::UserFailedLogIn
+            }
+        )
+    }
+
+    if !authenticated_user.has_required_amr() {
+        info!("User {email} failed to login due to missing/invalid amr ({:?})", authenticated_user.amr);
         err!(
             "Invalid authentication. Contact your administrator",
             ErrorEvent {

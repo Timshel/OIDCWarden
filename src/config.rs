@@ -863,10 +863,14 @@ make_config! {
         sso_authorize_extra_params:     String, true,  def,    String::new();
         /// Use PKCE during Authorization flow
         sso_pkce:                       bool,   true,   def,    true;
-        /// Minimum ACR level for login |> Comma separated list in order of preference.
+        /// Minimum ACR level for login |> Comma separated list.
         sso_acr_min:                    String, true,   def,    String::new();
         /// ACR level at which 2fa is skipped |> Comma separated list.
         sso_acr_no_2fa:                 String, true,   def,    String::new();
+        /// Required AMR values for login |> Comma separated list, all values need to be present.
+        sso_amr_required:               String, true,   def,    String::new();
+        /// AMR values for which 2fa is skipped |> Comma separated list, only one match is necessary.
+        sso_amr_no_2fa:                 String, true,   def,    String::new();
         /// Regex for additional trusted Id token audience |> By default only the client_id is trusted.
         sso_audience_trusted:           String, true,  option;
         /// CallBack Path |> Generated from Domain.
@@ -1850,6 +1854,14 @@ impl Config {
 
     pub fn sso_acr_no_2fa_vec(&self) -> Vec<String> {
         self.sso_acr_no_2fa().split(',').map(str::to_owned).filter(|g| !g.is_empty()).collect()
+    }
+
+    pub fn sso_amr_required_vec(&self) -> Vec<String> {
+        self.sso_amr_required().split(',').map(str::to_owned).filter(|g| !g.is_empty()).collect()
+    }
+
+    pub fn sso_amr_no_2fa_vec(&self) -> Vec<String> {
+        self.sso_amr_no_2fa().split(',').map(str::to_owned).filter(|g| !g.is_empty()).collect()
     }
 
     pub fn sso_authorize_extra_params_vec(&self) -> Vec<(String, String)> {

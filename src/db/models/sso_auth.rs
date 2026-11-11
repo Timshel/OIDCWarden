@@ -39,6 +39,7 @@ pub struct OIDCAuthenticatedUser {
     pub org_role: Option<UserOrgRole>,
     pub groups: Option<Vec<String>>,
     pub acr: Option<String>,
+    pub amr: Vec<String>,
 }
 
 impl OIDCAuthenticatedUser {
@@ -51,9 +52,14 @@ impl OIDCAuthenticatedUser {
             || self.acr.as_ref().map_or_default(|acr| CONFIG.sso_acr_min_vec().contains(acr))
     }
 
+    pub fn has_required_amr(&self) -> bool {
+        CONFIG.sso_amr_required_vec().iter().all(|m| self.amr.contains(m))
+    }
+
     // Check if the returned value is enough to disable 2FA
-    pub fn acr_2fa_required(&self) -> bool {
-        !self.acr.as_ref().map_or_default(|acr| CONFIG.sso_acr_no_2fa_vec().contains(acr))
+    pub fn provider_2fa(&self) -> bool {
+        self.acr.as_ref().map_or_default(|acr| CONFIG.sso_acr_no_2fa_vec().contains(acr))
+            || CONFIG.sso_amr_no_2fa_vec().iter().any(|m| self.amr.contains(m))
     }
 }
 

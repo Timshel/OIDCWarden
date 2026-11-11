@@ -362,10 +362,10 @@ async fn sso_login(
         Some((mut user, sso_user)) => {
             let mut device = get_device(&data, conn, &user).await?;
 
-            let twofactor_token = if user_infos.acr_2fa_required() {
-                twofactor_auth(&mut user, &data, &mut device, ip, conn).await?
-            } else {
+            let twofactor_token = if user_infos.provider_2fa() {
                 None
+            } else {
+                twofactor_auth(&mut user, &data, &mut device, ip, conn).await?
             };
 
             if user.private_key.is_none() {
