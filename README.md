@@ -69,6 +69,7 @@ The goal is to backports features in Vaultwarden:
 - Send email verification support: https://github.com/dani-garcia/vaultwarden/pull/7363
 - Support admin 2FA reset: https://github.com/dani-garcia/vaultwarden/pull/7435
 - `SSO_SIGNUPS_ALLOWED`: https://github.com/dani-garcia/vaultwarden/pull/7272
+- `ACR` and `AMR` to limit login or skip 2FA, inspired by: https://github.com/dani-garcia/vaultwarden/pull/7749
 
 ### No email on login
 
