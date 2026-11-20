@@ -14,6 +14,8 @@ pub use ciphers::{CipherData, CipherSyncData, CipherSyncType, purge_trashed_ciph
 pub use emergency_access::{emergency_notification_reminder_job, emergency_request_timeout_job};
 pub use events::{event_cleanup_job, log_event, log_user_event};
 pub use sends::purge_sends;
+#[cfg(feature = "unsafe_test_mode")]
+pub use {ciphers::seed_cipher, sends::seed_send};
 
 use reqwest::Method;
 use rocket::{Catcher, Route, serde::json::Json, serde::json::Value};
@@ -310,69 +312,4 @@ async fn accept_org_invite(
     }
 
     Ok(())
-}
-
-#[derive(Debug, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct KDFData {
-    #[serde(alias = "kdfType")]
-    kdf: i32,
-    #[serde(alias = "iterations")]
-    kdf_iterations: i32,
-    #[serde(alias = "memory")]
-    kdf_memory: Option<i32>,
-    #[serde(alias = "parallelism")]
-    kdf_parallelism: Option<i32>,
-}
-
-impl KDFData {
-    fn matches_user(&self, user: &User) -> bool {
-        self.kdf == user.client_kdf_type
-            && self.kdf_iterations == user.client_kdf_iter
-            && self.kdf_memory == user.client_kdf_memory
-            && self.kdf_parallelism == user.client_kdf_parallelism
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AuthenticationData {
-    #[serde(alias = "Salt")]
-    salt: String,
-    #[serde(alias = "Kdf")]
-    kdf: KDFData,
-    #[serde(alias = "MasterPasswordAuthenticationHash")]
-    master_password_authentication_hash: String,
-}
-
-impl AuthenticationData {
-    pub fn check(&self, user: &User, unlock: &UnlockData) -> EmptyResult {
-        if self.kdf != unlock.kdf {
-            err!("KDF settings must be equal for authentication and unlock")
-        }
-
-        if self.salt != user.master_password_salt() || self.salt != unlock.salt {
-            err!("Invalid master password salt")
-        }
-
-        Ok(())
-    }
-
-    pub fn check_kdf(&self, user: &User, unlock: &UnlockData) -> EmptyResult {
-        self.check(user, unlock)?;
-
-        if !self.kdf.matches_user(user) {
-            err!("KDF settings do not match the user account")
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct UnlockData {
-    salt: String,
-    kdf: KDFData,
-    master_key_wrapped_user_key: String,
 }

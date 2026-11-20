@@ -34,7 +34,8 @@ pub async fn build_token_user_decryption_options(
             },
             "masterKeyEncryptedUserKey": user.akey,
             "masterKeyWrappedUserKey": user.akey,
-            "salt": user.email
+            "salt": user.master_password_salt(),
+            "containedKeyId": user.key_id,
         })
     } else {
         Value::Null
@@ -43,9 +44,16 @@ pub async fn build_token_user_decryption_options(
     let mut out = json!({
         "hasMasterPassword": has_master_password,
         "masterPasswordUnlock": master_password_unlock,
-        "userKeyId": user.key_id,
         "object": "userDecryptionOptions"
     });
+
+    // Upstream omits these when unset rather than sending null
+    if let Some(key_id) = &user.key_id {
+        out["userKeyId"] = json!(key_id);
+    }
+    if let Some(v2_upgrade_token) = user.v2_upgrade_token_json() {
+        out["v2UpgradeToken"] = v2_upgrade_token;
+    }
 
     if with_trusted && CONFIG.sso_trusted_device_encryption() && has_master_password {
         let mut trusted = json!({

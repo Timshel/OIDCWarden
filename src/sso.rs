@@ -770,6 +770,7 @@ async fn sync_orgs_and_role(
                         &mut mbs,
                         new_type,
                         true,
+                        None,
                         conn,
                     )
                     .await;
@@ -823,6 +824,7 @@ async fn sync_orgs_and_role(
             new_user_role,
             &user_org_groups,
             new_user_role > MembershipType::User,
+            None,
             &org_collections,
             org.billing_email.clone(),
             true,

@@ -1,11 +1,13 @@
+use std::collections::HashSet;
+
 use crate::{
     CONFIG,
     api::{ApiResult, EmptyResult, core::log_event, core::organizations::CollectionData},
     auth::ClientIp,
     db::DbConn,
     db::models::{
-        Collection, CollectionUser, Device, EventType, Group, GroupId, GroupUser, Membership, MembershipId,
-        MembershipStatus, MembershipType, OrgPolicy, Organization, OrganizationId, User, UserId,
+        Collection, CollectionUser, CustomPermission, Device, EventType, Group, GroupId, GroupUser, Membership,
+        MembershipId, MembershipStatus, MembershipType, OrgPolicy, Organization, OrganizationId, User, UserId,
     },
     mail,
 };
@@ -20,6 +22,7 @@ pub async fn invite(
     membership_type: MembershipType,
     groups: &Vec<GroupId>,
     access_all: bool,
+    custom_permissions: Option<&HashSet<CustomPermission>>,
     collections: &Vec<CollectionData>,
     invited_by_email: String,
     auto: bool,
@@ -36,6 +39,9 @@ pub async fn invite(
 
     let mut new_member = Membership::new(user.uuid.clone(), org.uuid.clone(), Some(invited_by_email.clone()));
     new_member.access_all = access_all;
+    if let Some(permissions) = &custom_permissions {
+        new_member.set_custom_permissions(permissions);
+    }
     new_member.atype = membership_type as i32;
     new_member.status = membership_status.clone() as i32;
 
@@ -157,6 +163,7 @@ pub async fn restore_member(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn set_membership_type(
     act_user_id: &UserId,
     device: &Device,
@@ -164,6 +171,7 @@ pub async fn set_membership_type(
     member: &mut Membership,
     new_type: MembershipType,
     custom_access_all: bool,
+    custom_permissions: Option<HashSet<CustomPermission>>,
     conn: &DbConn,
 ) -> EmptyResult {
     if member.atype == MembershipType::Owner
@@ -176,8 +184,11 @@ pub async fn set_membership_type(
         }
     }
 
+    member.set_type(new_type);
     member.access_all = new_type >= MembershipType::Admin || (new_type == MembershipType::Manager && custom_access_all);
-    member.atype = new_type as i32;
+    if let Some(permissions) = custom_permissions.as_ref().filter(|_| new_type == MembershipType::Custom) {
+        member.set_custom_permissions(permissions);
+    }
 
     // This check is also done at accept_invite, _confirm_invite, _activate_member, edit_member, admin::update_membership_type
     OrgPolicy::check_user_allowed(member, "modify", conn).await?;
