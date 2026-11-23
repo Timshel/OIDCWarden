@@ -149,7 +149,7 @@ export async function createGroup(test, page: Page, name: string, group_name: st
         }
 
         await page.getByRole('button', { name: 'Save' }).click();
-        await utils.checkNotification(page, `Created group ${group_name}`);
+        await utils.checkNotification(page, 'Group created');
     });
 }
 
@@ -165,6 +165,6 @@ export async function addToGroup(test, page: Page, name: string, group_name: str
         await page.locator('.ng-arrow-wrapper').click();
 
         await page.getByRole('button', { name: 'Save' }).click();
-        await utils.checkNotification(page, `Edited group ${group_name}`);
+        await utils.checkNotification(page, 'Group edited');
     });
 }
