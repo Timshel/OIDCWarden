@@ -20,7 +20,7 @@ use crate::{
                 authenticator, duo_oidc, email, enforce_2fa_policy, is_twofactor_provider_usable, webauthn, yubikey,
             },
         },
-        identity_master_password_policy, kdf_upgrade,
+        identity_master_password_policy,
         push::register_push_device,
     },
     auth,
@@ -387,7 +387,7 @@ async fn sso_login(
                 user.save(conn).await?;
             } else if user.verified_at.is_none()
                 && user.email == user_infos.email
-                && user_infos.email_verified.unwrap_or(CONFIG.sso_allow_unknown_email_verification())
+                && user_infos.email_verified.unwrap_or_else(|| CONFIG.sso_allow_unknown_email_verification())
             {
                 user.verified_at = Some(now);
                 user.save(conn).await?;
@@ -498,15 +498,15 @@ async fn password_login(
 
     // Change the KDF Iterations (only when not logging in with an auth request)
     if data.auth_request.is_none() {
-        kdf_upgrade(&mut user, password, conn).await?;
+        user.check_persist_kdf_upgrade(password, conn).await?;
     }
 
     let now = Utc::now().naive_utc();
 
     if user.verified_at.is_none() && CONFIG.mail_enabled() && CONFIG.signups_verify() {
-        if user.last_verifying_at.is_none()
-            || now.signed_duration_since(user.last_verifying_at.unwrap()).num_seconds()
-                > i64::from(CONFIG.signups_verify_resend_time())
+        if user
+            .last_verifying_at
+            .is_none_or(|d| now.signed_duration_since(d).num_seconds() > i64::from(CONFIG.signups_verify_resend_time()))
         {
             let resend_limit = i32::from(CONFIG.signups_verify_resend_limit());
             if resend_limit == 0 || user.login_verify_count < resend_limit {
@@ -644,7 +644,12 @@ async fn authenticated_response(
 
     // register push device
     if !device.is_new() {
-        register_push_device(device, conn).await?;
+        // Registering the device for push is best-effort: a failure talking to the
+        // push relay/identity server must not turn a successful authentication into
+        // an error (see #7371). This mirrors the new-device email handling above.
+        if let Err(e) = register_push_device(device, conn).await {
+            error!("An error occurred while registering the device for push notifications: {e}");
+        }
     }
 
     // Save to update `device.updated_at` to track usage and toggle new status
@@ -994,12 +999,7 @@ async fn twofactor_auth(
     TwoFactorIncomplete::mark_complete(&user.uuid, &device.uuid, conn).await?;
 
     let remember = data.two_factor_remember.unwrap_or(0);
-    let two_factor = if !CONFIG.disable_2fa_remember() && remember == 1 {
-        Some(device.refresh_twofactor_remember())
-    } else {
-        None
-    };
-    Ok(two_factor)
+    Ok((!CONFIG.disable_2fa_remember() && remember == 1).then(|| device.refresh_twofactor_remember()))
 }
 
 fn selected_data(tf: Option<TwoFactor>) -> ApiResult<String> {
@@ -1153,7 +1153,7 @@ async fn register_verification_email(
             use rand::{RngExt, rngs::SmallRng};
             let mut rng: SmallRng = rand::make_rng();
             let sleep_ms: u64 = rng.random_range(900..=1100);
-            tokio::time::sleep(tokio::time::Duration::from_millis(sleep_ms)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
         } else {
             mail::send_register_verify_email(&data.email, &token).await?;
         }
@@ -1231,10 +1231,10 @@ struct ConnectData {
     #[field(name = uncased("device_type"))]
     #[field(name = uncased("devicetype"))]
     device_type: Option<String>,
-    #[allow(unused)]
+    #[expect(unused, reason = "Unused, mobile device push not yet supported")]
     #[field(name = uncased("device_push_token"))]
     #[field(name = uncased("devicepushtoken"))]
-    _device_push_token: Option<String>, // Unused; mobile device push not yet supported.
+    device_push_token: Option<String>,
 
     // Needed for two-factor auth
     #[field(name = uncased("two_factor_provider"))]
@@ -1279,8 +1279,8 @@ fn prevalidate() -> JsonResult {
 }
 
 #[get("/connect/oidc-signin?<code>&<state>", rank = 1)]
-async fn oidcsignin(code: OIDCCode, state: String, mut conn: DbConn) -> ApiResult<Redirect> {
-    oidcsignin_redirect(state, code, None, &mut conn).await
+async fn oidcsignin(code: OIDCCode, state: String, conn: DbConn) -> ApiResult<Redirect> {
+    oidcsignin_redirect(state, code, None, &conn).await
 }
 
 // Bitwarden client appear to only care for code and state
@@ -1291,7 +1291,7 @@ async fn oidcsignin_error(
     state: String,
     error: String,
     error_description: Option<String>,
-    mut conn: DbConn,
+    conn: DbConn,
 ) -> ApiResult<Redirect> {
     oidcsignin_redirect(
         state.clone(),
@@ -1300,7 +1300,7 @@ async fn oidcsignin_error(
             error,
             error_description,
         }),
-        &mut conn,
+        &conn,
     )
     .await
 }
@@ -1311,7 +1311,7 @@ async fn oidcsignin_redirect(
     base64_state: String,
     code: OIDCCode,
     error: Option<OIDCCodeResponseError>,
-    conn: &mut DbConn,
+    conn: &DbConn,
 ) -> ApiResult<Redirect> {
     let state = sso::decode_state(&base64_state)?;
 
@@ -1348,18 +1348,18 @@ struct AuthorizeData {
     #[field(name = uncased("redirect_uri"))]
     #[field(name = uncased("redirecturi"))]
     redirect_uri: String,
-    #[allow(unused)]
+    #[expect(unused)]
     response_type: Option<String>,
-    #[allow(unused)]
+    #[expect(unused)]
     scope: Option<String>,
     state: OIDCState,
     code_challenge: OIDCCodeChallenge,
     code_challenge_method: String,
-    #[allow(unused)]
+    #[expect(unused)]
     response_mode: Option<String>,
-    #[allow(unused)]
+    #[expect(unused)]
     domain_hint: Option<String>,
-    #[allow(unused)]
+    #[expect(unused)]
     #[field(name = uncased("ssoToken"))]
     sso_token: Option<String>,
 }

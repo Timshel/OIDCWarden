@@ -6,6 +6,8 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      args:
+        DB: sqlite,mysql,postgresql,unsafe_test_mode
     entrypoint: /bin/bash
     restart: "no"
 

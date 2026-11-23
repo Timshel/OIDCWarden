@@ -71,7 +71,7 @@ pub async fn invite(
         if Group::find_by_uuid_and_org(group_id, &org.uuid, conn).await.is_none() {
             err!("Group not found in Organization")
         }
-        let mut group_entry = GroupUser::new(group_id.clone(), new_member.uuid.clone());
+        let group_entry = GroupUser::new(group_id.clone(), new_member.uuid.clone());
         group_entry.save(conn).await?;
     }
 
@@ -216,7 +216,7 @@ pub async fn add_group_user(
     group_id: &GroupId,
     conn: &DbConn,
 ) -> EmptyResult {
-    let mut user_entry = GroupUser::new(group_id.clone(), member_uuid);
+    let user_entry = GroupUser::new(group_id.clone(), member_uuid);
     user_entry.save(conn).await?;
 
     log_event(EventType::OrganizationUserUpdatedGroups, group_id, org_id, act_user_id, device.atype, &ip.ip, conn)

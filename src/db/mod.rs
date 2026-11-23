@@ -1,7 +1,6 @@
 mod query_logger;
 
 use std::{
-    future::Future,
     sync::{
         Arc, OnceLock,
         atomic::{AtomicBool, Ordering},
@@ -253,7 +252,7 @@ impl DbPool {
             error!("Tried to set the active database connection type more than once.");
         }
 
-        Ok(DbPool {
+        Ok(Self {
             pool: Some(pool),
             semaphore: Arc::new(Semaphore::new(max_conns as usize)),
         })
@@ -284,17 +283,17 @@ impl DbPool {
 impl DbConnType {
     pub fn from_url(url: &str) -> Result<Self, Error> {
         // Mysql
-        if url.len() > 6 && &url[..6] == "mysql:" {
+        if url.starts_with("mysql:") {
             #[cfg(mysql)]
-            return Ok(DbConnType::Mysql);
+            return Ok(Self::Mysql);
 
             #[cfg(not(mysql))]
             err!("`DATABASE_URL` is a MySQL URL, but the 'mysql' feature is not enabled")
 
         // Postgresql
-        } else if url.len() > 11 && (&url[..11] == "postgresql:" || &url[..9] == "postgres:") {
+        } else if url.starts_with("postgresql:") || url.starts_with("postgres:") {
             #[cfg(postgresql)]
-            return Ok(DbConnType::Postgresql);
+            return Ok(Self::Postgresql);
 
             #[cfg(not(postgresql))]
             err!("`DATABASE_URL` is a PostgreSQL URL, but the 'postgresql' feature is not enabled")
@@ -308,9 +307,9 @@ impl DbConnType {
             err!("`DATABASE_URL` is a cockroachdb URL, but the 'cockroachdb' feature is not enabled")
 
         // Sqlite (explicit)
-        } else if url.len() > 7 && &url[..7] == "sqlite:" {
+        } else if url.starts_with("sqlite:") {
             #[cfg(sqlite)]
-            return Ok(DbConnType::Sqlite);
+            return Ok(Self::Sqlite);
 
             #[cfg(not(sqlite))]
             err!("`DATABASE_URL` is a SQLite URL, but the 'sqlite' feature is not enabled")
@@ -321,7 +320,7 @@ impl DbConnType {
         #[cfg(sqlite)]
         {
             if std::path::Path::new(url).exists() {
-                return Ok(DbConnType::Sqlite);
+                return Ok(Self::Sqlite);
             }
             err!(format!(
                 "`DATABASE_URL` does not match any known database scheme (mysql://, postgresql://, sqlite://) \
@@ -464,8 +463,6 @@ pub mod models;
 /// MySQL/MariaDB and PostgreSQL are not supported.
 #[cfg(sqlite)]
 pub fn backup_sqlite() -> Result<String, Error> {
-    use diesel::Connection;
-
     let db_url = CONFIG.database_url();
     if DbConnType::from_url(&CONFIG.database_url()).is_ok_and(|t| t == DbConnType::Sqlite) {
         // Strip the sqlite:// prefix if present to get the raw file path
@@ -664,6 +661,15 @@ pub mod test_db {
                 .args(["--exact", std::thread::current().name().unwrap(), "--nocapture"])
                 .env("VAULTWARDEN_ISOLATED_CONFIG_TEST", "1")
                 .env("DATABASE_URL", "sqlite://:memory:")
+                // Keep a local `.env` out of the tests, such as SMTP settings that would send mail
+                .env(
+                    "ENV_FILE",
+                    if cfg!(windows) {
+                        "NUL"
+                    } else {
+                        "/dev/null"
+                    },
+                )
                 .output()
                 .unwrap();
             assert!(

@@ -148,6 +148,7 @@ async fn generate_yubikey(data: Json<PasswordOrOtpData>, headers: Headers, conn:
 #[post("/two-factor/yubikey", data = "<data>")]
 async fn activate_yubikey(data: Json<EnableYubikeyData>, headers: Headers, conn: DbConn) -> JsonResult {
     let data: EnableYubikeyData = data.into_inner();
+
     let yubikeys = parse_yubikeys(&data);
     let mut user = headers.user;
 

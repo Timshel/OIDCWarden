@@ -60,19 +60,6 @@ struct PasswordOrOtpData {
     otp: Option<String>,
 }
 
-// Change the KDF Iterations if necessary
-async fn kdf_upgrade(user: &mut User, pwd_hash: &str, conn: &DbConn) -> EmptyResult {
-    if user.password_iterations < CONFIG.password_iterations() {
-        user.password_iterations = CONFIG.password_iterations();
-        user.set_password(pwd_hash, None, false, None, conn).await?;
-
-        if let Err(e) = user.save(conn).await {
-            error!("Error updating user: {e:#?}");
-        }
-    }
-    Ok(())
-}
-
 impl PasswordOrOtpData {
     /// Tokens used via this struct can be used multiple times during the process
     /// First for the validation to continue, after that to enable or validate the following actions
@@ -86,7 +73,7 @@ impl PasswordOrOtpData {
                     err!("Invalid password");
                 }
 
-                kdf_upgrade(user, pw_hash, conn).await?;
+                user.check_persist_kdf_upgrade(pw_hash, conn).await?;
             }
             (None, Some(otp)) => {
                 validate_protected_action_otp(otp, &user.uuid, delete_if_valid, conn).await?;
@@ -136,7 +123,7 @@ async fn master_password_policy(user: &User, conn: &DbConn) -> Value {
             }
         }))
     } else if CONFIG.sso_enabled() {
-        CONFIG.sso_master_password_policy_value().unwrap_or(json!({}))
+        CONFIG.sso_master_password_policy_value().unwrap_or_else(|| json!({}))
     } else {
         json!({})
     };

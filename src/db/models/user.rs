@@ -2,6 +2,7 @@ use chrono::{NaiveDateTime, TimeDelta, Utc};
 use derive_more::{AsRef, Deref, Display, From};
 use diesel::prelude::*;
 use serde_json::Value;
+use std::cmp;
 
 use crate::{
     CONFIG,
@@ -146,7 +147,7 @@ impl User {
             verified_at: None,
             last_verifying_at: None,
             login_verify_count: 0,
-            name: name.unwrap_or(email.clone()),
+            name: name.unwrap_or_else(|| email.clone()),
             email,
             akey: String::new(),
             email_new: None,
@@ -221,15 +222,11 @@ impl User {
     }
 
     pub fn check_valid_recovery_code(&self, recovery_code: &str) -> bool {
-        if let Some(ref totp_recover) = self.totp_recover {
-            crypto::ct_eq(recovery_code, totp_recover.to_lowercase())
-        } else {
-            false
-        }
+        self.totp_recover.as_ref().is_some_and(|c| crypto::ct_eq(recovery_code, c.to_lowercase()))
     }
 
     pub fn check_valid_api_key(&self, key: &str) -> bool {
-        matches!(self.api_key, Some(ref api_key) if crypto::ct_eq(api_key, key))
+        self.api_key.as_ref().is_some_and(|k| crypto::ct_eq(key, k))
     }
 
     /// Set the password hash generated
@@ -251,6 +248,7 @@ impl User {
         allow_next_route: Option<Vec<String>>,
         conn: &DbConn,
     ) -> EmptyResult {
+        self.password_iterations = cmp::max(self.password_iterations, CONFIG.password_iterations());
         self.password_hash =
             crypto::hash_password(password.as_bytes(), &self.salt, self.password_iterations.cast_unsigned());
 
@@ -289,7 +287,7 @@ impl User {
         grace.push(UserStampException {
             routes: None,
             security_stamp: previous_stamp,
-            expire: (Utc::now() + *DEFAULT_ACCESS_VALIDITY).timestamp(),
+            expire: (Utc::now() + DEFAULT_ACCESS_VALIDITY).timestamp(),
         });
         let mut exceptions = self.stamp_exceptions();
         exceptions.extend(grace);
@@ -477,6 +475,34 @@ impl User {
                     .execute(conn)
                     .map_res("Error saving user")
             }
+        }
+    }
+
+    pub async fn check_persist_kdf_upgrade(&mut self, pwd_hash: &str, conn: &DbConn) -> EmptyResult {
+        if self.password_iterations < CONFIG.password_iterations() {
+            let old_iteration = self.password_iterations;
+            let old_hash = self.password_hash.clone();
+
+            self.set_password(pwd_hash, None, false, None, conn).await?;
+
+            conn.run(move |conn| {
+                diesel::update(
+                    users::table
+                        .filter(users::uuid.eq(&self.uuid))
+                        .filter(users::password_iterations.eq(old_iteration))
+                        .filter(users::password_hash.eq(old_hash)),
+                )
+                .set((
+                    users::updated_at.eq(Utc::now().naive_utc()),
+                    users::password_iterations.eq(&self.password_iterations),
+                    users::password_hash.eq(&self.password_hash),
+                ))
+                .execute(conn)
+                .map_res("Error updating user KDF iterations")
+            })
+            .await
+        } else {
+            Ok(())
         }
     }
 
@@ -781,6 +807,15 @@ mod tests {
                 .args(["--exact", std::thread::current().name().unwrap(), "--nocapture"])
                 .env("VAULTWARDEN_ISOLATED_CONFIG_TEST", "1")
                 .env("DATABASE_URL", "sqlite://:memory:")
+                // Keep a local `.env` out of the tests, such as SMTP settings that would send mail.
+                .env(
+                    "ENV_FILE",
+                    if cfg!(windows) {
+                        "NUL"
+                    } else {
+                        "/dev/null"
+                    },
+                )
                 .output()
                 .unwrap();
             assert!(
