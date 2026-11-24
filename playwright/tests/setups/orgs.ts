@@ -47,6 +47,10 @@ export async function policies(test, page: Page, name: string) {
     });
 }
 
+export async function enablePolicy(page: Page) {
+    await page.getByRole('checkbox', { name: 'Turn on' }).or(page.getByRole('switch', { name: 'Enable policy' })).check({ force: true });
+}
+
 export async function members(test, page: Page, name: string) {
     await test.step(`Navigate to ${name} members`, async () => {
         await page.locator('a').filter({ hasText: 'Admin Console' }).first().click();

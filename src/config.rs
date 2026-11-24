@@ -740,6 +740,7 @@ make_config! {
         /// running on the same host or container network), the string "all" to accept it from anywhere,
         /// or a comma separated list of IPs and CIDR ranges. For a list header like X-Forwarded-For, the
         /// client IP is the rightmost address that isn't a trusted proxy, so list every proxy in the chain.
+        /// "local" also trusts 6to4, Teredo and local-use NAT64 addresses, which can carry clients from anywhere.
         ip_header_trusted_proxies: String, true, def,    "local".to_owned();
         /// Icon service |> The predefined icon services are: internal, bitwarden, duckduckgo, google.
         /// To specify a custom icon service, set a URL template with exactly one instance of `{}`,
@@ -774,7 +775,8 @@ make_config! {
         /// Useful to hide other servers in the local network. Check the WIKI for more details
         http_request_block_regex:   String, true,   option;
         /// Block non global IPs |> Enabling this will cause the internal HTTP client to refuse to connect to any non global IP address.
-        /// Useful to secure your internal environment: See https://en.wikipedia.org/wiki/Reserved_IP_addresses for a list of IPs which it will block
+        /// Useful to secure your internal environment: See https://en.wikipedia.org/wiki/Reserved_IP_addresses for a list of IPs which it will block.
+        /// Requests through an outbound proxy (HTTP_PROXY, HTTPS_PROXY or ALL_PROXY) aren't checked, because the proxy resolves the names.
         http_request_block_non_global_ips:  bool,   true,   auto, |c| c.icon_blacklist_non_global_ips;
 
         /// Disable Two-Factor remember |> Enabling this would force the users to use a second factor to login every time.
@@ -1619,6 +1621,7 @@ pub const SUPPORTED_FEATURE_FLAGS: &[&str] = &[
     "pm-34171-card-scanner",
     // Platform Team
     "pm-30529-webauthn-related-origins",
+    "content-script-ipc-channel-framework",
     // Tools Team: read by the clients up to 2026.10 and by the Android and iOS apps
     "pm-31885-send-controls",
     // Vault Team

@@ -8,17 +8,17 @@
     "author": "",
     "license": "ISC",
     "devDependencies": {
-        "@playwright/test": "1.64.1",
+        "@playwright/test": "1.65.1",
         "dotenv": "18.0.9",
         "dotenv-expand": "1000.0.0",
-        "maildev": "npm:@timshel_npm/maildev@3.3.7"
+        "maildev": "npm:@timshel_npm/maildev@3.3.8"
     },
     "dependencies": {
         "mysql2": "3.24.6",
-        "otpauth": "9.5.2",
+        "otpauth": "9.6.0",
         "pg": "8.23.1"
     },
     "engines": {
-        "node": ">=22.0.0"
+        "node": ">=24.0.0"
     }
 }

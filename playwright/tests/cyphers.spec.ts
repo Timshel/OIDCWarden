@@ -24,6 +24,10 @@ test('Change Key settings', async ({ page }) => {
         await page.getByRole('link', { name: 'Security' }).click();
         await page.getByRole('link', { name: 'Keys' }).click();
 
+        // V2 accounts (pm-27278-v2-password-registration) register with Argon2id, V1 ones with PBKDF2
+        await page.locator('.ng-arrow-wrapper').click();
+        await page.getByRole('option', { name: 'PBKDF2 SHA-256' }).click();
+
         await page.getByRole('spinbutton', { name: 'KDF iterations * (required)'}).fill('700000');
 
         await page.getByRole('button', { name: 'Update encryption settings' }).click();

@@ -923,7 +923,9 @@ async fn get_keys(headers: Headers, conn: DbConn) -> JsonResult {
 #[serde(rename_all = "camelCase")]
 struct PostKeysData {
     // Required like upstream, even next to `accountKeys`
+    #[serde(alias = "PublicKey")]
     public_key: Option<String>,
+    #[serde(alias = "EncryptedPrivateKey")]
     encrypted_private_key: Option<String>,
     account_keys: Option<AccountKeysData>,
     // The id of the user key these account keys belong to, only honored for v2 `accountKeys`
@@ -2634,19 +2636,7 @@ async fn post_auth_request(
     )
     .await;
 
-    Ok(Json(json!({
-        "id": auth_request.uuid,
-        "publicKey": auth_request.public_key,
-        "requestDeviceType": DeviceType::from_i32(auth_request.device_type).to_string(),
-        "requestIpAddress": auth_request.request_ip,
-        "key": null,
-        "masterPasswordHash": null,
-        "creationDate": format_date(&auth_request.creation_date),
-        "responseDate": null,
-        "requestApproved": false,
-        "origin": CONFIG.domain_origin(),
-        "object": "auth-request"
-    })))
+    Ok(Json(auth_request.to_json()))
 }
 
 #[get("/auth-requests/<auth_request_id>")]
@@ -2656,21 +2646,7 @@ async fn get_auth_request(auth_request_id: AuthRequestId, headers: Headers, conn
         err!("AuthRequest doesn't exist", "Record not found or user uuid does not match")
     };
 
-    let response_date_utc = auth_request.response_date.map(|response_date| format_date(&response_date));
-
-    Ok(Json(json!({
-        "id": &auth_request_id,
-        "publicKey": auth_request.public_key,
-        "requestDeviceType": DeviceType::from_i32(auth_request.device_type).to_string(),
-        "requestIpAddress": auth_request.request_ip,
-        "key": auth_request.enc_key,
-        "masterPasswordHash": auth_request.master_password_hash,
-        "creationDate": format_date(&auth_request.creation_date),
-        "responseDate": response_date_utc,
-        "requestApproved": auth_request.approved,
-        "origin": CONFIG.domain_origin(),
-        "object":"auth-request"
-    })))
+    Ok(Json(auth_request.to_json()))
 }
 
 #[derive(Debug, Deserialize)]
@@ -2705,15 +2681,14 @@ async fn put_auth_request(
         err!("An authentication request with the same device already exists")
     }
 
-    let response_date = Utc::now().naive_utc();
-    let response_date_utc = format_date(&response_date);
+    // Set the date now so that the response returns it
+    auth_request.response_date = Some(Utc::now().naive_utc());
 
     if data.request_approved {
         auth_request.approved = Some(data.request_approved);
         auth_request.enc_key = Some(data.key);
         auth_request.master_password_hash = data.master_password_hash;
         auth_request.response_device_id = Some(data.device_identifier.clone());
-        auth_request.response_date = Some(response_date);
         auth_request.save(&conn).await?;
 
         ant.send_auth_response(&auth_request.user_uuid, &auth_request.uuid).await;
@@ -2740,19 +2715,7 @@ async fn put_auth_request(
         .await;
     }
 
-    Ok(Json(json!({
-        "id": &auth_request_id,
-        "publicKey": auth_request.public_key,
-        "requestDeviceType": DeviceType::from_i32(auth_request.device_type).to_string(),
-        "requestIpAddress": auth_request.request_ip,
-        "key": auth_request.enc_key,
-        "masterPasswordHash": auth_request.master_password_hash,
-        "creationDate": format_date(&auth_request.creation_date),
-        "responseDate": response_date_utc,
-        "requestApproved": auth_request.approved,
-        "origin": CONFIG.domain_origin(),
-        "object":"auth-request"
-    })))
+    Ok(Json(auth_request.to_json()))
 }
 
 #[get("/auth-requests/<auth_request_id>/response?<code>")]
@@ -2775,21 +2738,7 @@ async fn get_auth_request_response(
         err!("AuthRequest doesn't exist", "Invalid device, IP or code")
     }
 
-    let response_date_utc = auth_request.response_date.map(|response_date| format_date(&response_date));
-
-    Ok(Json(json!({
-        "id": &auth_request_id,
-        "publicKey": auth_request.public_key,
-        "requestDeviceType": DeviceType::from_i32(auth_request.device_type).to_string(),
-        "requestIpAddress": auth_request.request_ip,
-        "key": auth_request.enc_key,
-        "masterPasswordHash": auth_request.master_password_hash,
-        "creationDate": format_date(&auth_request.creation_date),
-        "responseDate": response_date_utc,
-        "requestApproved": auth_request.approved,
-        "origin": CONFIG.domain_origin(),
-        "object":"auth-request"
-    })))
+    Ok(Json(auth_request.to_json()))
 }
 
 // Now unused but not yet removed
@@ -2807,23 +2756,8 @@ async fn get_auth_requests_pending(headers: Headers, conn: DbConn) -> JsonResult
         "data": auth_requests
             .iter()
             .filter(|request| request.approved.is_none())
-            .map(|request| {
-            let response_date_utc = request.response_date.map(|response_date| format_date(&response_date));
-
-            json!({
-                "id": request.uuid,
-                "publicKey": request.public_key,
-                "requestDeviceType": DeviceType::from_i32(request.device_type).to_string(),
-                "requestIpAddress": request.request_ip,
-                "key": request.enc_key,
-                "masterPasswordHash": request.master_password_hash,
-                "creationDate": format_date(&request.creation_date),
-                "responseDate": response_date_utc,
-                "requestApproved": request.approved,
-                "origin": CONFIG.domain_origin(),
-                "object":"auth-request"
-            })
-        }).collect::<Vec<Value>>(),
+            .map(AuthRequest::to_json)
+            .collect::<Vec<Value>>(),
         "continuationToken": null,
         "object": "list"
     })))

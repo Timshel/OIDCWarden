@@ -98,7 +98,7 @@ services:
   Postgres:
     profiles: ["playwright"]
     container_name: playwright_postgres
-    image: postgres:18.4
+    image: postgres:18.7
     env_file: test.env
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
@@ -123,7 +123,7 @@ services:
   Maildev:
     profiles: ["oidcwarden", "maildev"]
     container_name: maildev
-    image: timshel/maildev:3.3.7
+    image: timshel/maildev:3.3.8
     ports:
       - ${SMTP_PORT}:1025
       - 1080:1080
@@ -131,7 +131,7 @@ services:
   Keycloak:
     profiles: ["keycloak", "oidcwarden"]
     container_name: keycloak-${ENV:-dev}
-    image: quay.io/keycloak/keycloak:26.8.1
+    image: quay.io/keycloak/keycloak:26.8.2
     network_mode: "host"
     command:
       - start-dev
@@ -146,7 +146,7 @@ services:
       context: compose/keycloak
       dockerfile: Dockerfile
       args:
-        KEYCLOAK_VERSION: 26.8.1
+        KEYCLOAK_VERSION: 26.8.2
     depends_on:
       - Keycloak
     restart: "no"

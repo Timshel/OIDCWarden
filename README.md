@@ -60,6 +60,8 @@ See details in [SSO.md](SSO.md).
 
 - When SSO is activated, organization invitation will redirect to SSO login (Vaultwarden require `SSO_ONLY=true` too).
 - The default web client set the SSO login as the default action but still require email.
+- `ENFORCE_SINGLE_ORG_WITH_RESET_PW_POLICY` is disabled by default
+  :warning: This does mean that an admin could gain acces to another organization by resetting a user password.
 
 ## Additional Features
 
