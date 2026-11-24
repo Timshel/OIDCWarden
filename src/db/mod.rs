@@ -301,7 +301,7 @@ impl DbConnType {
         // Cockroachdb
         } else if url.len() > 12 && &url[..12] == "cockroachdb:" {
             #[cfg(cockroachdb)]
-            return Ok(DbConnType::Cockroachdb);
+            return Ok(Self::Cockroachdb);
 
             #[cfg(not(cockroachdb))]
             err!("`DATABASE_URL` is a cockroachdb URL, but the 'cockroachdb' feature is not enabled")

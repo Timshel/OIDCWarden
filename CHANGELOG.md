@@ -1,5 +1,13 @@
 # Changelog
 
+# v2026.11.0-1
+
+- Use [oidc_web_vault](https://github.com/Timshel/oidc_web_vault) version `v2026.10.1-2`
+- Integrate latest change from `Vaultwarden` up to [b91cab3c](https://github.com/dani-garcia/vaultwarden/commits/b91cab3c)
+  :warning: Include database migrations, backup before updating.
+  Kept `ENFORCE_SINGLE_ORG_WITH_RESET_PW_POLICY` disabled by default
+  :warning: This does mean that an admin could gain access to another organization by resetting a user password.
+
 # v2026.10.1-2
 
 - `SSO_AMR_REQUIRED` and `SSO_AMR_NO_2FA` allow to limit login and/or skip 2FA using AMR values returned by the provider.
